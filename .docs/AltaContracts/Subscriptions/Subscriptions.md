@@ -351,6 +351,7 @@ Below is a list of all of the Subscription Events that can be emitted by the ser
 _________________________________________
 Server Heartbeat `group-server-heartbeat`
 -----------------------------------------
+
 The server heartbeat event is used to determine the liveness of a server and is quite chatty.
 
 `Triggers`
@@ -370,6 +371,7 @@ Content appears to be identitical to [Server Status Changed](#server-status-chan
 ___________________________________________
 Server Status Changed `group-server-status`
 -------------------------------------------
+
 The server status changed event is used to note changes in the server's availability and player count.
 
 `Triggers`
@@ -415,6 +417,7 @@ The Server Status Changed event can be used to monitor server populations and av
 ____________________________
 Group Changed `group-update`
 ----------------------------
+
 `Triggers`
 --------
 The group update event occurs whenever the state of the group changes.  This is ususally the name, description, or group type (public/private/open)
@@ -442,6 +445,7 @@ Primarily this would be used to confirm a change has occurred and is recognized 
 _______________________________________________
 Group Permissions Changed `group-member-update`
 -----------------------------------------------
+
 `DOCUMENTATION PENDING`
 
 `Triggers`
@@ -470,7 +474,9 @@ Group Permissions Changed `group-member-update`
 __________________________________________________
 Bot Received Group Invite `me-group-invite-create`
 --------------------------------------------------
+
 `DOCUMENTATION PENDING`
+
 `Triggers`
 --------
 
@@ -483,7 +489,9 @@ Bot Received Group Invite `me-group-invite-create`
 _________________________________________________
 Bot Group Invite Revoked `me-group-invite-delete`
 -------------------------------------------------
+
 `DOCUMENTATION PENDING`
+
 `Triggers`
 --------
 
@@ -496,7 +504,9 @@ Bot Group Invite Revoked `me-group-invite-delete`
 __________________________________
 Bot Joined Group `me-group-create`
 ----------------------------------
+
 `DOCUMENTATION PENDING`
+
 `Triggers`
 --------
 
@@ -509,7 +519,9 @@ Bot Joined Group `me-group-create`
 ________________________________
 Bot Left Group `me-group-delete`
 --------------------------------
+
 `DOCUMENTATION PENDING`
+
 `Triggers`
 --------
 
