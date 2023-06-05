@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp", "Townsharp\Townsharp.csproj", "{DB6994D8-4283-4D31-995B-E362DAB2B9EA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Domain", "Townsharp.Domain\Townsharp.Domain.csproj", "{1481ED7A-36A5-47A0-A90E-3CE37CF30AD6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Infrastructure", "Townsharp.Infrastructure\Townsharp.Infrastructure.csproj", "{4E1CFFF1-C15C-4541-85D4-9FC992FCAEDE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DB6994D8-4283-4D31-995B-E362DAB2B9EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB6994D8-4283-4D31-995B-E362DAB2B9EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB6994D8-4283-4D31-995B-E362DAB2B9EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB6994D8-4283-4D31-995B-E362DAB2B9EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1481ED7A-36A5-47A0-A90E-3CE37CF30AD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1481ED7A-36A5-47A0-A90E-3CE37CF30AD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1481ED7A-36A5-47A0-A90E-3CE37CF30AD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1481ED7A-36A5-47A0-A90E-3CE37CF30AD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E1CFFF1-C15C-4541-85D4-9FC992FCAEDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E1CFFF1-C15C-4541-85D4-9FC992FCAEDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E1CFFF1-C15C-4541-85D4-9FC992FCAEDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E1CFFF1-C15C-4541-85D4-9FC992FCAEDE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
