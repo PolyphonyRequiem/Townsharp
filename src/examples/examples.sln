@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubscriptionClient.DirectUsage.Example", "SubscriptionClient.DirectUsage.Example\SubscriptionClient.DirectUsage.Example.csproj", "{D4B4E03F-A5D1-4F64-8BD2-84CA371501AE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SubscriptionClient.DirectUsage.Example", "SubscriptionClient.DirectUsage.Example\SubscriptionClient.DirectUsage.Example.csproj", "{D4B4E03F-A5D1-4F64-8BD2-84CA371501AE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Infrastructure", "..\sdk\Townsharp.Infrastructure\Townsharp.Infrastructure.csproj", "{EC769925-19C2-416D-BB2E-75C5EA3FD8B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubscriptionConnection.DirectUsage.Example", "SubscriptionConnection.DirectUsage.Example\SubscriptionConnection.DirectUsage.Example.csproj", "{A6FC1A77-F0C0-4E76-B279-1768E288CF28}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{EC769925-19C2-416D-BB2E-75C5EA3FD8B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC769925-19C2-416D-BB2E-75C5EA3FD8B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC769925-19C2-416D-BB2E-75C5EA3FD8B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6FC1A77-F0C0-4E76-B279-1768E288CF28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6FC1A77-F0C0-4E76-B279-1768E288CF28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6FC1A77-F0C0-4E76-B279-1768E288CF28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6FC1A77-F0C0-4E76-B279-1768E288CF28}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

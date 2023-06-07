@@ -34,7 +34,7 @@ I'm starting with the Infrastructure implementations and documentation.  I expec
 - [ ] Townsharp.Infrastructure
   - [ ] Subscriptions
     - [X] Subscription Client - Used to handle request/response correllation
-    - [ ] Subscription Connection - Used to manage lifecycle of migrations and tracks subscriptions it is responsible for
+    - [X] Subscription Connection - Used to manage lifecycle of migrations and tracks subscriptions it is responsible for
     - [ ] Subscription Manager - Used to assign subscriptions to subscription connections, and manage multiplexing of connections for scale.
   - [ ] Web API
     - [ ] Web Api Client - Exposes REST Api operations against Alta's WebApi endpoint, and handles transient faults, and request pagination.
@@ -64,3 +64,6 @@ I'm starting with the Infrastructure implementations and documentation.  I expec
   - [ ] Web API
   - [ ] Server Console
   - [ ] Identity
+
+Current TODO:
+- [ ] Introduce a solution for logging that exists at a library scope.  Maybe an ambient context pattern, maybe a logging binding pattern, who knows.

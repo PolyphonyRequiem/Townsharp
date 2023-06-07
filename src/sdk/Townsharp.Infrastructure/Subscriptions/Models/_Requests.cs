@@ -31,7 +31,7 @@ public record RequestMessage
         => new(id, $"subscription/batch", "POST", token, new BatchSubscriptionContentElement[] { new (eventId, eventKeys)}); // single element cuz of noted bugs
 
     public static RequestMessage CreateGetMigrationTokenRequestMessage(long id, string token)
-        => new(id, $"migrate", "POST", token);
+        => new(id, $"migrate", "GET", token);
 
     public static RequestMessage CreateSendMigrationTokenRequestMessage(long id, string token, string migrationToken)
         => new(id, $"migrate", "POST", token, new {token=migrationToken});

@@ -44,7 +44,7 @@ public class BotTokenProvider
                         }
 
                         var response = (await result.Content.ReadFromJsonAsync<TokenResponse>())!;
-                        return new CacheState<string>(response.access_token, DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+                        return new CacheState<string>(response.access_token, DateTimeOffset.UtcNow + TimeSpan.FromSeconds(response.expires_in));
                     },
                     cts.Token);
             },

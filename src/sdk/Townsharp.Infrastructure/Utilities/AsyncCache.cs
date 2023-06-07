@@ -23,16 +23,17 @@ public class AsyncCache<T>
     public async ValueTask<T> GetAsync(CancellationToken cancellationToken = default)
     {
         // Fast path: if the cache is not nearly expired, return the value immediately.
-        if (DateTimeOffset.UtcNow - this.expirationTime <= this.marginOfRefresh)
+        if (DateTimeOffset.UtcNow + this.marginOfRefresh < this.expirationTime)
         {
             return this.cachedValue;
         }
 
         await semaphore.WaitAsync(cancellationToken);
+
         try
         {
             var state = await cacheTask;
-            if (DateTimeOffset.UtcNow - state.ExpirationTime > marginOfRefresh)
+            if (DateTimeOffset.UtcNow + this.marginOfRefresh > this.expirationTime)
             {
                 this.cacheTask = fetchDataAsync(cancellationToken);
                 state = await cacheTask;

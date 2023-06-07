@@ -45,14 +45,10 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     private readonly ILogger<SubscriptionClient> logger;
     private readonly MessageIdFactory messageIdFactory;
 
+    // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
 
-    public SubscriptionClient(BotTokenProvider botTokenProvider)
-        : this(botTokenProvider, new LoggerFactory().CreateLogger<SubscriptionClient>())
-    {
-    }
-
-    public SubscriptionClient(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+    protected SubscriptionClient(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
         this.botTokenProvider = botTokenProvider;
         this.logger = logger;
@@ -61,10 +57,18 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         this.cancellationTokenSource = new CancellationTokenSource();
     }
 
+    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+    {
+        var client = new SubscriptionClient(botTokenProvider, logger);
+        await client.ConnectAsync();
+
+        return client;
+    }
+
     ////////////////////
     // Lifecycle
     ////////////////////
-    public async Task ConnectAsync(CancellationToken cancellationToken = default)
+    protected async Task ConnectAsync()
     {
         if (this.connected)
         {
@@ -73,7 +77,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         else
         {
             this.websocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync()}");
-            await this.websocket.ConnectAsync(SubscriptionWebsocketUri, cancellationToken);
+            await this.websocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
             this.connected = true;
             this.receiverTask = ReceiveEventMessagesAsync();
             this.idleKeepaliveTask = KeepAliveAsync();
@@ -84,7 +88,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     {
         try
         {
-            await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close by Townsharp client.", this.cancellationTokenSource.Token);
+            await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", this.cancellationTokenSource.Token);
         }
         catch (Exception ex)
         {
@@ -200,7 +204,6 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     /// Requests
     ////////////////////
-
     public async Task<Response> SubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
@@ -393,7 +396,6 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             {
                 this.websocket.Dispose();
                 this.cancellationTokenSource.Dispose();
-
             }
 
             disposed = true;
