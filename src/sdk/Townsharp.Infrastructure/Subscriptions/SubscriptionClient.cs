@@ -88,7 +88,10 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     {
         try
         {
-            await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", this.cancellationTokenSource.Token);
+            if (this.websocket.State == WebSocketState.Open)
+            {
+                await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", this.cancellationTokenSource.Token);
+            }
         }
         catch (Exception ex)
         {
