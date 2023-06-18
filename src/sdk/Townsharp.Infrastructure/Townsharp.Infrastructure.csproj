@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="Logging\" />
     <Folder Include="ServerConsole\Models\" />
     <Folder Include="WebApi\Models\" />
   </ItemGroup>

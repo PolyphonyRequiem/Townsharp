@@ -47,6 +47,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
+    public event EventHandler? OnWebsocketFaulted;
 
     protected SubscriptionClient(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
@@ -59,8 +60,23 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
     public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
-        var client = new SubscriptionClient(botTokenProvider, logger);
-        await client.ConnectAsync();
+        SubscriptionClient client;
+
+        do
+        {
+            client = new SubscriptionClient(botTokenProvider, logger);
+
+            try
+            {
+                await client.ConnectAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(CreateAndConnectAsync)}.  {ex}");
+                await client.DisposeAsync();
+            }
+        }
+        while (!client.Ready);
 
         return client;
     }
@@ -78,6 +94,12 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         {
             this.websocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync()}");
             await this.websocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
+
+            if (this.websocket.State != WebSocketState.Open)
+            {
+                throw new InvalidOperationException($"Failed to connect to subscription endpoint. {this.websocket.CloseStatus ?? WebSocketCloseStatus.Empty} :: {this.websocket.CloseStatusDescription ?? string.Empty}.");
+            }
+
             this.connected = true;
             this.receiverTask = ReceiveEventMessagesAsync();
             this.idleKeepaliveTask = KeepAliveAsync();
@@ -132,14 +154,26 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                     {
                         // stop listening, we are done.
                         logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
+                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
                         break;
                     }
                     catch (OperationCanceledException)
                     {
                         // stop listening, we are done.
                         logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
+                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
                         break;
                     }
+                    catch (Exception ex)
+                    {
+                        // stop listening, we are done.
+                        logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
+                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        break;
+                    }
+
+                    // NOTE: We need a way here to indicate a fault to the SubscriptionConnection so that it can reconnect.
+
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         // stop listening, we are done.
@@ -170,9 +204,11 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         // Parse message to see what we have.
         // If it's a Response message, we need to find the request and complete it.
         // If it's an Event message, we need to raise an event.
+
+        // These are more willing to map than I expected and may need a little more inspection at a json level before attempting to bind.
         EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(rawMessage);
 
-        if (eventMessage == null)
+        if (eventMessage == null || string.IsNullOrWhiteSpace(eventMessage.@event))
         {
             // might be an infrastructure issue.
             InfrastructureError? infrastructureError = JsonSerializer.Deserialize<InfrastructureError>(rawMessage);

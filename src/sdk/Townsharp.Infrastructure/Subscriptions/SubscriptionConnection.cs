@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.ComponentModel.Design.Serialization;
+using System.Diagnostics;
 using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
@@ -11,14 +14,15 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 {
     // Constants
     // private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(90);
-    private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(.75);
+    private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(5);
     private static TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
 
     // State
     private ImmutableHashSet<SubscriptionDefinition> ownedSubscriptions = ImmutableHashSet<SubscriptionDefinition>.Empty;
-    private ImmutableQueue<SubscriptionDefinition> pendingSubscriptions = ImmutableQueue<SubscriptionDefinition>.Empty;
+    private ConcurrentQueue<SubscriptionDefinition> pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
+
     private bool disposed;
-    private bool isMigrating;
+    private bool isUnavailable;
     private bool shouldHandleWork;
 
     // Disposables
@@ -34,6 +38,8 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
     // Properties
     protected SubscriptionClient SubscriptionClient { get => this.subscriptionClient ?? throw new InvalidOperationException("SubscriptionClient may not be accessed before CreateAsync is called."); set => this.subscriptionClient = value; }
+    
+    public ConnectionId ConnectionId { get; }
 
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
@@ -43,15 +49,16 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionConnection(SubscriptionClientFactory subscriptionClientFactory, ILogger<SubscriptionConnection> logger)
+    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILogger<SubscriptionConnection> logger)
     {
+        this.ConnectionId = connectionId;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.logger = logger;
     }
 
-    public static async Task<SubscriptionConnection> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILogger<SubscriptionConnection> logger)
+    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILogger<SubscriptionConnection> logger)
     {
-        var connection = new SubscriptionConnection(subscriptionClientFactory, logger);
+        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, logger);
         await connection.InitializeAsync();
         return connection;
     }
@@ -60,6 +67,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     {
         this.SubscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
         this.SubscriptionClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
+        this.SubscriptionClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
         this.shouldHandleWork = true;
         this.workerTask = this.HandleSubscriptionWorkAsync();
         this.migrationTask = this.MigratePeriodically();
@@ -68,6 +76,12 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private void HandleSubscriptionEvent(object? sender, SubscriptionEvent e)
     {
         this.RaiseOnSubscriptionEvent(e);
+    }
+
+    private void HandleOnWebsocketFaulted(object? sender, EventArgs e)
+    {
+        this.isUnavailable = true;
+        this.RecoverConnectionAsync();
     }
 
     private async Task MigratePeriodically()
@@ -82,7 +96,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private async Task Migrate()
     {
         // "two paths" approach needed
-        while (this.isMigrating)
+        while (this.isUnavailable)
         {
             await Task.Delay(TimeSpan.FromSeconds(1));
         }
@@ -92,59 +106,60 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             return;
         }
 
-        this.isMigrating = true;
+        this.isUnavailable = true;
         SubscriptionClient oldClient = this.SubscriptionClient;
 
-        this.logger.LogInformation("Getting Migration Token.");
+        this.logger.LogTrace("Getting Migration Token.");
 
         Response getMigrationTokenResponse = await oldClient.GetMigrationTokenAsync(TimeSpan.FromSeconds(15));
 
         if (!getMigrationTokenResponse.IsCompleted)
         {
             // Handle failure.
-            logger.LogError("Failed to get migration token.");
+            logger.LogError($"{this.ConnectionId} Failed to get migration token.");
             await this.RecoverConnectionAsync();
             return;
         }
         else
         {
             // new client, send migration token
-            logger.LogInformation("Got migration token.");
-            this.logger.LogInformation("Connecting new client.");
+            logger.LogTrace("Got migration token.");
+            this.logger.LogTrace("Connecting new client.");
             SubscriptionClient newClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
 
             var contentElement = JsonSerializer.Deserialize<JsonElement>(getMigrationTokenResponse.Message.content);
 
             if (!contentElement.TryGetProperty("token", out var tokenElement))
             {
-                logger.LogError("Get migration token response message did not contain token element.");
+                logger.LogError($"{this.ConnectionId} Get migration token response message did not contain token element.");
                 await this.RecoverConnectionAsync();
                 return;
             }
 
             // Setup handle events here.
             newClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
+            newClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
 
-            this.logger.LogInformation("Sending Migration Token.");
+            this.logger.LogTrace("Sending Migration Token.");
 
             var sendMigrationTokenResponse = await newClient.SendMigrationTokenAsync(tokenElement.GetString()!, MigrationTimeout);
 
             if (!sendMigrationTokenResponse.IsCompleted)
             {
-                logger.LogError("Send migration token operation did not complete.");
+                logger.LogError($"{this.ConnectionId} Send migration token operation did not complete.");
                 await this.RecoverConnectionAsync();
                 return;
             }
             else
             {
-                this.logger.LogInformation("Finalizing Migration.");
+                this.logger.LogTrace("Finalizing Migration.");
                 this.SubscriptionClient = newClient;
                 await oldClient.DisposeAsync();
                 oldClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
             }
         }
 
-        this.isMigrating = false;
+        this.isUnavailable = false;
     }
 
     private async Task RecoverConnectionAsync()
@@ -154,31 +169,28 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         {
             try
             {
-                this.logger.LogWarning("Recovering connection due to error.");
+                this.logger.LogWarning($"{this.ConnectionId} Recovering connection due to error.");
+                // cleanup the old client
                 this.SubscriptionClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
+                this.SubscriptionClient.OnWebsocketFaulted -= this.HandleOnWebsocketFaulted;
                 var disposalTask = this.SubscriptionClient.DisposeAsync();
 
+                // connect the new one.
                 this.SubscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
                 this.SubscriptionClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
+                this.SubscriptionClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
 
                 // all subscriptions were dropped, prepare for resubscription.
-                ImmutableInterlocked.Update(ref pendingSubscriptions, workQueue =>
-                {
-                    workQueue.Clear();
-
-                    // Create a new queue that includes all subscriptions.
-                    foreach (var subscription in ownedSubscriptions)
-                    {
-                        workQueue = workQueue.Enqueue(subscription);
-                    }
-                    return workQueue;
-                });
+                this.pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>(this.ownedSubscriptions);
                 await disposalTask;
+                
                 isRecovered = true;
+                this.logger.LogWarning($"{this.ConnectionId} Recovered with {this.pendingSubscriptions.Count} subscriptions to recover.");
+                this.isUnavailable = false;
             }
             catch (Exception ex)
             {
-                this.logger.LogError(ex, "Failed to recover connection.");
+                this.logger.LogError(ex, $"{this.ConnectionId} Failed to recover connection.");
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
         } while (!this.disposed && !isRecovered);
@@ -196,53 +208,58 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             return oldSubscriptions.Union(distinctSubscriptions);
         });
 
-        ImmutableInterlocked.Update(ref pendingSubscriptions, workQueue =>
+        // Update the queue to include the new items.
+        foreach (var subscription in distinctSubscriptions)
         {
-            // Update the queue to include the new items.
-            foreach (var subscription in distinctSubscriptions)
-            {
-                workQueue = workQueue.Enqueue(subscription);
-            }
-            return workQueue;
-        });
+            this.pendingSubscriptions.Enqueue(subscription);
+        }
     }
 
     private async Task HandleSubscriptionWorkAsync()
     {
+        const int MaxSubscriptionsAtOnce = 100;
+        bool idle = false;
         do
         {
-            if (this.pendingSubscriptions.IsEmpty || this.isMigrating)
+            if (this.pendingSubscriptions.IsEmpty || this.isUnavailable)
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
-            List<SubscriptionDefinition> subscriptionsInWork = new List<SubscriptionDefinition>();
-
-            bool queueUpdated = false;
-
-            while (!this.pendingSubscriptions.IsEmpty && !queueUpdated)
+            List<SubscriptionDefinition> subscriptionsTaken = new List<SubscriptionDefinition>();
+            
+            var subscriptionCount = this.pendingSubscriptions.Count;
+            if (subscriptionCount != 0)
             {
-                queueUpdated = ImmutableInterlocked.Update(ref pendingSubscriptions, queue =>
-                {
-                    subscriptionsInWork.Clear(); // reset in case it takes more than one iteration.
-                    int limit = 100;
-                    while (limit-- > 0 && !queue.IsEmpty)
-                    {
-                        queue = queue.Dequeue(out var subscription);
-                        subscriptionsInWork.Add(subscription);
-                    }
+                idle = false;
+                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has {subscriptionCount} pending subscriptions.  Handling up to {Math.Min(MaxSubscriptionsAtOnce, subscriptionCount)} of them.");
 
-                    return queue;
-                });
+                int limit = 100;
+                while (limit-- > 0 && !this.pendingSubscriptions.IsEmpty)
+                {
+                    if (this.pendingSubscriptions.TryDequeue(out var subscription))
+                    {
+                        subscriptionsTaken.Add(subscription);
+                    }
+                    else
+                    {
+                        limit++;
+                    }
+                }
+            }
+            else if (!idle)
+            {
+                idle = true;
+                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has resolved all pending subscriptions and the worker is Idle.");
             }
 
-            while (this.isMigrating)
+            while (this.isUnavailable)
             {
                 // need to actually handle these though.
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
-            Task[] tasks = subscriptionsInWork.Select(s => SendSubscriptionRequestAsync(s)).ToArray();
+            Task[] tasks = subscriptionsTaken.Select(SendSubscriptionRequestAsync).ToArray();
 
             if (tasks.Any())
             {
@@ -256,15 +273,49 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     {
         // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
         var response = this.SubscriptionClient.SubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
-            .ContinueWith(t =>
+            .ContinueWith(task =>
             {
                 // handle result.
-                return t.Result;
+                if (task.IsFaulted)
+                {
+                    // handle error.
+                    this.logger.LogError($"{this.ConnectionId} Subscription request task faulted.");
+                    this.pendingSubscriptions.Enqueue(definition);
+                }
+
+                if (task.IsCanceled)
+                {
+                    // handle cancel.
+                    Debugger.Break();
+                }
+
+                if (task.IsCompleted)
+                {
+                    var result = task.Result;
+                    if (result.TimedOut)
+                    {
+                        // handle failure.
+                        this.logger.LogWarning($"{this.ConnectionId} Subscription request timed out.");
+                        this.pendingSubscriptions.Enqueue(definition);
+                    }
+
+                    if (!string.IsNullOrEmpty(result.ErrorMessage))
+                    {
+                        // handle error.
+                        this.logger.LogError($"{this.ConnectionId} Subscription request failed {result.ErrorMessage}");
+                        this.pendingSubscriptions.Enqueue(definition);
+                    }
+
+                    if (result.IsCompleted)
+                    {
+                        // handle success.
+                    }
+                }
+
+                return task.Result;
             });
 
-
         return response;
-        // handle success/fail/etc.
     }
 
     ////////////////////
@@ -309,6 +360,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         if (this.subscriptionClient != null)
         {
             this.subscriptionClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
+            this.subscriptionClient.OnWebsocketFaulted -= this.HandleOnWebsocketFaulted;
             await this.subscriptionClient.DisposeAsync();
         }
     }
