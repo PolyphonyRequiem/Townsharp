@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Subscriptions.Models;
 
@@ -17,10 +18,10 @@ public class SubscriptionManager
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionManager(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionManager> logger)
+    protected SubscriptionManager(Dictionary<ConnectionId, SubscriptionConnection> connections)
     {
         this.connections = connections;
-        this.logger = logger;
+        this.logger = TownsharpLogging.CreateLogger<SubscriptionManager>();
         this.subscriptionMap = new SubscriptionMap(this.connections.Keys.ToArray());
 
         foreach (var subscriptionConnection in connections.Values)
@@ -29,13 +30,13 @@ public class SubscriptionManager
         }
     }
 
-    public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory)
     {
         var connectionIds = Enumerable.Range(0, 10).Select(_ => new ConnectionId());
-        var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory, loggerFactory.CreateLogger<SubscriptionConnection>()));
+        var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory));
         var subscriptionConnections = await Task.WhenAll(initTasks)!;
         var subscriptionConnectionsMap = subscriptionConnections.ToDictionary(connection => connection.ConnectionId);
-        return new SubscriptionManager(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionManager>());
+        return new SubscriptionManager(subscriptionConnectionsMap);
     }
 
     public void RegisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)

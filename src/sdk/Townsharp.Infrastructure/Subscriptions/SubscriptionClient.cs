@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Identity;
+using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions.Models;
 using Townsharp.Infrastructure.Utilities;
 
@@ -19,6 +20,9 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
     private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);
     private static readonly TimeSpan IdleConnectionCheckPeriod = TimeSpan.FromMinutes(2);
+
+    // Logging
+    private readonly ILogger<SubscriptionClient> logger;
 
     // State
     private DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
@@ -42,7 +46,6 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     private readonly BotTokenProvider botTokenProvider;
 
     // Dependencies
-    private readonly ILogger<SubscriptionClient> logger;
     private readonly MessageIdFactory messageIdFactory;
 
     // Events
@@ -52,15 +55,16 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     protected SubscriptionClient(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
         this.botTokenProvider = botTokenProvider;
-        this.logger = logger;
         this.messageIdFactory = new MessageIdFactory();
         this.websocket = new ClientWebSocket();       
         this.cancellationTokenSource = new CancellationTokenSource();
+        this.logger = logger;
     }
 
-    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider)
     {
         SubscriptionClient client;
+        ILogger<SubscriptionClient> logger = TownsharpLogging.CreateLogger<SubscriptionClient>();
 
         do
         {
@@ -101,8 +105,8 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             }
 
             this.connected = true;
-            this.receiverTask = ReceiveEventMessagesAsync();
-            this.idleKeepaliveTask = KeepAliveAsync();
+            this.receiverTask = this.ReceiveEventMessagesAsync();
+            this.idleKeepaliveTask = this.KeepAliveAsync();
         }
     }
 
@@ -145,29 +149,29 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                     try
                     {
                         // Use the rented buffer for receiving data
-                        result = await websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), this.cancellationTokenSource.Token);
+                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), this.cancellationTokenSource.Token);
 
                         // Message received, reset the idle timer
-                        MarkLastMessageTime();
+                        this.MarkLastMessageTime();
                     }
                     catch (WebSocketException ex)
                     {
                         // stop listening, we are done.
-                        logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
+                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
                         this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
                         break;
                     }
                     catch (OperationCanceledException)
                     {
                         // stop listening, we are done.
-                        logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
+                        this.logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
                         this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
                         break;
                     }
                     catch (Exception ex)
                     {
                         // stop listening, we are done.
-                        logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
+                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
                         this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
                         break;
                     }
@@ -182,9 +186,9 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
                     string rawMessage = Encoding.UTF8.GetString(rentedBuffer, 0, result.Count);
 
-                    if (logger.IsEnabled(LogLevel.Trace))
+                    if (this.logger.IsEnabled(LogLevel.Trace))
                     {
-                        logger.LogTrace($"RECV: {rawMessage}");
+                        this.logger.LogTrace($"RECV: {rawMessage}");
                     }
 
                     // We have the raw message!
@@ -337,7 +341,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, $"Failed to send request {request}");
+            this.logger.LogError(ex, $"Failed to send request {request}");
             throw;
         }
         finally
@@ -353,10 +357,9 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             throw new InvalidOperationException("The client is not ready.  Make sure it is connected and not disposed.");
         }
 
-        //await sendSemaphore.WaitAsync(cancellationToken);
-        if (logger.IsEnabled(LogLevel.Trace))
+        if (this.logger.IsEnabled(LogLevel.Trace))
         {
-            logger.LogTrace($"SEND: {messageJson}");
+            this.logger.LogTrace($"SEND: {messageJson}");
         }
 
         byte[] messageBytes = Encoding.Default.GetBytes(messageJson);
@@ -367,12 +370,11 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             var arraySegment = new ArraySegment<byte>(buffer, 0, messageBytes.Length);
 
             await this.websocket.SendAsync(arraySegment, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
-            MarkLastMessageTime();
+            this.MarkLastMessageTime();
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
-            //this.sendSemaphore.Release();
         }
     }
 
@@ -398,7 +400,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                     try
                     {
                         this.logger.LogTrace("Idle keepalive, pinging.");
-                        await SendRawStringAsync("ping", this.cancellationTokenSource.Token).ConfigureAwait(false);
+                        await this.SendRawStringAsync("ping", this.cancellationTokenSource.Token).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -429,7 +431,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposed)
+        if (!this.disposed)
         {
             if (disposing)
             {
@@ -437,20 +439,20 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                 this.cancellationTokenSource.Dispose();
             }
 
-            disposed = true;
+            this.disposed = true;
         }
     }
 
     public void Dispose()
     {
-        Dispose(disposing: true);
+        this.Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await DisposeAsyncCore().ConfigureAwait(false);
-        Dispose(disposing: false);
+        await this.DisposeAsyncCore().ConfigureAwait(false);
+        this.Dispose(disposing: false);
         GC.SuppressFinalize(this);
     }
 

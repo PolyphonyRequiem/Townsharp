@@ -45,7 +45,7 @@ async Task Subscribe(long groupId, CancellationToken cancellationToken)
                new HttpClient());
 
     // Because the client is disposable asynchronously, we can use the `await using` syntax to ensure proper disposal.
-    await using (var client = await SubscriptionClient.CreateAndConnectAsync(tokenProvider, new LoggerFactory().CreateLogger<SubscriptionClient>()))
+    await using (var client = await SubscriptionClient.CreateAndConnectAsync(tokenProvider))
     {
         // setup our event handler.
         client.OnSubscriptionEvent += (sender, subscriptionEvent) =>

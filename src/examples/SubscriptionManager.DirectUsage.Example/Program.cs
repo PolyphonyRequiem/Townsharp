@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Identity.Models;
+using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions;
 
 Console.WriteLine("Starting a SubscriptionManager test.");
@@ -21,13 +22,13 @@ builder.Services.AddSingleton(
                Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
            services.GetRequiredService<HttpClient>()));
 builder.Services.AddSingleton<SubscriptionClientFactory>();
-
 builder.Logging.AddConsole();
-//builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
-
 builder.Services.AddHostedService<SubscriptionManagerTest>();
 
 IHost host = builder.Build();
+
+// use the logger configuration from the host
+TownsharpLogging.LoggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
 
 host.Run();
 
@@ -35,7 +36,6 @@ internal class SubscriptionManagerTest : IHostedService
 {
     private readonly BotTokenProvider botTokenProvider;
     private readonly ILogger<SubscriptionManagerTest> logger;
-    private readonly ILoggerFactory loggerFactory;
     private readonly SubscriptionClientFactory subscriptionClientFactory;
     private SubscriptionManager? subscriptionManager;
 
@@ -44,18 +44,16 @@ internal class SubscriptionManagerTest : IHostedService
     public SubscriptionManagerTest(
         BotTokenProvider botTokenProvider,
         ILogger<SubscriptionManagerTest> logger,
-        ILoggerFactory loggerFactory,
         SubscriptionClientFactory subscriptionClientFactory)
     {
         this.botTokenProvider = botTokenProvider;
         this.logger = logger;
-        this.loggerFactory = loggerFactory;
         this.subscriptionClientFactory = subscriptionClientFactory;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        this.subscriptionManager = await SubscriptionManager.CreateAsync(this.subscriptionClientFactory, this.loggerFactory);
+        this.subscriptionManager = await SubscriptionManager.CreateAsync(this.subscriptionClientFactory);
         this.subscriptionManager.OnSubscriptionEvent += (sender, subscriptionEvent) =>
         {
             this.totalCount++;

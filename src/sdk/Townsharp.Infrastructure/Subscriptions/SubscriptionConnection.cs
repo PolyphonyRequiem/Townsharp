@@ -1,15 +1,22 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.ComponentModel.Design.Serialization;
 using System.Diagnostics;
 using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
+/// <summary>
+/// 
+/// </summary>
+/// <remarks>
+/// Used to manage lifecycle of <see cref="SubscriptionClient"/> objects, including migrations and fault recovery.
+/// Tracks subscriptions it is responsible for, used in recovery.
+/// </remarks>
 public class SubscriptionConnection : IDisposable, IAsyncDisposable
 {
     // Constants
@@ -49,16 +56,16 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILogger<SubscriptionConnection> logger)
+    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory)
     {
         this.ConnectionId = connectionId;
         this.subscriptionClientFactory = subscriptionClientFactory;
-        this.logger = logger;
+        this.logger = TownsharpLogging.CreateLogger<SubscriptionConnection>();
     }
 
-    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILogger<SubscriptionConnection> logger)
+    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory)
     {
-        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, logger);
+        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory);
         await connection.InitializeAsync();
         return connection;
     }
@@ -81,7 +88,8 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private void HandleOnWebsocketFaulted(object? sender, EventArgs e)
     {
         this.isUnavailable = true;
-        this.RecoverConnectionAsync();
+        // Wrong pattern here.
+        _ = this.RecoverConnectionAsync();
     }
 
     private async Task MigratePeriodically()
@@ -89,7 +97,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         while (this.shouldHandleWork)
         {
             await Task.Delay(MigrationFrequency);
-            await Migrate();
+            await this.Migrate();
         }
     }
 
@@ -116,14 +124,14 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         if (!getMigrationTokenResponse.IsCompleted)
         {
             // Handle failure.
-            logger.LogError($"{this.ConnectionId} Failed to get migration token.");
+            this.logger.LogError($"{this.ConnectionId} Failed to get migration token.");
             await this.RecoverConnectionAsync();
             return;
         }
         else
         {
             // new client, send migration token
-            logger.LogTrace("Got migration token.");
+            this.logger.LogTrace("Got migration token.");
             this.logger.LogTrace("Connecting new client.");
             SubscriptionClient newClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
 
@@ -131,7 +139,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
             if (!contentElement.TryGetProperty("token", out var tokenElement))
             {
-                logger.LogError($"{this.ConnectionId} Get migration token response message did not contain token element.");
+                this.logger.LogError($"{this.ConnectionId} Get migration token response message did not contain token element.");
                 await this.RecoverConnectionAsync();
                 return;
             }
@@ -146,7 +154,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
             if (!sendMigrationTokenResponse.IsCompleted)
             {
-                logger.LogError($"{this.ConnectionId} Send migration token operation did not complete.");
+                this.logger.LogError($"{this.ConnectionId} Send migration token operation did not complete.");
                 await this.RecoverConnectionAsync();
                 return;
             }
@@ -202,7 +210,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         var distinctSubscriptions = subscriptionDefinitions.Distinct().ToArray();
 
         // Update the subscriptions and the work queue.
-        ImmutableInterlocked.Update(ref ownedSubscriptions, oldSubscriptions =>
+        ImmutableInterlocked.Update(ref this.ownedSubscriptions, oldSubscriptions =>
         {
             // Create a new hash set that includes the old subscriptions plus any new ones.
             return oldSubscriptions.Union(distinctSubscriptions);
@@ -259,7 +267,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
-            Task[] tasks = subscriptionsTaken.Select(SendSubscriptionRequestAsync).ToArray();
+            Task[] tasks = subscriptionsTaken.Select(this.SendSubscriptionRequestAsync).ToArray();
 
             if (tasks.Any())
             {
@@ -323,7 +331,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     ////////////////////
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposed)
+        if (!this.disposed)
         {
             if (disposing)
             {
@@ -332,20 +340,20 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
-            disposed = true;
+            this.disposed = true;
         }
     }
 
     public void Dispose()
     {
-        Dispose(disposing: true);
+        this.Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
 
     public async ValueTask DisposeAsync()
     {
-        await DisposeAsyncCore().ConfigureAwait(false);
-        Dispose(disposing: false);
+        await this.DisposeAsyncCore().ConfigureAwait(false);
+        this.Dispose(disposing: false);
         GC.SuppressFinalize(this);
     }
 

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Identity.Models;
+using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions;
 
 Console.WriteLine("Starting a SubscriptionConnection test.");
@@ -28,6 +29,9 @@ builder.Logging.AddConsole();
 builder.Services.AddHostedService<SubscriptionConnectionTest>();
 
 IHost host = builder.Build();
+
+// use the logger configuration from the host
+TownsharpLogging.LoggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
 
 host.Run();
 
@@ -53,7 +57,7 @@ internal class SubscriptionConnectionTest : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        this.subscriptionConnection = await SubscriptionConnection.CreateAsync(this.subscriptionClientFactory, this.loggerFactory.CreateLogger<SubscriptionConnection>());
+        this.subscriptionConnection = await SubscriptionConnection.CreateAsync(new ConnectionId(), this.subscriptionClientFactory);
 
         _ = Task.Run(() => SubscribeToGroupsAsync(cancellationToken), cancellationToken);
 
