@@ -1,6 +1,14 @@
 Logging
 =======
 
-Logging should probably be provided via an ambient context rather than injected.  It might be possible to do something like:
+Implemented TownsharpLogging static class.  Use LoggingFactory to assign the global logging factory.
 
-Logger<SubscriptionsInfrastructureLogger>.LogInformation(...) as a static provider, but configured via relatively normal mechanisms.  Mostly I think bootstrapping it would be tough to do cleanly.  I wonder if anyone has done this.
+```csharp
+// use the logger configuration from the host
+TownsharpLogging.LoggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+```
+
+you can also resolve via 
+this.logger = TownsharpLogging.CreateLogger<SubscriptionManager>();
+
+I might also create some global static loggers there which change when the Factory changes if needed.
