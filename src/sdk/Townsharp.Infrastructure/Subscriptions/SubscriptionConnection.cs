@@ -5,7 +5,6 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
@@ -41,6 +40,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
     // Dependencies
     private readonly SubscriptionClientFactory subscriptionClientFactory;
+    private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<SubscriptionConnection> logger;
 
     // Properties
@@ -56,16 +56,17 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory)
+    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
         this.ConnectionId = connectionId;
         this.subscriptionClientFactory = subscriptionClientFactory;
-        this.logger = TownsharpLogging.CreateLogger<SubscriptionConnection>();
+        this.loggerFactory = loggerFactory;
+        this.logger = loggerFactory.CreateLogger<SubscriptionConnection>();
     }
 
-    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory)
+    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
-        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory);
+        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, loggerFactory);
         await connection.InitializeAsync();
         return connection;
     }

@@ -7,7 +7,6 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Identity;
-using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions.Models;
 using Townsharp.Infrastructure.Utilities;
 
@@ -61,11 +60,10 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         this.logger = logger;
     }
 
-    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider)
+    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
         SubscriptionClient client;
-        ILogger<SubscriptionClient> logger = TownsharpLogging.CreateLogger<SubscriptionClient>();
-
+        
         do
         {
             client = new SubscriptionClient(botTokenProvider, logger);
@@ -84,6 +82,15 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
         return client;
     }
+
+    //public static async Task<bool> RunAsync(
+    //    Action<SubscriptionClient> onConnected, // limit the public surface as a result.
+    //    Action<SubscriptionClientFault> onFaulted,
+    //    Action<IAsyncEnumerable<SubscriptionEvent>> handleSubscriptionEvents,
+    //    CancellationToken cancellationToken) // used to signal shutdown and disposal is wanted.  This is the only way to dispose.
+    //{
+
+    //}
 
     ////////////////////
     // Lifecycle
@@ -470,4 +477,8 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             await this.idleKeepaliveTask.ConfigureAwait(false);
         }
     }
+}
+
+public class SubscriptionClientFault
+{
 }

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Logging;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Subscriptions.Models;
 
@@ -18,10 +17,10 @@ public class SubscriptionManager
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionManager(Dictionary<ConnectionId, SubscriptionConnection> connections)
+    protected SubscriptionManager(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionManager> logger)
     {
         this.connections = connections;
-        this.logger = TownsharpLogging.CreateLogger<SubscriptionManager>();
+        this.logger = logger;
         this.subscriptionMap = new SubscriptionMap(this.connections.Keys.ToArray());
 
         foreach (var subscriptionConnection in connections.Values)
@@ -30,13 +29,13 @@ public class SubscriptionManager
         }
     }
 
-    public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory)
+    public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
         var connectionIds = Enumerable.Range(0, 10).Select(_ => new ConnectionId());
-        var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory));
+        var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory, loggerFactory));
         var subscriptionConnections = await Task.WhenAll(initTasks)!;
         var subscriptionConnectionsMap = subscriptionConnections.ToDictionary(connection => connection.ConnectionId);
-        return new SubscriptionManager(subscriptionConnectionsMap);
+        return new SubscriptionManager(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionManager>());
     }
 
     public void RegisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)

@@ -2,8 +2,7 @@
 
 using Polly;
 using Polly.Retry;
-
-using Townsharp.Infrastructure.Identity.Models;
+using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Utilities;
 
 namespace Townsharp.Identity;

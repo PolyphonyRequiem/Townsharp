@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Townsharp.Identity;
+using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
 
@@ -45,7 +47,7 @@ async Task Subscribe(long groupId, CancellationToken cancellationToken)
                new HttpClient());
 
     // Because the client is disposable asynchronously, we can use the `await using` syntax to ensure proper disposal.
-    await using (var client = await SubscriptionClient.CreateAndConnectAsync(tokenProvider))
+    await using (var client = await SubscriptionClient.CreateAndConnectAsync(tokenProvider, NullLoggerFactory.Instance.CreateLogger<SubscriptionClient>()))
     {
         // setup our event handler.
         client.OnSubscriptionEvent += (sender, subscriptionEvent) =>
