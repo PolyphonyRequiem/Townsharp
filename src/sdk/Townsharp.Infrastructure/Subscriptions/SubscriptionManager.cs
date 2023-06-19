@@ -1,3 +1,5 @@
+using System.Threading.Channels;
+
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Subscriptions;
@@ -10,32 +12,62 @@ public class SubscriptionManager
     private readonly ILogger<SubscriptionManager> logger;
 
     // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
-    
-    private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
-    {
-        this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
-    }
+    private readonly Channel<SubscriptionEvent> eventChannel; 
 
-    protected SubscriptionManager(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionManager> logger)
+    protected SubscriptionManager(Dictionary<ConnectionId, SubscriptionConnection> connections, ChannelWriter<SubscriptionEvent> channelWriter, ILogger<SubscriptionManager> logger)
     {
         this.connections = connections;
         this.logger = logger;
         this.subscriptionMap = new SubscriptionMap(this.connections.Keys.ToArray());
+        this.eventChannel = Channel.CreateUnbounded<SubscriptionEvent>(new UnboundedChannelOptions
+        {
+            AllowSynchronousContinuations = true,
+            SingleReader = true,
+            SingleWriter = false
+        });
+
+        async Task PipeEvents(ChannelReader<SubscriptionEvent> channelReader)
+        {
+            try
+            {
+                await foreach (var subscriptionEvent in channelReader.ReadAllAsync())
+                {
+                    await channelWriter.WriteAsync(subscriptionEvent);
+                }
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError($"A Subscription Channel has faulted. {ex}");
+                channelWriter.TryComplete(ex);
+            }
+        }
 
         foreach (var subscriptionConnection in connections.Values)
         {
-            subscriptionConnection.OnSubscriptionEvent += (sender, subscriptionEvent) => this.RaiseOnSubscriptionEvent(subscriptionEvent);
+            var connectionChannel = Channel.CreateUnbounded<SubscriptionEvent>(
+            new UnboundedChannelOptions
+            {
+                AllowSynchronousContinuations = true,
+                SingleReader = true,
+                SingleWriter = true
+            });
+
+            _ = connectionChannel.Reader.Completion.ContinueWith(async (task) =>
+            {
+                await subscriptionConnection.DisposeAsync();
+            });     
+            
+            _ = Task.Run(() => PipeEvents(connectionChannel.Reader));
         }
     }
 
-    public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ChannelWriter<SubscriptionEvent> channelWriter, ILoggerFactory loggerFactory)
     {
         var connectionIds = Enumerable.Range(0, 10).Select(_ => new ConnectionId());
-        var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory, loggerFactory));
+        var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory, channelWriter,  loggerFactory));
         var subscriptionConnections = await Task.WhenAll(initTasks)!;
         var subscriptionConnectionsMap = subscriptionConnections.ToDictionary(connection => connection.ConnectionId);
-        return new SubscriptionManager(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionManager>());
+        return new SubscriptionManager(subscriptionConnectionsMap, channelWriter, loggerFactory.CreateLogger<SubscriptionManager>());
     }
 
     public void RegisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)

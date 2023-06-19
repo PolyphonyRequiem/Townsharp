@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Hosting;
 using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.Subscriptions.Models;
 
 Console.WriteLine("Starting a SubscriptionManager test.");
 
@@ -41,18 +43,24 @@ internal class SubscriptionManagerTest : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        this.subscriptionManager = await this.subscriptionManagerFactory.CreateAsync();
-        this.subscriptionManager.OnSubscriptionEvent += (sender, subscriptionEvent) =>
+        var channel = Channel.CreateUnbounded<SubscriptionEvent>();
+
+        this.subscriptionManager = await this.subscriptionManagerFactory.CreateAsync(channel.Writer);
+
+        _ = Task.Run(async () =>
         {
-            this.totalCount++;
-
-            if (this.totalCount % 100 == 0)
+            await foreach (var subscriptionEvent in channel.Reader.ReadAllAsync(cancellationToken))
             {
-                logger.LogInformation($"Received {this.totalCount} events.");
-            }
+                this.totalCount++;
 
-            logger.LogTrace($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
-        };
+                if (this.totalCount % 100 == 0)
+                {
+                    logger.LogInformation($"Received {this.totalCount} events.");
+                }
+
+                logger.LogTrace($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+            }
+        });
 
         var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
 

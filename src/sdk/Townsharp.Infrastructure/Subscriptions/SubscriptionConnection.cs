@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
@@ -49,48 +50,83 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     public ConnectionId ConnectionId { get; }
 
     // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
+    //  this intermediate isn't needed from what I can tell, we could pass the same one from subsciption manager
+    private readonly Channel<SubscriptionEvent> eventChannel;
 
-    private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
-    {
-        this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
-    }
-
-    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ChannelWriter<SubscriptionEvent> channelWriter, ILoggerFactory loggerFactory)
     {
         this.ConnectionId = connectionId;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.loggerFactory = loggerFactory;
         this.logger = loggerFactory.CreateLogger<SubscriptionConnection>();
+
+        this.eventChannel = Channel.CreateUnbounded<SubscriptionEvent>(
+            new UnboundedChannelOptions
+            {
+                AllowSynchronousContinuations = true,
+                SingleReader = true,
+                SingleWriter = true
+            });
+
+        _ = this.eventChannel.Reader.ReadAllAsync().ForEachAsync(async (subscriptionEvent) =>
+        {
+            await channelWriter.WriteAsync(subscriptionEvent);
+        });
     }
 
-    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ChannelWriter<SubscriptionEvent> channelWriter, ILoggerFactory loggerFactory)
     {
-        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, loggerFactory);
+        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, channelWriter, loggerFactory);
         await connection.InitializeAsync();
         return connection;
     }
 
     private async Task InitializeAsync()
     {
-        this.SubscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
-        this.SubscriptionClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
-        this.SubscriptionClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
+        this.SubscriptionClient = await CreateSubscriptionClientAsync();
         this.shouldHandleWork = true;
         this.workerTask = this.HandleSubscriptionWorkAsync();
         this.migrationTask = this.MigratePeriodically();
     }
 
-    private void HandleSubscriptionEvent(object? sender, SubscriptionEvent e)
+    private async Task<SubscriptionClient> CreateSubscriptionClientAsync()
     {
-        this.RaiseOnSubscriptionEvent(e);
-    }
+        var channel = Channel.CreateUnbounded<SubscriptionEvent>(
+            new UnboundedChannelOptions
+            {
+                AllowSynchronousContinuations = true, 
+                SingleReader = true, 
+                SingleWriter = true
+            });
 
-    private void HandleOnWebsocketFaulted(object? sender, EventArgs e)
-    {
-        this.isUnavailable = true;
-        // Wrong pattern here.
-        _ = this.RecoverConnectionAsync();
+        var client = await this.subscriptionClientFactory.CreateAsync(channel.Writer);
+
+        _ = channel.Reader.Completion.ContinueWith(async (task) =>
+        {
+            await client.DisposeAsync();
+        });
+
+        async Task PipeEvents()
+        {
+            try
+            {
+                await foreach (var subscriptionEvent in channel.Reader.ReadAllAsync())
+                {
+                    await this.eventChannel.Writer.WriteAsync(subscriptionEvent);
+                }
+            }
+            catch (Exception ex)
+            {
+                this.isUnavailable = true;
+                this.logger.LogWarning($"{ConnectionId} setting as unavailable due to reader fault.");
+                this.logger.LogWarning("{connectionId} an error occurred in the SubscriptionClient {ex}", this.ConnectionId, ex);
+                _ = Task.Run(RecoverConnectionAsync);
+            }
+        }
+
+        _ = Task.Run(PipeEvents);
+
+        return client;
     }
 
     private async Task MigratePeriodically()
@@ -120,7 +156,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
         this.logger.LogTrace("Getting Migration Token.");
 
-        Response getMigrationTokenResponse = await oldClient.GetMigrationTokenAsync(TimeSpan.FromSeconds(15));
+        Result getMigrationTokenResponse = await oldClient.GetMigrationTokenAsync(TimeSpan.FromSeconds(15));
 
         if (!getMigrationTokenResponse.IsCompleted)
         {
@@ -134,7 +170,8 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             // new client, send migration token
             this.logger.LogTrace("Got migration token.");
             this.logger.LogTrace("Connecting new client.");
-            SubscriptionClient newClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
+            
+            SubscriptionClient newClient = await this.CreateSubscriptionClientAsync();
 
             var contentElement = JsonSerializer.Deserialize<JsonElement>(getMigrationTokenResponse.Message.content);
 
@@ -144,10 +181,6 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                 await this.RecoverConnectionAsync();
                 return;
             }
-
-            // Setup handle events here.
-            newClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
-            newClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
 
             this.logger.LogTrace("Sending Migration Token.");
 
@@ -164,7 +197,6 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                 this.logger.LogTrace("Finalizing Migration.");
                 this.SubscriptionClient = newClient;
                 await oldClient.DisposeAsync();
-                oldClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
             }
         }
 
@@ -180,15 +212,11 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             {
                 this.logger.LogWarning($"{this.ConnectionId} Recovering connection due to error.");
                 // cleanup the old client
-                this.SubscriptionClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
-                this.SubscriptionClient.OnWebsocketFaulted -= this.HandleOnWebsocketFaulted;
                 var disposalTask = this.SubscriptionClient.DisposeAsync();
 
                 // connect the new one.
-                this.SubscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
-                this.SubscriptionClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
-                this.SubscriptionClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
-
+                this.SubscriptionClient = await CreateSubscriptionClientAsync();
+                
                 // all subscriptions were dropped, prepare for resubscription.
                 this.pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>(this.ownedSubscriptions);
                 await disposalTask;
@@ -368,8 +396,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
         if (this.subscriptionClient != null)
         {
-            this.subscriptionClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
-            this.subscriptionClient.OnWebsocketFaulted -= this.HandleOnWebsocketFaulted;
+            this.eventChannel.Writer.TryComplete();
             await this.subscriptionClient.DisposeAsync();
         }
     }

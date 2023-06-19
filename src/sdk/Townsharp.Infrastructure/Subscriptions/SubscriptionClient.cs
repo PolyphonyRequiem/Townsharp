@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
@@ -47,55 +48,23 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     // Dependencies
     private readonly MessageIdFactory messageIdFactory;
 
-    // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
-    public event EventHandler? OnWebsocketFaulted;
+    // Event Channel
+    private readonly ChannelWriter<SubscriptionEvent> eventWriter;
 
-    protected SubscriptionClient(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+    public SubscriptionClient(BotTokenProvider botTokenProvider, ChannelWriter<SubscriptionEvent> eventWriter, ILogger<SubscriptionClient> logger)
     {
         this.botTokenProvider = botTokenProvider;
+        this.eventWriter = eventWriter;
         this.messageIdFactory = new MessageIdFactory();
         this.websocket = new ClientWebSocket();       
         this.cancellationTokenSource = new CancellationTokenSource();
         this.logger = logger;
     }
 
-    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
-    {
-        SubscriptionClient client;
-        
-        do
-        {
-            client = new SubscriptionClient(botTokenProvider, logger);
-
-            try
-            {
-                await client.ConnectAsync();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(CreateAndConnectAsync)}.  {ex}");
-                await client.DisposeAsync();
-            }
-        }
-        while (!client.Ready);
-
-        return client;
-    }
-
-    //public static async Task<bool> RunAsync(
-    //    Action<SubscriptionClient> onConnected, // limit the public surface as a result.
-    //    Action<SubscriptionClientFault> onFaulted,
-    //    Action<IAsyncEnumerable<SubscriptionEvent>> handleSubscriptionEvents,
-    //    CancellationToken cancellationToken) // used to signal shutdown and disposal is wanted.  This is the only way to dispose.
-    //{
-
-    //}
-
     ////////////////////
     // Lifecycle
     ////////////////////
-    protected async Task ConnectAsync()
+    internal protected async Task ConnectAsync() // on connected?
     {
         if (this.connected)
         {
@@ -117,7 +86,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         }
     }
 
-    private async Task DisconnectAsync()
+    protected async Task DisconnectAsync()
     {
         try
         {
@@ -161,33 +130,18 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                         // Message received, reset the idle timer
                         this.MarkLastMessageTime();
                     }
-                    catch (WebSocketException ex)
-                    {
-                        // stop listening, we are done.
-                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
-                        break;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // stop listening, we are done.
-                        this.logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
-                        break;
-                    }
                     catch (Exception ex)
                     {
                         // stop listening, we are done.
                         this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.eventWriter.TryComplete(ex);
                         break;
                     }
-
-                    // NOTE: We need a way here to indicate a fault to the SubscriptionConnection so that it can reconnect.
 
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         // stop listening, we are done.
+                        this.eventWriter.TryComplete();
                         break;
                     }
 
@@ -246,7 +200,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             }
             else // If it's an event, we raise the event.
             {
-                this.OnSubscriptionEvent?.Invoke(this, SubscriptionEvent.Create(eventMessage));               
+                this.eventWriter.WriteAsync(SubscriptionEvent.Create(eventMessage));
             }
         }
     }
@@ -254,35 +208,35 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     /// Requests
     ////////////////////
-    public async Task<Response> SubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Result> SubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
         return await this.SendRequestAsync(request, timeout, cancellationToken);
     }
 
-    public async Task<Response> UnsubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Result> UnsubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateUnsubscriptionRequestMessage(id,  await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
         return await this.SendRequestAsync(request, timeout, cancellationToken);
     }
 
-    public async Task<Response> BatchSubscribeAsync(string eventId, long[] keys, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Result> BatchSubscribeAsync(string eventId, long[] keys, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateBatchSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, keys);
         return await this.SendRequestAsync(request, timeout, cancellationToken);
     }
 
-    public async Task<Response> GetMigrationTokenAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Result> GetMigrationTokenAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateGetMigrationTokenRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken));
         return await this.SendRequestAsync(request, timeout, cancellationToken);
     }
 
-    public async Task<Response> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Result> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateSendMigrationTokenRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), migrationToken);
@@ -292,7 +246,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     // Sending
     ////////////////////
-    private async Task<Response> SendRequestAsync(RequestMessage request, TimeSpan timeout, CancellationToken cancellationToken)
+    private async Task<Result> SendRequestAsync(RequestMessage request, TimeSpan timeout, CancellationToken cancellationToken)
     {
         TaskCompletionSource<EventMessage> tcs = new TaskCompletionSource<EventMessage>();
         await this.sendSemaphore.WaitAsync(cancellationToken);
@@ -325,19 +279,19 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                 {
                     if (task.Exception?.InnerExceptions.Any(e => e is TimeoutException) ?? false)
                     {
-                        return Response.Timeout();
+                        return Result.Timeout();
                     }
                     else
                     {
-                        return Response.Error(task.Exception?.ToString() ?? "Unknown Error Occurred.");
+                        return Result.Error(task.Exception?.ToString() ?? "Unknown Error Occurred.");
                     }
                 }
                 else if (task.IsCanceled)
                 {
-                    return Response.Cancelled();
+                    return Result.Cancelled();
                 }
 
-                return Response.Completed(task.Result);
+                return Result.Completed(task.Result);
             });
 
         try
@@ -427,7 +381,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     // Readiness
     ////////////////////
-    private bool Ready => 
+    public bool Ready => 
         this.connected && 
         !this.cancellationTokenSource.IsCancellationRequested &&
         !this.disposed &&
@@ -477,8 +431,4 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             await this.idleKeepaliveTask.ConfigureAwait(false);
         }
     }
-}
-
-public class SubscriptionClientFault
-{
 }

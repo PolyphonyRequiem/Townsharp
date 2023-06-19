@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.Subscriptions.Models;
 
 Console.WriteLine("Starting a SubscriptionConnection test.");
 
@@ -52,14 +54,29 @@ internal class SubscriptionConnectionTest : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        this.subscriptionConnection = await SubscriptionConnection.CreateAsync(new ConnectionId(), this.subscriptionClientFactory, this.loggerFactory);
+        var eventChannel = Channel.CreateUnbounded<SubscriptionEvent>();
+
+        this.subscriptionConnection = await SubscriptionConnection.CreateAsync(new ConnectionId(), this.subscriptionClientFactory, eventChannel.Writer, this.loggerFactory);
 
         _ = Task.Run(() => SubscribeToGroupsAsync(cancellationToken), cancellationToken);
 
-        this.subscriptionConnection.OnSubscriptionEvent += (sender, subscriptionEvent) =>
+        // setup our event handler.
+        async Task OutputEvents()
         {
-            logger.LogInformation($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
-        };
+            try
+            {
+                await foreach (var subscriptionEvent in eventChannel.Reader.ReadAllAsync())
+                {
+                    logger.LogInformation($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred in the SubscriptionClient {ex}");
+            }
+        }
+
+        _ = Task.Run(OutputEvents);
     }
     
     private async Task SubscribeToGroupsAsync(CancellationToken cancellationToken)

@@ -1,10 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Threading.Channels;
+
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.Subscriptions.Models;
 
 Console.WriteLine("Starting a SubscriptionClient test.");
 
@@ -47,13 +48,27 @@ async Task Subscribe(long groupId, CancellationToken cancellationToken)
                new HttpClient());
 
     // Because the client is disposable asynchronously, we can use the `await using` syntax to ensure proper disposal.
-    await using (var client = await SubscriptionClient.CreateAndConnectAsync(tokenProvider, NullLoggerFactory.Instance.CreateLogger<SubscriptionClient>()))
+    var clientFactory = new SubscriptionClientFactory(tokenProvider, NullLoggerFactory.Instance);
+    var eventChannel = Channel.CreateUnbounded<SubscriptionEvent>();
+    await using (var client = await clientFactory.CreateAsync(eventChannel.Writer))
     {
         // setup our event handler.
-        client.OnSubscriptionEvent += (sender, subscriptionEvent) =>
+        async Task OutputEvents()
         {
-            Console.WriteLine($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
-        };
+            try
+            {
+                await foreach (var subscriptionEvent in eventChannel.Reader.ReadAllAsync())
+                {
+                    Console.WriteLine($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred in the SubscriptionClient {ex}");
+            }
+        }
+
+        _ = Task.Run(OutputEvents);
 
         // They gave us a number, so let's try to subscribe to the heartbeat.
         var result = await client.SubscribeAsync("group-server-heartbeat", groupId, TimeSpan.FromSeconds(15));
