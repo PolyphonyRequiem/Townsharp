@@ -427,7 +427,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     // Readiness
     ////////////////////
-    private bool Ready => 
+    public bool Ready => 
         this.connected && 
         !this.cancellationTokenSource.IsCancellationRequested &&
         !this.disposed &&
@@ -477,8 +477,4 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             await this.idleKeepaliveTask.ConfigureAwait(false);
         }
     }
-}
-
-public class SubscriptionClientFault
-{
 }
