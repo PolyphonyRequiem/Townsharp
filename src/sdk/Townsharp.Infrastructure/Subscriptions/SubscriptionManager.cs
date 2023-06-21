@@ -52,13 +52,12 @@ public class SubscriptionManager
 
     public void UnregisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
     {
-        throw new NotImplementedException();
         var newMappings = subscriptionMap.CreateUnsubscriptionMappingFor(subscriptionDefinitions);
 
         foreach (var mapping in newMappings)
         {
             var connection = this.connections[mapping.Key];
-            connection.Subscribe(mapping.Value);
+            connection.Unsubscribe(mapping.Value);
         }
     }
 }
