@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -19,13 +18,17 @@ namespace Townsharp.Infrastructure.Subscriptions;
 public class SubscriptionConnection : IDisposable, IAsyncDisposable
 {
     // Constants
+    private const uint MAX_SUBSCRIPTION_RETRIES = 5;
+    private const uint MAX_SUBSCRIPTIONS_AT_ONCE = 100;
+
     // private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(90);
     private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(5);
     private static TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
 
     // State
-    private ImmutableHashSet<SubscriptionDefinition> ownedSubscriptions = ImmutableHashSet<SubscriptionDefinition>.Empty;
-    private ConcurrentQueue<SubscriptionDefinition> pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
+    private readonly ConcurrentDictionary<SubscriptionDefinition, uint> ownedSubscriptions = new ConcurrentDictionary<SubscriptionDefinition, uint>();
+    private readonly ConcurrentQueue<SubscriptionDefinition> pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
+    private readonly ConcurrentQueue<SubscriptionDefinition> pendingUnsubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
 
     private bool disposed;
     private bool isMigrating;
@@ -198,9 +201,16 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
                 // connect the new one.
                 this.SubscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
-                
+
                 // all subscriptions were dropped, prepare for resubscription.
-                this.pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>(this.ownedSubscriptions);
+                this.pendingSubscriptions.Clear();
+                this.pendingUnsubscriptions.Clear();
+
+                foreach (var subscription in this.ownedSubscriptions.Keys)
+                {
+                    this.pendingSubscriptions.Enqueue(subscription);
+                }
+
                 await cleanupTask;
                 
                 isRecovered = true;
@@ -223,22 +233,40 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         var distinctSubscriptions = subscriptionDefinitions.Distinct().ToArray();
 
         // Update the subscriptions and the work queue.
-        ImmutableInterlocked.Update(ref this.ownedSubscriptions, oldSubscriptions =>
+        foreach (var subscription in distinctSubscriptions)
         {
-            // Create a new hash set that includes the old subscriptions plus any new ones.
-            return oldSubscriptions.Union(distinctSubscriptions);
-        });
+            if (this.ownedSubscriptions.TryAdd(subscription, 0))
+            {
+                this.pendingSubscriptions.Enqueue(subscription);
+            }
+            else
+            {
+                this.logger.LogWarning($"{this.ConnectionId} Ignoring duplicate subscription: {subscription}");
+            }
+        }
+    }
+
+    public void Unsubscribe(SubscriptionDefinition[] subscriptionDefinitions)
+    {
+        // Remove duplicates from the subscription definitions.
+        var distinctSubscriptions = subscriptionDefinitions.Distinct().ToArray();
 
         // Update the queue to include the new items.
         foreach (var subscription in distinctSubscriptions)
         {
-            this.pendingSubscriptions.Enqueue(subscription);
+            if (this.ownedSubscriptions.TryRemove(subscription, out _))
+            {
+                this.pendingUnsubscriptions.Enqueue(subscription);
+            }
+            else
+            {
+                this.logger.LogWarning($"{this.ConnectionId} Ignoring un-owned subscription: {subscription}");
+            }
         }
     }
 
     private async Task HandleSubscriptionWorkAsync()
     {
-        const int MaxSubscriptionsAtOnce = 100;
         bool idle = false;
         do
         {
@@ -248,19 +276,39 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             }
 
             List<SubscriptionDefinition> subscriptionsTaken = new List<SubscriptionDefinition>();
-            
+            List<SubscriptionDefinition> unsubscriptionsTaken = new List<SubscriptionDefinition>();
+
             var subscriptionCount = this.pendingSubscriptions.Count;
+            var unsubscriptionCount = this.pendingUnsubscriptions.Count;
             if (subscriptionCount != 0)
             {
                 idle = false;
-                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has {subscriptionCount} pending subscriptions.  Handling up to {Math.Min(MaxSubscriptionsAtOnce, subscriptionCount)} of them.");
+                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has {subscriptionCount} pending subscriptions.  Handling up to {Math.Min(MAX_SUBSCRIPTIONS_AT_ONCE, subscriptionCount)} of them.");
 
-                int limit = 100;
+                uint limit = MAX_SUBSCRIPTIONS_AT_ONCE;
                 while (limit-- > 0 && !this.pendingSubscriptions.IsEmpty)
                 {
                     if (this.pendingSubscriptions.TryDequeue(out var subscription))
                     {
                         subscriptionsTaken.Add(subscription);
+                    }
+                    else
+                    {
+                        limit++;
+                    }
+                }
+            }
+            else if (unsubscriptionCount != 0)
+            {
+                idle = false;
+                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has {subscriptionCount} pending unsubscriptions.  Handling up to {Math.Min(MAX_SUBSCRIPTIONS_AT_ONCE, subscriptionCount)} of them.");
+
+                uint limit = MAX_SUBSCRIPTIONS_AT_ONCE;
+                while (limit-- > 0 && !this.pendingUnsubscriptions.IsEmpty)
+                {
+                    if (this.pendingUnsubscriptions.TryDequeue(out var subscription))
+                    {
+                        unsubscriptionsTaken.Add(subscription);
                     }
                     else
                     {
@@ -280,11 +328,18 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
-            Task[] tasks = subscriptionsTaken.Select(this.SendSubscriptionRequestAsync).ToArray();
+            Task[] subscriptionTasks = subscriptionsTaken.Select(this.SendSubscriptionRequestAsync).ToArray();
 
-            if (tasks.Any())
+            if (subscriptionTasks.Any())
             {
-                Task.WaitAll(tasks);
+                Task.WaitAll(subscriptionTasks);
+            }
+
+            Task[] unsubscriptionTasks = unsubscriptionsTaken.Select(this.SendUnsubscriptionRequestAsync).ToArray();
+
+            if (unsubscriptionTasks.Any())
+            {
+                Task.WaitAll(unsubscriptionTasks);
             }
         }
         while (this.isHandlingWork);
@@ -292,6 +347,12 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
     private Task SendSubscriptionRequestAsync(SubscriptionDefinition definition)
     {
+        if (!this.ownedSubscriptions.ContainsKey(definition))
+        {
+            this.logger.LogWarning($"{this.ConnectionId} Ignoring subscription request for unowned subscription: {definition}");
+            return Task.CompletedTask;
+        }
+
         // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
         var response = this.SubscriptionClient.SubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
             .ContinueWith(task =>
@@ -301,7 +362,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                 {
                     // handle error.
                     this.logger.LogError($"{this.ConnectionId} Subscription request task faulted.");
-                    this.pendingSubscriptions.Enqueue(definition);
+                    TryRequeueSubscriptionRequest(definition);
                 }
 
                 if (task.IsCanceled)
@@ -317,14 +378,14 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                     {
                         // handle failure.
                         this.logger.LogWarning($"{this.ConnectionId} Subscription request timed out.");
-                        this.pendingSubscriptions.Enqueue(definition);
+                        TryRequeueSubscriptionRequest(definition);
                     }
 
                     if (!string.IsNullOrEmpty(result.ErrorMessage))
                     {
                         // handle error.
                         this.logger.LogError($"{this.ConnectionId} Subscription request failed {result.ErrorMessage}");
-                        this.pendingSubscriptions.Enqueue(definition);
+                        TryRequeueSubscriptionRequest(definition);
                     }
 
                     if (result.IsCompleted)
@@ -337,6 +398,84 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             });
 
         return response;
+    }
+
+    private Task SendUnsubscriptionRequestAsync(SubscriptionDefinition definition)
+    {
+        if (this.ownedSubscriptions.ContainsKey(definition))
+        {
+            this.logger.LogWarning($"{this.ConnectionId} Ignoring unsubscription request for owned subscription: {definition}");
+            return Task.CompletedTask;
+        }
+
+        // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
+        var response = this.SubscriptionClient.UnsubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
+            .ContinueWith(task =>
+            {
+                // handle result.
+                if (task.IsFaulted)
+                {
+                    // handle error.
+                    this.logger.LogError($"{this.ConnectionId} Unsubscription request task faulted.");
+                }
+
+                if (task.IsCanceled)
+                {
+                    // handle cancel.
+                    Debugger.Break();
+                }
+
+                if (task.IsCompleted)
+                {
+                    var result = task.Result;
+                    if (result.TimedOut)
+                    {
+                        // handle failure.
+                        this.logger.LogWarning($"{this.ConnectionId} Unsubscription request timed out.");
+                    }
+
+                    if (!string.IsNullOrEmpty(result.ErrorMessage))
+                    {
+                        // handle error.
+                        this.logger.LogError($"{this.ConnectionId} Unsubscription request failed {result.ErrorMessage}");
+                    }
+
+                    if (result.IsCompleted)
+                    {
+                        // handle success.
+                    }
+                }
+
+                return task.Result;
+            });
+
+        return response;
+    }
+
+    private void TryRequeueSubscriptionRequest(SubscriptionDefinition definition)
+    {
+        do
+        {
+            if (this.ownedSubscriptions.TryGetValue(definition, out var retryCount))
+            {
+                if (retryCount < MAX_SUBSCRIPTION_RETRIES)
+                {
+                    if (this.ownedSubscriptions.TryUpdate(definition, 0, retryCount))
+                    {
+                        this.pendingSubscriptions.Enqueue(definition);
+                        break;
+                    }
+                }
+                else
+                {
+                    this.logger.LogWarning($"{this.ConnectionId} Subscription request for {definition} failed too many times.  Removing subscription.");
+                }
+            }
+            else
+            {
+                break;
+            }
+        } while (true);
     }
 
     ////////////////////
