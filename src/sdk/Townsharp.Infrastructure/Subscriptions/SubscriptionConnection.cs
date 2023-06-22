@@ -184,7 +184,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
     private void InitiateRecovery()
     {
-        this.recoveryTask = this.RecoverConnectionAsync();
+        this.recoveryTask = Task.Run(this.RecoverConnectionAsync);
     }
 
     private async Task RecoverConnectionAsync()
@@ -200,7 +200,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
                 var cleanupTask = this.CleanupSubscriptionClientAsync(this.SubscriptionClient);
 
                 // connect the new one.
-                this.SubscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
+                this.SubscriptionClient = await this.CreateNewSubscriptionClientAsync();
 
                 // all subscriptions were dropped, prepare for resubscription.
                 this.pendingSubscriptions.Clear();
@@ -320,12 +320,6 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             {
                 idle = true;
                 this.logger.LogInformation($"ConnectionId {this.ConnectionId} has resolved all pending subscriptions and the worker is Idle.");
-            }
-
-            while (!this.Ready)
-            {
-                // need to actually handle these though.
-                await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
             Task[] subscriptionTasks = subscriptionsTaken.Select(this.SendSubscriptionRequestAsync).ToArray();

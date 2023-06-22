@@ -74,14 +74,13 @@ internal class SubscriptionManagerTest : IHostedService
             .ToArrayAsync(cancellationToken);
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
         if (cancellationToken.IsCancellationRequested)
         {
             Environment.Exit(0);
         }
 
-        //await this.subscriptionManager!.DisposeAsync();
+        return Task.CompletedTask;
     }
 }
