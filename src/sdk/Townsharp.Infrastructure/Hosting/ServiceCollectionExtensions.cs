@@ -3,6 +3,7 @@
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.WebApi;
 
 namespace Townsharp.Infrastructure.Hosting;
 
@@ -17,6 +18,7 @@ public static class ServiceCollectionExtensions
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
                    services.GetRequiredService<HttpClient>()));
+        services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionManagerFactory>();
 

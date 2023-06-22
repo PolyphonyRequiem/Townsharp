@@ -6,21 +6,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Identity;
-using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Hosting;
 using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.WebApi;
 
 Console.WriteLine("Starting a SubscriptionConnection test.");
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton(
-    services => new BotTokenProvider(
-           new BotCredential(
-               Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
-               Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
-           services.GetRequiredService<HttpClient>()));
-builder.Services.AddSingleton<SubscriptionClientFactory>();
+builder.Services.AddTownsharp();
 
 builder.Logging.AddConsole();
 //builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
@@ -32,6 +27,7 @@ host.Run();
 
 internal class SubscriptionConnectionTest : IHostedService
 {
+    private readonly WebApiClient webApiClient;
     private readonly BotTokenProvider botTokenProvider;
     private readonly ILogger<SubscriptionConnectionTest> logger;
     private readonly ILoggerFactory loggerFactory;
@@ -39,11 +35,13 @@ internal class SubscriptionConnectionTest : IHostedService
     private SubscriptionConnection? subscriptionConnection;
 
     public SubscriptionConnectionTest(
+        WebApiClient webApiClient,
         BotTokenProvider botTokenProvider, 
         ILogger<SubscriptionConnectionTest> logger, 
         ILoggerFactory loggerFactory, 
         SubscriptionClientFactory subscriptionClientFactory)
     {
+        this.webApiClient = webApiClient;
         this.botTokenProvider = botTokenProvider;
         this.logger = logger;
         this.loggerFactory = loggerFactory;
@@ -70,12 +68,9 @@ internal class SubscriptionConnectionTest : IHostedService
 
     private async Task<long[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
     {
-        var apiClient = new HttpClient();
-        apiClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync(CancellationToken.None)}");
-        var joinedGroups = await apiClient.GetFromJsonAsync<JsonDocument>("https://webapi.townshiptale.com/api/groups/joined?limit=2000", cancellationToken);
-        var groupsIds = joinedGroups!.RootElement.EnumerateArray().Select(g => g.GetProperty("group").GetProperty("id").GetInt64()).ToArray();
-
-        return groupsIds;
+        return await webApiClient.GetJoinedGroupsAsync()
+            .Select(g => g!["group"]!["id"]!.GetValue<long>())
+            .ToArrayAsync(cancellationToken);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
