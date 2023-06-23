@@ -99,5 +99,6 @@ public class SubscriptionMap
         }
     }
 
-    private bool IsMapped(SubscriptionDefinition subscriptionDefinition) => this.connectionMappings.Any(connectionMappings => connectionMappings.Value.Contains(subscriptionDefinition));
+    private bool IsMapped(SubscriptionDefinition subscriptionDefinition) => 
+        this.connectionMappings.Any(connectionMappings => connectionMappings.Value.Contains(subscriptionDefinition));
 }
