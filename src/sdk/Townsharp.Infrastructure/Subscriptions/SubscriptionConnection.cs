@@ -84,9 +84,9 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private async Task InitializeAsync()
     {
         this.SubscriptionClient = await this.CreateNewSubscriptionClientAsync();
+        this.isHandlingWork = true;
         this.workerTask = this.HandleSubscriptionWorkAsync();
         this.periodicMigrationTask = this.MigratePeriodically();
-        this.isHandlingWork = true;
     }
 
     private async Task<SubscriptionClient> CreateNewSubscriptionClientAsync()
@@ -178,7 +178,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         // CLEANUP
         this.logger.LogTrace("Finalizing Migration.");
         this.SubscriptionClient = newClient;
-        _ = this.CleanupSubscriptionClientAsync(oldClient);
+        await this.CleanupSubscriptionClientAsync(oldClient);
         return true;
     }
 
