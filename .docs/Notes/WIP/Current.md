@@ -7,7 +7,6 @@ Current Work
 ### SubscriptionConnection
 - HandleOnWebsocketFaulted is synchronous but calls RecoverConnectionAsync
   - So, wrong design then entirely?
-    - Close Channel with error? Or must that be an exception :/
 - No Unsubscription
   - Right now work queue is just subscription tasks
   - Do we handle unsubscription seperate from subscription?
