@@ -64,6 +64,7 @@ I'm starting with the Infrastructure implementations and documentation.  I expec
   - [ ] Web API
   - [ ] Server Console
   - [ ] Identity
+- [X] OpenTelemetry Integration
 
 Current TODO:
 - [ ] Introduce a solution for logging that exists at a library scope.  Maybe an ambient context pattern, maybe a logging binding pattern, who knows.
