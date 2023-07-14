@@ -19,10 +19,10 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 {
     // Constants
     private const uint MAX_SUBSCRIPTION_RETRIES = 5;
-    private const uint MAX_SUBSCRIPTIONS_AT_ONCE = 100;
+    private const uint MAX_SUBSCRIPTIONS_AT_ONCE = 50;
 
-    // private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(90);
-    private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(5);
+    private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(105);
+    // private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(2); // Testing only, James will hate you.
     private static TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
 
     // State

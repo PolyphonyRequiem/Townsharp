@@ -30,7 +30,7 @@ builder.Logging.AddConsole();
 builder.Logging.AddOpenTelemetry(loggerOptions =>
     {
         loggerOptions.AddOtlpExporter(); 
-        loggerOptions.AddConsoleExporter(); // if you need to debug the OtlpExporter
+        // loggerOptions.AddConsoleExporter(); // if you need to debug the OtlpExporter
 
         loggerOptions.IncludeFormattedMessage = true;
         loggerOptions.IncludeScopes = true;

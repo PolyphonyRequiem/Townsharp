@@ -2,6 +2,7 @@
 
 using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
@@ -21,6 +22,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionManagerFactory>();
+
+        services.AddSingleton<ConsoleSessionFactory>();
 
         return services;
     }

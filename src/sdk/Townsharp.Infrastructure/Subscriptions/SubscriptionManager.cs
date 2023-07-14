@@ -1,3 +1,5 @@
+using System.Formats.Asn1;
+
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Subscriptions;
@@ -8,6 +10,7 @@ public class SubscriptionManager
     private readonly SubscriptionMap subscriptionMap;
     private readonly Dictionary<ConnectionId, SubscriptionConnection> connections;
     private readonly ILogger<SubscriptionManager> logger;
+    private const int DEFAULT_MAX_CONNECTIONS = 10;
 
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
@@ -31,7 +34,12 @@ public class SubscriptionManager
 
     public static async Task<SubscriptionManager> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
-        var connectionIds = Enumerable.Range(0, 10).Select(_ => new ConnectionId());
+        // TODO: Switch to something that auto-scales if at all possible.
+        // That means that upon a fault that might lead to recovery, we should defer to the manager to determine if we should recover.
+        // If we do want to recover, we simply notify the connection to proceed with recovery
+        // Otherwise, we should subsume responsibility for the subscriptions, and remap them.
+        // This should only occur on scale-in.
+        var connectionIds = Enumerable.Range(0, DEFAULT_MAX_CONNECTIONS).Select(_ => new ConnectionId());
         var initTasks = connectionIds.Select(id => SubscriptionConnection.CreateAsync(id, subscriptionClientFactory, loggerFactory));
         var subscriptionConnections = await Task.WhenAll(initTasks)!;
         var subscriptionConnectionsMap = subscriptionConnections.ToDictionary(connection => connection.ConnectionId);

@@ -25,7 +25,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
     // State
     private DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
-    private readonly ConcurrentDictionary<long, TaskCompletionSource<EventMessage>> pendingRequests = new();
+    private readonly ConcurrentDictionary<long, TaskCompletionSource<Message>> pendingRequests = new();
     private readonly SemaphoreSlim sendSemaphore = new SemaphoreSlim(MAX_CONCURRENT_REQUESTS);
 
     // Buffers
@@ -146,10 +146,12 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         {
             // Rent a buffer from the array pool
             byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
+            using MemoryStream ms = new MemoryStream();
 
             try
             {
                 WebSocketReceiveResult result;
+                using MemoryStream totalStream = new MemoryStream();
 
                 do
                 {
@@ -184,22 +186,27 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                     }
 
                     // NOTE: We need a way here to indicate a fault to the SubscriptionConnection so that it can reconnect.
-
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         // stop listening, we are done.
                         break;
                     }
 
-                    string rawMessage = Encoding.UTF8.GetString(rentedBuffer, 0, result.Count);
+                    totalStream.Write(rentedBuffer, 0, result.Count);
 
-                    if (this.logger.IsEnabled(LogLevel.Trace))
+                    if (result.EndOfMessage)
                     {
-                        this.logger.LogTrace($"RECV: {rawMessage}");
-                    }
+                        string rawMessage = Encoding.UTF8.GetString(totalStream.ToArray());
+                        totalStream.SetLength(0);
 
-                    // We have the raw message!
-                    this.HandleRawMessage(rawMessage);
+                        if (this.logger.IsEnabled(LogLevel.Trace))
+                        {
+                            this.logger.LogTrace($"RECV: {rawMessage}");
+                        }
+
+                        // We have the raw message!
+                        this.HandleRawMessage(rawMessage);
+                    }                   
                 } while (!result.EndOfMessage && !this.cancellationTokenSource.Token.IsCancellationRequested);
             }
             finally
@@ -217,7 +224,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         // If it's an Event message, we need to raise an event.
 
         // These are more willing to map than I expected and may need a little more inspection at a json level before attempting to bind.
-        EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(rawMessage);
+        Message? eventMessage = JsonSerializer.Deserialize<Message>(rawMessage);
 
         if (eventMessage == null || string.IsNullOrWhiteSpace(eventMessage.@event))
         {
@@ -294,7 +301,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     private async Task<Response> SendRequestAsync(RequestMessage request, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        TaskCompletionSource<EventMessage> tcs = new TaskCompletionSource<EventMessage>();
+        TaskCompletionSource<Message> tcs = new TaskCompletionSource<Message>();
         await this.sendSemaphore.WaitAsync(cancellationToken);
 
         string messageJson = JsonSerializer.Serialize(request);

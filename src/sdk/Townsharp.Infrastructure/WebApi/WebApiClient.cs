@@ -190,7 +190,7 @@ public class WebApiClient
     public async Task<JsonObject> RequestConsoleAccessAsync(long serverId)
     {
         var client = await GetClientAsync();
-        var response = await client.PostAsync($"api/servers/{serverId}", new StringContent("{\"should_launch\":true, \"ignore_offline\":true}"));
+        var response = await client.PostAsync($"api/servers/{serverId}/console", new StringContent("{\"should_launch\":true, \"ignore_offline\":true}"));
         
         if (!response.IsSuccessStatusCode)
         {
