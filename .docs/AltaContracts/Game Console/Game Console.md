@@ -145,3 +145,24 @@ For a full list of events see [List of Console Subscription Events](#list-of-con
 **List of Console Subscription Events**
 =======================================
 Pending
+
+__________________________________________________
+Player Joined the Server `PlayerJoined`
+--------------------------------------------------
+
+`DOCUMENTATION PENDING`
+
+`Triggers`
+--------
+A player joins the server
+
+`Use Case`
+--------
+Responding to a player joining the server
+
+`Content`
+-------
+
+```
+ {"type":"Subscription","timeStamp":"2023-07-13T23:39:23.462604Z","eventType":"PlayerJoined","data":{"user":{"id":1741816681,"username":"jjamesdh2007"},"mode":"MetaQuest","position":[-645.957031,128.205,209.908966]}}
+```
