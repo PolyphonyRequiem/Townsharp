@@ -1,9 +1,8 @@
-using System.Formats.Asn1;
-
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Subscriptions.Models;
+
+namespace Townsharp.Infrastructure.Subscriptions;
 
 public class SubscriptionManager
 {

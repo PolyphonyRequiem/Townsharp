@@ -1,11 +1,12 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Identity;
+using Townsharp.Infrastructure.Identity;
 
 namespace Townsharp.Infrastructure.WebApi;
 
@@ -13,29 +14,89 @@ public class WebApiClient
 {
     public const int Limit = 500;
     public const string BaseAddress = "https://webapi.townshiptale.com/";
-    private readonly BotTokenProvider botTokenProvider;
+    private readonly IBotTokenProvider botTokenProvider;
+    private readonly IUserTokenProvider userTokenProvider;
     private readonly IHttpClientFactory httpClientFactory;
     private readonly ILogger<WebApiClient> logger;
-    
+    private readonly bool preferUserToken;
+
     // API could actually be able to yield it's own tokens here actually, it's clearly in the ApiClient's domain
     // private readonly ClientProvider getUserHttpClient;
 
-    public WebApiClient(BotTokenProvider botTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiClient> logger)
+    // I don't like this model.  I'd rather see the identity attached to the client, which may mean more than one client type.  It's fine for now, but worth thinking about.
+    public WebApiClient(IBotTokenProvider botTokenProvider, IUserTokenProvider userTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiClient> logger, bool preferUserToken = false)
     {
         this.botTokenProvider = botTokenProvider;
+        this.userTokenProvider = userTokenProvider;
+        if (!this.botTokenProvider.IsEnabled && !this.userTokenProvider.IsEnabled)
+        {
+            throw new InvalidOperationException("Unable to use WebApiClient without at least an enabled UserTokenProvider or BotTokenProvider.");
+        }
         this.httpClientFactory = httpClientFactory;
         this.logger = logger;
+        this.preferUserToken = preferUserToken;
     }
 
-    private async Task<HttpClient> GetClientAsync()
+    enum Provider
+    {
+        BotRequired,
+        UserRequired,
+        Either
+    }
+
+    private async Task<string> GetTokenAsync(Provider provider, [CallerMemberName] string? callerMemberName = default)
+    {
+        Func<CancellationToken, ValueTask<string>> preferredProviderMethod;
+
+        if (this.preferUserToken)
+        {
+            if (this.userTokenProvider.IsEnabled)
+            {
+                preferredProviderMethod = this.userTokenProvider.GetTokenAsync;
+            }
+            else if (this.botTokenProvider.IsEnabled)
+            {
+                preferredProviderMethod = this.botTokenProvider.GetTokenAsync;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unable to handle the request {callerMemberName} using the preferred token provider, as neither bot nor user token provider are configured.");
+            }
+        }
+        else
+        {
+            if (this.botTokenProvider.IsEnabled)
+            {
+                preferredProviderMethod = this.botTokenProvider.GetTokenAsync;
+            }
+            else if (this.userTokenProvider.IsEnabled)
+            {
+                preferredProviderMethod = this.userTokenProvider.GetTokenAsync;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unable to handle the request {callerMemberName} using the preferred token provider, as neither bot nor user token provider are configured.");
+            }
+        }
+
+        return provider switch
+        {
+            Provider.BotRequired => this.botTokenProvider.IsEnabled ? await this.botTokenProvider.GetTokenAsync() : throw new InvalidOperationException($"Caller {callerMemberName ?? ""} requires a configured BotTokenProvider.  Please verify that you have configured your bot token credentials correctly."),
+            Provider.UserRequired => this.userTokenProvider.IsEnabled ? await this.userTokenProvider.GetTokenAsync() : throw new InvalidOperationException($"Caller {callerMemberName ?? ""} requires a configured UserTokenProvider.  Please verify that you have configured your user token credentials correctly."),
+            Provider.Either => await preferredProviderMethod(CancellationToken.None),
+            _ => throw new NotImplementedException()
+        };
+    }
+
+    private async Task<HttpClient> GetClientAsync(Provider provider = Provider.Either)
     {
         var httpClient = this.httpClientFactory.CreateClient();
         httpClient.BaseAddress = new Uri(WebApiClient.BaseAddress);
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await this.botTokenProvider.GetTokenAsync());
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await this.GetTokenAsync(provider));
         return httpClient;
     }
 
-    public async Task<JsonObject> GetGroupAsync(long groupId)
+    public async Task<JsonObject> GetGroupAsync(ulong groupId)
     {
         var client = await GetClientAsync();
         var response = await client.GetFromJsonAsync<JsonObject>($"api/groups/{groupId}");
@@ -116,14 +177,14 @@ public class WebApiClient
     }
 
     // throws 400 if the invite has already been accepted
-    public async Task<bool> AcceptGroupInviteAsync(long groupId)
+    public async Task<bool> AcceptGroupInviteAsync(ulong groupId)
     {
         var client = await GetClientAsync();
         var response = await client.PostAsync($"api/groups/invites/{groupId}", new StringContent(groupId.ToString()));
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<JsonObject> GetGroupMemberAsync(long groupId, long userId)
+    public async Task<JsonObject> GetGroupMemberAsync(ulong groupId, long userId)
     {
         var client = await GetClientAsync();
         var response = await client.GetAsync($"api/groups/{groupId}/members/{userId}");
@@ -171,7 +232,7 @@ public class WebApiClient
         while (response.Headers.Contains("paginationToken"));
     }
 
-    public async Task<JsonObject> GetServerAsync(long serverId)
+    public async Task<JsonObject> GetServerAsync(ulong serverId)
     {
         var client = await GetClientAsync();
         var response = await client.GetAsync($"api/servers/{serverId}");
@@ -187,7 +248,7 @@ public class WebApiClient
         return serverInfo!;
     }
 
-    public async Task<JsonObject> RequestConsoleAccessAsync(long serverId)
+    public async Task<JsonObject> RequestConsoleAccessAsync(ulong serverId)
     {
         var client = await GetClientAsync();
         var response = await client.PostAsync($"api/servers/{serverId}/console", new StringContent("{\"should_launch\":true, \"ignore_offline\":true}"));

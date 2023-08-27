@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -43,6 +42,11 @@ public class ConsoleSession
     // Dependencies
     private readonly MessageIdFactory messageIdFactory;
 
+    // NOTE TO SELF 8/8/2023 - Okay, hear me out.  The functional design is actually pretty good in concept, INTERNALLY, but I think the external scenario needs a little thinking through.  
+    // The main concern I seem to face with the websockets scenario is around lifecycle management, which is why the SubscriptionConnection is such a damned mess.
+    // For console, we should probably address that, but dropped connections are more normal here and should probably result in different considerations upstream for lifecycle management.
+    // To this end, I think we should probably focus on the domain library design at this point, and then come back to this later.  I think the domain library design will inform the overall
+    // design of the infra library going forward.
     protected ConsoleSession(ILogger<ConsoleSession> logger)
     {
         this.logger = logger;

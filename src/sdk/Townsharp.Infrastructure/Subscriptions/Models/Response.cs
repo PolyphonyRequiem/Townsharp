@@ -9,9 +9,9 @@ public record Response
 
     public static Response Timeout() => new(Message.None, string.Empty, true);
 
-    private Response(Message result, string errorMessage, bool timedOut)
+    private Response(Message message, string errorMessage, bool timedOut)
     {
-        this.Message = result;
+        this.Message = message;
         this.ErrorMessage = errorMessage;
         this.TimedOut = timedOut;
     }

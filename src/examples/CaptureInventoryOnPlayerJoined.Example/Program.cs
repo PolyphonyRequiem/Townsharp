@@ -104,7 +104,7 @@ public class CaptureInventoryOnJoin : IHostedService
                             return;
                         }
 
-                        var serverId = joinedServer["id"]?.GetValue<long>() ?? throw new Exception("Failed to get id from response.");
+                        var serverId = joinedServer["id"]?.GetValue<ulong>() ?? throw new Exception("Failed to get id from response.");
                         
                         var response = await this.webApiClient.RequestConsoleAccessAsync(serverId);
 
@@ -169,7 +169,7 @@ public class CaptureInventoryOnJoin : IHostedService
     {
         try
         {
-            _ = consoleSession.RunCommand("websocket subscribe PlayerJoined", TimeSpan.FromSeconds(30), token);
+            _ = await consoleSession.RunCommand("websocket subscribe PlayerJoined", TimeSpan.FromSeconds(30), token);
         }
         catch (Exception ex)
         {

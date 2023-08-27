@@ -13,5 +13,5 @@ public class GameConsoleEvent
 
     public JsonNode Result => this.result;
 
-    public override string ToString() => Result.ToJsonString();
+    public override string ToString() => Result.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented=true});
 }
