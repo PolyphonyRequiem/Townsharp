@@ -2,38 +2,37 @@
 
 using Polly;
 using Polly.Retry;
-using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.Identity;
+
+using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Utilities;
 
-namespace Townsharp.Identity;
+namespace Townsharp.Infrastructure.Identity;
 
-public class BotTokenProvider : IBotTokenProvider
+public class UserTokenProvider : IUserTokenProvider
 {
     private record struct TokenResponse(string access_token, string token_type, int expires_in, string scope);
-    private const string BaseUri = "https://accounts.townshiptale.com/connect/token";
-    private const string DefaultScopes = "ws.group ws.group_members ws.group_servers ws.group_bans ws.group_invites group.info group.join group.leave group.view group.members group.invite server.view server.console";
+    private const string BaseUri = "https://webapi.townshiptale.com/api/sessions";
     private readonly AsyncCache<string> tokenCache;
     private readonly AsyncRetryPolicy retryPolicy = Policy.Handle<Exception>().WaitAndRetryForeverAsync(x => TimeSpan.FromSeconds(5));
 
     public bool IsEnabled => true;
 
-    public BotTokenProvider(BotCredential botCredential, HttpClient httpClient)
+    public UserTokenProvider(UserCredential userCredential, HttpClient httpClient)
     {
         var request = new Dictionary<string, string>
         {
-            {"grant_type", "client_credentials"},
-            {"scope", DefaultScopes},
-            {"client_id", botCredential.ClientId},
-            {"client_secret", botCredential.ClientSecret}
+            {"username", userCredential.Username},
+            {"password_hash", userCredential.PasswordHash}
         };
 
-        if (!botCredential.IsConfigured)
+        if (!userCredential.IsConfigured)
         {
-            throw new InvalidOperationException("Unable to use an unconfigured bot credential. Make sure both ClientId and ClientSecret are set.");
+            throw new InvalidOperationException("Unable to use an unconfigured user credential. Make sure both Username and PasswordHash are set.");
         }
 
-        FormUrlEncodedContent content = new FormUrlEncodedContent(request);
+        JsonContent content = JsonContent.Create(request);
+
+        httpClient.DefaultRequestHeaders.Add("x-api-key", "2l6aQGoNes8EHb94qMhqQ5m2iaiOM9666oDTPORf");
 
         // This is not (yet) fault tolerant, but it needs to be, so we could use Polly for this, but if we are going to keep the code free of dependencies, we need to write our own retry logic.
         this.tokenCache = new AsyncCache<string>(
@@ -41,8 +40,9 @@ public class BotTokenProvider : IBotTokenProvider
             async (CancellationToken cancellationToken) =>
             {
                 var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                return await retryPolicy.ExecuteAsync<CacheState<string>>(
-                    async (CancellationToken cancellationToken) => {
+                return await retryPolicy.ExecuteAsync(
+                    async (CancellationToken cancellationToken) => 
+                    {
                         var result = await httpClient.PostAsync(BaseUri, content);
 
                         if (!result.IsSuccessStatusCode)
@@ -51,7 +51,7 @@ public class BotTokenProvider : IBotTokenProvider
                         }
 
                         var response = (await result.Content.ReadFromJsonAsync<TokenResponse>())!;
-                        return new CacheState<string>(response.access_token, DateTimeOffset.UtcNow + TimeSpan.FromSeconds(response.expires_in));
+                        return new CacheState<string>(response.access_token, DateTimeOffset.UtcNow + TimeSpan.FromHours(.9));
                     },
                     cts.Token);
             },

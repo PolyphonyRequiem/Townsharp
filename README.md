@@ -36,10 +36,10 @@ I'm starting with the Infrastructure implementations and documentation.  I expec
     - [X] Subscription Client - Used to handle request/response correllation
     - [X] Subscription Connection - Used to manage lifecycle of migrations and tracks subscriptions it is responsible for
     - [X] Subscription Manager - Used to assign subscriptions to subscription connections, and manage multiplexing of connections for scale.
-  - [ ] Web API
+  - [X] Web API
     - [X] Web Api Client - Exposes REST Api operations against Alta's WebApi endpoint, and handles transient faults, and request pagination.
-  - [ ] Server Console
-    - [ ] Server Console Client - Used to handle request/response correllation for the console, and expose Server Event Subscription
+  - [X] Server Console
+    - [X] Server Console Client - Used to handle request/response correllation for the console, and expose Server Event Subscription
   - [ ] Identity
     - [X] Bot Token Provider - Provides access tokens for a bot given Bot Credentials.  Handles refresh automatically.
     - [ ] User Token Provider - Provides access tokens for a user given User Credentials.  Handles refresh automatically.
