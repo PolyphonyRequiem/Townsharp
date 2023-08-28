@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.Identity;
@@ -15,19 +14,28 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTownsharp(this IServiceCollection services)
     {
         services.AddHttpClient();
-        services.AddSingleton(
+        services.AddSingleton<IBotTokenProvider>(
             services => new BotTokenProvider(
                    new BotCredential(
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
                    services.GetRequiredService<HttpClient>()));
 
-        services.AddSingleton(
+        var userCredential = new UserCredential(
+            Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",
+            Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH") ?? "");
+
+        if (userCredential.IsConfigured)
+        {
+            services.AddSingleton<IUserTokenProvider>(
             services => new UserTokenProvider(
-                   new UserCredential(
-                       Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME")!,
-                       Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH")!),
-                   services.GetRequiredService<HttpClient>()));
+                userCredential,
+                services.GetRequiredService<HttpClient>()));
+        }
+        else
+        {
+            services.AddSingleton<IUserTokenProvider>(new DisabledUserTokenProvider());
+        }        
 
         services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();

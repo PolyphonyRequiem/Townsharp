@@ -6,7 +6,7 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Identity;
+using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions.Models;
 using Townsharp.Infrastructure.Utilities;
 
@@ -42,7 +42,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     // Disposables
     private readonly ClientWebSocket websocket;
     private readonly CancellationTokenSource cancellationTokenSource;
-    private readonly BotTokenProvider botTokenProvider;
+    private readonly IBotTokenProvider botTokenProvider;
 
     // Dependencies
     private readonly MessageIdFactory messageIdFactory;
@@ -51,7 +51,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
     public event EventHandler? OnWebsocketFaulted;
 
-    protected SubscriptionClient(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+    protected SubscriptionClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
         this.botTokenProvider = botTokenProvider;
         this.messageIdFactory = new MessageIdFactory();
@@ -60,7 +60,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         this.logger = logger;
     }
 
-    public static async Task<SubscriptionClient> CreateAndConnectAsync(BotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+    public static async Task<SubscriptionClient> CreateAndConnectAsync(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
         SubscriptionClient client;
         

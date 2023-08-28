@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 
 Console.WriteLine("Starting a SubscriptionClient test.");
@@ -36,7 +36,7 @@ else
     throw new Exception("Invalid group id, need a numeric value.");
 }
 
-async Task Subscribe(long groupId, CancellationToken cancellationToken)
+async static Task Subscribe(long groupId, CancellationToken cancellationToken)
 {
     // We need to get a token for our bot to use.  We will use the BotTokenProvider to get one.
     var tokenProvider = new BotTokenProvider(

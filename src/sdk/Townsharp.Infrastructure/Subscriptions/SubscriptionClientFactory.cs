@@ -1,15 +1,15 @@
 ﻿using Microsoft.Extensions.Logging;
 
-using Townsharp.Identity;
+using Townsharp.Infrastructure.Identity;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
 public class SubscriptionClientFactory
 {
-    private readonly BotTokenProvider botTokenProvider;
+    private readonly IBotTokenProvider botTokenProvider;
     private readonly ILoggerFactory loggerFactory;
 
-    public SubscriptionClientFactory(BotTokenProvider botTokenProvider, ILoggerFactory loggerFactory)
+    public SubscriptionClientFactory(IBotTokenProvider botTokenProvider, ILoggerFactory loggerFactory)
     {
         this.botTokenProvider = botTokenProvider;
         this.loggerFactory = loggerFactory;

@@ -3,10 +3,9 @@
 using Polly;
 using Polly.Retry;
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Utilities;
 
-namespace Townsharp.Identity;
+namespace Townsharp.Infrastructure.Identity;
 
 public class BotTokenProvider : IBotTokenProvider
 {

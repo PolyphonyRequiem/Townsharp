@@ -234,8 +234,13 @@ public class ConsoleSession
         return this.SendRawStringAsync(commandString, cancellationToken);
     }
 
-    public async Task<CommandResult> RunCommand(string commandString, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<CommandResult> RunCommand(string commandString, TimeSpan timeout = default, CancellationToken cancellationToken = default)
     {
+        if (timeout == default)
+        {
+            timeout = TimeSpan.FromSeconds(30);
+        }
+
         TaskCompletionSource<JsonNode> tcs = new TaskCompletionSource<JsonNode>();
         await this.sendSemaphore.WaitAsync(cancellationToken);
 
@@ -300,8 +305,13 @@ public class ConsoleSession
         }
     }
 
-    private async Task<bool> TryAuthorizeAsync(string authToken, TimeSpan timeout, CancellationToken cancellationToken)
+    private async Task<bool> TryAuthorizeAsync(string authToken, TimeSpan timeout = default, CancellationToken cancellationToken = default)
     {
+        if (timeout == default)
+        {
+            timeout = TimeSpan.FromSeconds(30);
+        }
+
         // what does failure look like
         var sendTask = this.SendRawStringAsync(authToken, cancellationToken);
 
