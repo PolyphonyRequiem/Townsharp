@@ -58,9 +58,16 @@ public class EventBotService : IHostedService
     private async Task RunEventBot(CancellationToken cancellationToken)
     {
         // MOST of this complexity will dissolve when using Townsharp directly, for now, we're working off the ugly infra libraries.
-        var subscriptionManager = this.subscriptionManagerFactory.CreateAsync();
+        
+        
+        // Here's the subscription manager if you want it.
+        var subscriptionManager = await this.subscriptionManagerFactory.CreateAsync();
+        subscriptionManager.OnSubscriptionEvent += (_, e) => this.logger.LogInformation($"Received event of type {e.EventId} with message {e.Content.GetRawText()}.");
 
         ulong serverId = 2029794881;  // Silverkeep, but you should replace this.
+        
+        // Example registration for invitation received.
+        // subscriptionManager.RegisterSubscriptions(new[] { new SubscriptionDefinition("me-group-invite-create", (long)serverId) }); // this should accept ulong, I'll fix it later.
 
         JsonObject accessResponseObject = await this.webApiClient.RequestConsoleAccessAsync(serverId);
         ConsoleAccess consoleAccess = ConsoleAccess.GetAccessFromResponseObject(accessResponseObject);
