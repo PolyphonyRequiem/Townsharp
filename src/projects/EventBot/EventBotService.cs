@@ -11,18 +11,18 @@ using Townsharp.Infrastructure.WebApi;
 public class EventBotService : IHostedService
 {
     private readonly WebApiClient webApiClient;
-    private readonly SubscriptionClientFactory subscriptionClientFactory;
+    private readonly SubscriptionManagerFactory subscriptionManagerFactory;
     private readonly ConsoleSessionFactory consoleSessionFactory;
     private readonly ILogger<EventBotService> logger;
 
     public EventBotService(
-        WebApiClient webApiClient, 
-        SubscriptionClientFactory subscriptionClientFactory, 
+        WebApiClient webApiClient,
+        SubscriptionManagerFactory subscriptionManagerFactory, 
         ConsoleSessionFactory consoleSessionFactory,
         ILogger<EventBotService> logger)
     {
         this.webApiClient = webApiClient;
-        this.subscriptionClientFactory = subscriptionClientFactory;
+        this.subscriptionManagerFactory = subscriptionManagerFactory;
         this.consoleSessionFactory = consoleSessionFactory;
         this.logger = logger;
     }
@@ -58,7 +58,7 @@ public class EventBotService : IHostedService
     private async Task RunEventBot(CancellationToken cancellationToken)
     {
         // MOST of this complexity will dissolve when using Townsharp directly, for now, we're working off the ugly infra libraries.
-        var connectedSubscriptionClient = this.subscriptionClientFactory.CreateAndConnectAsync();
+        var subscriptionManager = this.subscriptionManagerFactory.CreateAsync();
 
         ulong serverId = 2029794881;  // Silverkeep, but you should replace this.
 
