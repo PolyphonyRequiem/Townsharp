@@ -33,6 +33,7 @@ public class EventBotService : IHostedService
     
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        Task.Run(()=> this.AcceptPendingInvitations(cancellationToken));
         return Task.Run(()=> this.RunEventBot(cancellationToken));
     }
 
@@ -45,7 +46,15 @@ public class EventBotService : IHostedService
     ///////////////////////////
     // Service Implementation
     ///////////////////////////
-    
+
+    private async Task AcceptPendingInvitations(CancellationToken cancellationToken)
+    {
+        await foreach (var invitation in this.webApiClient.GetPendingGroupInvitationsAsync())
+        {
+            await this.webApiClient.AcceptGroupInviteAsync(invitation["group_id"]?.GetValue<ulong>() ?? 0);
+        }
+    }
+
     private async Task RunEventBot(CancellationToken cancellationToken)
     {
         // MOST of this complexity will dissolve when using Townsharp directly, for now, we're working off the ugly infra libraries.
