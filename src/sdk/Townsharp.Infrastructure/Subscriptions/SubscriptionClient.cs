@@ -48,8 +48,8 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     private readonly MessageIdFactory messageIdFactory;
 
     // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
-    public event EventHandler? OnDisconnected;
+    public event EventHandler<SubscriptionEvent>? SubscriptionEventReceived;
+    public event EventHandler? Disconnected;
 
     protected SubscriptionClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
@@ -124,7 +124,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         {
             if (this.connected == true)
             {
-                this.OnDisconnected?.Invoke(this, EventArgs.Empty);
+                this.Disconnected?.Invoke(this, EventArgs.Empty);
             }
 
             this.connected = false;
@@ -253,7 +253,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             }
             else // If it's an event, we raise the event.
             {
-                this.OnSubscriptionEvent?.Invoke(this, SubscriptionEvent.Create(eventMessage));               
+                this.SubscriptionEventReceived?.Invoke(this, SubscriptionEvent.Create(eventMessage));               
             }
         }
     }

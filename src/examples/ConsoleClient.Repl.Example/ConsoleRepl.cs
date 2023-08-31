@@ -67,7 +67,7 @@ public class ConsoleRepl : IHostedService
             try
             {
                 ConsoleClient consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(uriBuilder.Uri, accessToken);
-                Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token);
+                Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
 
                 void handleGameConsoleEvent(object? sender, GameConsoleEvent e)
                 {
@@ -79,12 +79,12 @@ public class ConsoleRepl : IHostedService
                     cancellationTokenSource.Cancel();
                     this.logger.LogInformation("Disconnected from server {serverId}. Will attempt to reconnect.", serverId);
                     consoleClient.Dispose();
-                    consoleClient.OnGameConsoleEvent -= handleGameConsoleEvent;
-                    consoleClient.OnDisconnected -= handleDisconnected;
+                    consoleClient.GameConsoleEventReceived -= handleGameConsoleEvent;
+                    consoleClient.Disconnected -= handleDisconnected;
                 }
 
-                consoleClient.OnGameConsoleEvent += handleGameConsoleEvent;
-                consoleClient.OnDisconnected += handleDisconnected;
+                consoleClient.GameConsoleEventReceived += handleGameConsoleEvent;
+                consoleClient.Disconnected += handleDisconnected;
 
                 await getCommandsTask;
             }

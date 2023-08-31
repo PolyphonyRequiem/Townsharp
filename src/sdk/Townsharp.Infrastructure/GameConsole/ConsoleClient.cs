@@ -48,8 +48,8 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
     private readonly MessageIdFactory messageIdFactory;
 
     // Events
-    public event EventHandler<GameConsoleEvent>? OnGameConsoleEvent;
-    public event EventHandler? OnDisconnected;
+    public event EventHandler<GameConsoleEvent>? GameConsoleEventReceived;
+    public event EventHandler? Disconnected;
 
     // NOTE TO SELF 8/8/2023 - Okay, hear me out.  The functional design is actually pretty good in concept, INTERNALLY, but I think the external scenario needs a little thinking through.  
     // The main concern I seem to face with the websockets scenario is around lifecycle management, which is why the SubscriptionConnection is such a damned mess.
@@ -119,7 +119,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
         {
             if (this.connected == true)
             {
-                this.OnDisconnected?.Invoke(this, EventArgs.Empty);
+                this.Disconnected?.Invoke(this, EventArgs.Empty);
             }
 
             this.connected = false;
@@ -135,7 +135,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
     {
         bool authMessageExpected = true;
 
-        while (!this.cancellationTokenSource.IsCancellationRequested && this.websocket.State == WebSocketState.Open)
+        while (this.Ready)
         {
             // Rent a buffer from the array pool
             byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
@@ -219,7 +219,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
 
                         if (this.IsEventMessage(messageJson))
                         {
-                            this.OnGameConsoleEvent?.Invoke(this, new GameConsoleEvent(messageJson));
+                            this.GameConsoleEventReceived?.Invoke(this, new GameConsoleEvent(messageJson));
                         }
                     }
                 } while ((!result?.EndOfMessage ?? false) && (!this.cancellationTokenSource.Token.IsCancellationRequested));
@@ -262,6 +262,8 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
 
     public async Task<CommandResult> RunCommand(string commandString, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
+        await this.authenticatedTcs.Task;
+
         TaskCompletionSource<JsonNode> tcs = new TaskCompletionSource<JsonNode>();
         await this.sendSemaphore.WaitAsync(cancellationToken);
 

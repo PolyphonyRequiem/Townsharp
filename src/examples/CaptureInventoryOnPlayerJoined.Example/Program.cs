@@ -125,8 +125,8 @@ public class CaptureInventoryOnJoin : IHostedService
 
                     await this.SubscribePlayerJoined(consoleClient);
 
-                    consoleClient.OnGameConsoleEvent += (s, e) => this.HandleEvent(consoleClient, e);
-                    consoleClient.OnDisconnected += (s, _) => this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
+                    consoleClient.GameConsoleEventReceived += (s, e) => this.HandleEvent(consoleClient, e);
+                    consoleClient.Disconnected += (s, _) => this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
                 }
                 catch (Exception ex)
                 {

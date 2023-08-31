@@ -40,8 +40,8 @@ public class ManagedConsoleClient
             {
                 var consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(serverAccess.Uri, serverAccess.AccessToken);
 
-                consoleClient.OnDisconnected += (s, _) => this.OnDisconnected(default);
-                consoleClient.OnGameConsoleEvent += (s, e) => this.onGameConsoleEvent(this.serverId, e);
+                consoleClient.Disconnected += (s, _) => this.OnDisconnected(default);
+                consoleClient.GameConsoleEventReceived += (s, e) => this.onGameConsoleEvent(this.serverId, e);
                 this.OnConnected(consoleClient);
             }
         }

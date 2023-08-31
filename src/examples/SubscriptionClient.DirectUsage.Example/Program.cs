@@ -49,7 +49,7 @@ async Task Subscribe(long groupId, CancellationToken cancellationToken)
     await using (var client = await SubscriptionClient.CreateAndConnectAsync(tokenProvider, NullLoggerFactory.Instance.CreateLogger<SubscriptionClient>()))
     {
         // setup our event handler.
-        client.OnSubscriptionEvent += (sender, subscriptionEvent) =>
+        client.SubscriptionEventReceived += (sender, subscriptionEvent) =>
         {
             Console.WriteLine($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
         };
