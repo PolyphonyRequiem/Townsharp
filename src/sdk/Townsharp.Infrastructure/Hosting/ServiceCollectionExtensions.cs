@@ -40,7 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionManagerFactory>();
-        services.AddSingleton<ConsoleSessionFactory>();
+        services.AddSingleton<ConsoleClientFactory>();
 
         return services;
     }

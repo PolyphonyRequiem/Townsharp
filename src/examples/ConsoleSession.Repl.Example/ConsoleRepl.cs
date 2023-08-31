@@ -8,10 +8,10 @@ using Townsharp.Infrastructure.WebApi;
 public class ConsoleRepl : IHostedService
 {
     private readonly WebApiClient webApiClient;
-    private readonly ConsoleSessionFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleSessionFactory;
     private readonly ILogger<ConsoleRepl> logger;
 
-    public ConsoleRepl(WebApiClient webApiClient, ConsoleSessionFactory consoleSessionFactory, ILogger<ConsoleRepl> logger)
+    public ConsoleRepl(WebApiClient webApiClient, ConsoleClientFactory consoleSessionFactory, ILogger<ConsoleRepl> logger)
     {
         this.webApiClient = webApiClient;
         this.consoleSessionFactory = consoleSessionFactory;
@@ -57,7 +57,7 @@ public class ConsoleRepl : IHostedService
         _ = Task.Run(() => this.GetCommands(consoleSession, cancellationTokenSource.Token));
     }
 
-    private async Task GetCommands(ConsoleSession consoleSession, CancellationToken token)
+    private async Task GetCommands(ConsoleClient consoleSession, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {

@@ -4,20 +4,20 @@ using Townsharp.Infrastructure.ServerConsole;
 
 namespace Townsharp.Infrastructure.GameConsole;
 
-public class ConsoleSessionFactory
+public class ConsoleClientFactory
 {
     private readonly ILoggerFactory loggerFactory;
 
-    public ConsoleSessionFactory(ILoggerFactory loggerFactory)
+    public ConsoleClientFactory(ILoggerFactory loggerFactory)
     {
         this.loggerFactory = loggerFactory;
     }
 
-    public Task<ConsoleSession> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken)
+    public Task<ConsoleClient> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken)
     {
-        return ConsoleSession.CreateAndConnectAsync(
+        return ConsoleClient.CreateAndConnectAsync(
             consoleWebsocketUri,
             authToken,
-            this.loggerFactory.CreateLogger<ConsoleSession>());
+            this.loggerFactory.CreateLogger<ConsoleClient>());
     }
 }

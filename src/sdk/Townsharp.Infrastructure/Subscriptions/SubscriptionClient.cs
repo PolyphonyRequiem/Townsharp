@@ -184,10 +184,11 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                         break;
                     }
 
-                    // NOTE: We need a way here to indicate a fault to the SubscriptionConnection so that it can reconnect.
+                    
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         // stop listening, we are done.
+                        await this.DisconnectAsync();
                         break;
                     }
 

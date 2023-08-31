@@ -70,13 +70,13 @@ host.Run();
 public class CaptureInventoryOnJoin : IHostedService
 {
     private readonly WebApiClient webApiClient;
-    private readonly ConsoleSessionFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleSessionFactory;
     private readonly SubscriptionManagerFactory subscriptionManagerFactory;
     private readonly ILogger<CaptureInventoryOnJoin> logger;
 
     public CaptureInventoryOnJoin(
         WebApiClient webApiClient,
-        ConsoleSessionFactory consoleSessionFactory,
+        ConsoleClientFactory consoleSessionFactory,
         SubscriptionManagerFactory subscriptionManagerFactory,
         ILogger<CaptureInventoryOnJoin> logger)
     {
@@ -136,7 +136,7 @@ public class CaptureInventoryOnJoin : IHostedService
         }
     }
 
-    private void HandleEvent(ConsoleSession consoleSession, GameConsoleEvent ev)
+    private void HandleEvent(ConsoleClient consoleSession, GameConsoleEvent ev)
     {
         Task.Run(async () =>
         {
@@ -162,7 +162,7 @@ public class CaptureInventoryOnJoin : IHostedService
         });
     }
 
-    private async Task SubscribePlayerJoined(ConsoleSession consoleSession)
+    private async Task SubscribePlayerJoined(ConsoleClient consoleSession)
     {
         try
         {

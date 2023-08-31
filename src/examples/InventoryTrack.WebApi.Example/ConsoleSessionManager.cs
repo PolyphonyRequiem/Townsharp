@@ -11,7 +11,7 @@ using Townsharp.Infrastructure.WebApi;
 public class ConsoleSessionManager
 {
     private readonly WebApiClient webApiClient;
-    private readonly ConsoleSessionFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleSessionFactory;
     private readonly Task<SubscriptionManager> createSubscriptionManagerTask;
     private readonly ConcurrentDictionary<GameServerId, ManagedConsoleSession> managedConsoleSessions = new ConcurrentDictionary<GameServerId, ManagedConsoleSession>();
     private readonly ConcurrentDictionary<ServerGroupId, bool> heartbeatSubscriptions = new ConcurrentDictionary<ServerGroupId, bool>();
@@ -24,7 +24,7 @@ public class ConsoleSessionManager
     public ConsoleSessionManager(
         WebApiClient webApiClient, 
         SubscriptionManagerFactory subscriptionManagerFactory, 
-        ConsoleSessionFactory consoleSessionFactory)
+        ConsoleClientFactory consoleSessionFactory)
     {
         this.webApiClient = webApiClient;
         this.consoleSessionFactory = consoleSessionFactory;

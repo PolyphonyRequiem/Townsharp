@@ -8,9 +8,9 @@ namespace Townsharp;
 public class GameServerConsole
 {
     private readonly GameServerId id;
-    private readonly ConsoleSessionFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleSessionFactory;
 
-    internal GameServerConsole(GameServerId id, ConsoleSessionFactory consoleSessionFactory)
+    internal GameServerConsole(GameServerId id, ConsoleClientFactory consoleSessionFactory)
     {
         this.id = id;
         this.consoleSessionFactory = consoleSessionFactory;

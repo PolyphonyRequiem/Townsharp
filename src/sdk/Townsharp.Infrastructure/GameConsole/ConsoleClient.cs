@@ -11,7 +11,7 @@ using Townsharp.Infrastructure.Utilities;
 
 namespace Townsharp.Infrastructure.ServerConsole;
 
-public class ConsoleSession : IDisposable, IAsyncDisposable
+public class ConsoleClient : IDisposable, IAsyncDisposable
 {
     // Constants
     public static int MAX_CONCURRENT_REQUESTS = 4;
@@ -20,7 +20,7 @@ public class ConsoleSession : IDisposable, IAsyncDisposable
     private static readonly TimeSpan AuthTimeout = TimeSpan.FromSeconds(30);
 
     // Logging
-    private readonly ILogger<ConsoleSession> logger;
+    private readonly ILogger<ConsoleClient> logger;
 
     // State
     private DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
@@ -56,7 +56,7 @@ public class ConsoleSession : IDisposable, IAsyncDisposable
     // For console, we should probably address that, but dropped connections are more normal here and should probably result in different considerations upstream for lifecycle management.
     // To this end, I think we should probably focus on the domain library design at this point, and then come back to this later.  I think the domain library design will inform the overall
     // design of the infra library going forward.
-    protected ConsoleSession(ILogger<ConsoleSession> logger)
+    protected ConsoleClient(ILogger<ConsoleClient> logger)
     {
         this.logger = logger;
         this.messageIdFactory = new MessageIdFactory();
@@ -64,9 +64,9 @@ public class ConsoleSession : IDisposable, IAsyncDisposable
         this.cancellationTokenSource = new CancellationTokenSource();
     }
 
-    internal static async Task<ConsoleSession> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken, ILogger<ConsoleSession> logger)
+    internal static async Task<ConsoleClient> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken, ILogger<ConsoleClient> logger)
     {
-        ConsoleSession consoleSession = new ConsoleSession(logger);
+        ConsoleClient consoleSession = new ConsoleClient(logger);
         await consoleSession.ConnectAsync(consoleWebsocketUri, authToken);
 
         return consoleSession;
@@ -113,7 +113,7 @@ public class ConsoleSession : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(DisconnectAsync)}.  {ex}");
+            this.logger.LogError($"{nameof(ConsoleClient)} Error has occurred in {nameof(DisconnectAsync)}.  {ex}");
         }
         finally
         {
@@ -158,21 +158,21 @@ public class ConsoleSession : IDisposable, IAsyncDisposable
                     catch (WebSocketException ex)
                     {
                         // stop listening, we are done.
-                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+                        this.logger.LogError($"{nameof(ConsoleClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
                         await this.DisconnectAsync();
                         break;
                     }
                     catch (OperationCanceledException)
                     {
                         // stop listening, we are done.
-                        this.logger.LogWarning($"{nameof(ConsoleSession)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
+                        this.logger.LogWarning($"{nameof(ConsoleClient)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
                         await this.DisconnectAsync();
                         break;
                     }
                     catch (Exception ex)
                     {
                         // stop listening, we are done.
-                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+                        this.logger.LogError($"{nameof(ConsoleClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
                         await this.DisconnectAsync();
                         break;
                     }
@@ -180,9 +180,9 @@ public class ConsoleSession : IDisposable, IAsyncDisposable
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         // stop listening, we are done.
+                        await this.DisconnectAsync();
                         break;
                     }
-
 
                     totalStream.Write(rentedBuffer, 0, result.Count);
 

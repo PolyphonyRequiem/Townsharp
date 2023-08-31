@@ -5,7 +5,7 @@ using Townsharp.Infrastructure.ServerConsole;
 public class ManagedConsoleSession
 {
     private GameServerId serverId;
-    private readonly ConsoleSessionFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleSessionFactory;
     private Func<GameServerId, Task<ServerAccess>> getServerAccess;
     private Action<GameServerId> onConnected;
     private Action<GameServerId> onDisconnected;
@@ -14,7 +14,7 @@ public class ManagedConsoleSession
     private bool connected = false;
     private bool connecting = false;
 
-    public ManagedConsoleSession(GameServerId serverId, ConsoleSessionFactory consoleSessionFactory, Func<GameServerId, Task<ServerAccess>> getServerAccess, Action<GameServerId> onConnected, Action<GameServerId> onDisconnected, Action<GameServerId, GameConsoleEvent> onGameConsoleEvent)
+    public ManagedConsoleSession(GameServerId serverId, ConsoleClientFactory consoleSessionFactory, Func<GameServerId, Task<ServerAccess>> getServerAccess, Action<GameServerId> onConnected, Action<GameServerId> onDisconnected, Action<GameServerId, GameConsoleEvent> onGameConsoleEvent)
     {
         this.serverId = serverId;
         this.consoleSessionFactory = consoleSessionFactory;
@@ -55,7 +55,7 @@ public class ManagedConsoleSession
         }
     }
 
-    private void OnConnected(ConsoleSession console)
+    private void OnConnected(ConsoleClient console)
     {
         this.connected = true;
         Task.Run(async () =>
@@ -66,7 +66,7 @@ public class ManagedConsoleSession
         });
     }
         
-    private async void HandleEvents(ConsoleSession session, IAsyncEnumerable<GameConsoleEvent> enumerable)
+    private async void HandleEvents(ConsoleClient session, IAsyncEnumerable<GameConsoleEvent> enumerable)
     {
         await foreach (var gameConsoleEvent in enumerable)
         {
