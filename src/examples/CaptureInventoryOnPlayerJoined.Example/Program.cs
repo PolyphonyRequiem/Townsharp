@@ -126,7 +126,7 @@ public class CaptureInventoryOnJoin : IHostedService
                     await this.SubscribePlayerJoined(consoleClient);
 
                     consoleClient.OnGameConsoleEvent += (s, e) => this.HandleEvent(consoleClient, e);
-                    consoleClient.OnWebsocketFaulted += (s, _) => this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
+                    consoleClient.OnDisconnected += (s, _) => this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
                 }
                 catch (Exception ex)
                 {

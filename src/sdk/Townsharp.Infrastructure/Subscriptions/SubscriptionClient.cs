@@ -49,7 +49,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
-    public event EventHandler? OnWebsocketFaulted;
+    public event EventHandler? OnDisconnected;
 
     protected SubscriptionClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
     {
@@ -124,7 +124,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         {
             if (this.connected == true)
             {
-                this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                this.OnDisconnected?.Invoke(this, EventArgs.Empty);
             }
 
             this.connected = false;

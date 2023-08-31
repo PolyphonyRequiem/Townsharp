@@ -49,7 +49,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
 
     // Events
     public event EventHandler<GameConsoleEvent>? OnGameConsoleEvent;
-    public event EventHandler? OnWebsocketFaulted;
+    public event EventHandler? OnDisconnected;
 
     // NOTE TO SELF 8/8/2023 - Okay, hear me out.  The functional design is actually pretty good in concept, INTERNALLY, but I think the external scenario needs a little thinking through.  
     // The main concern I seem to face with the websockets scenario is around lifecycle management, which is why the SubscriptionConnection is such a damned mess.
@@ -119,7 +119,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
         {
             if (this.connected == true)
             {
-                this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                this.OnDisconnected?.Invoke(this, EventArgs.Empty);
             }
 
             this.connected = false;

@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System.Net.Http.Headers;
+
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.GameConsole;
@@ -28,36 +30,72 @@ public class ConsoleRepl : IHostedService
         Console.WriteLine("Enter the server id to connect to:");
         var serverId = Console.ReadLine();
 
-        var response = await this.webApiClient.RequestConsoleAccessAsync(ulong.Parse(serverId!));
-
-        if (!response["allowed"]?.GetValue<bool>() ?? false)
+        while (!cancellationToken.IsCancellationRequested) 
         {
-            throw new InvalidOperationException("Server is not online.");
-        }
+            bool retryNeeded = false;
+            UriBuilder uriBuilder = new UriBuilder();
+            string accessToken = "";
+            try
+            {
+                var response = await this.webApiClient.RequestConsoleAccessAsync(ulong.Parse(serverId!));
 
-        UriBuilder uriBuilder = new UriBuilder();
+                if (!response["allowed"]?.GetValue<bool>() ?? false)
+                {
+                    throw new InvalidOperationException("Server is not online.");
+                }
 
-        uriBuilder.Scheme = "ws";
-        uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");
-        uriBuilder.Port = response["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response."); ;
+                uriBuilder.Scheme = "ws";
+                uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");
+                uriBuilder.Port = response["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response."); ;
 
-        CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                accessToken = response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response.");
+            }
+            catch (Exception) 
+            {
+                this.logger.LogError($"Unable to get console access for {serverId} at this time.  Will try again in 15s");
+                retryNeeded = true;
+            }
 
-        var consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(
-                        uriBuilder.Uri,
-                        response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."));
+            if (retryNeeded) 
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15));
+                continue;
+            }
 
-        consoleClient.OnGameConsoleEvent += (s, e) => this.logger.LogInformation(e.ToString());
-        consoleClient.OnWebsocketFaulted += (s, _) =>
-        {
-            cancellationTokenSource.Cancel();
-            this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
-        };
-        
-        _ = Task.Run(() => this.GetCommands(consoleClient, cancellationTokenSource.Token));
+            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        
+            try
+            {
+                ConsoleClient consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(uriBuilder.Uri, accessToken);
+                Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token);
+
+                void handleGameConsoleEvent(object? sender, GameConsoleEvent e)
+                {
+                    this.logger.LogInformation(e.ToString());
+                }
+
+                void handleDisconnected (object? sender,  EventArgs e)
+                {
+                    cancellationTokenSource.Cancel();
+                    this.logger.LogInformation("Disconnected from server {serverId}. Will attempt to reconnect.", serverId);
+                    consoleClient.Dispose();
+                    consoleClient.OnGameConsoleEvent -= handleGameConsoleEvent;
+                    consoleClient.OnDisconnected -= handleDisconnected;
+                }
+
+                consoleClient.OnGameConsoleEvent += handleGameConsoleEvent;
+                consoleClient.OnDisconnected += handleDisconnected;
+
+                await getCommandsTask;
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError($"Something went wrong while trying to run the main console REPL.");
+            }
+        }        
     }
 
-    private async Task GetCommands(ConsoleClient consoleClient, CancellationToken token)
+    private async Task GetCommandsAsync(ConsoleClient consoleClient, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {

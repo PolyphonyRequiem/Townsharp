@@ -93,7 +93,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     {
         var subscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
         subscriptionClient.OnSubscriptionEvent += this.HandleSubscriptionEvent;
-        subscriptionClient.OnWebsocketFaulted += this.HandleOnWebsocketFaulted;
+        subscriptionClient.OnDisconnected += this.HandleOnWebsocketFaulted;
 
         return subscriptionClient;
     }
@@ -101,7 +101,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private async Task CleanupSubscriptionClientAsync(SubscriptionClient subscriptionClient)
     {
         subscriptionClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
-        subscriptionClient.OnWebsocketFaulted -= this.HandleOnWebsocketFaulted;
+        subscriptionClient.OnDisconnected -= this.HandleOnWebsocketFaulted;
         await subscriptionClient.DisposeAsync();
     }
 
@@ -514,7 +514,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         if (this.subscriptionClient != null)
         {
             this.subscriptionClient.OnSubscriptionEvent -= this.HandleSubscriptionEvent;
-            this.subscriptionClient.OnWebsocketFaulted -= this.HandleOnWebsocketFaulted;
+            this.subscriptionClient.OnDisconnected -= this.HandleOnWebsocketFaulted;
             await this.subscriptionClient.DisposeAsync();
         }
     }
