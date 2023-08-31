@@ -7,15 +7,14 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Utilities;
 
 namespace Townsharp.Infrastructure.ServerConsole;
 
-public class ConsoleSession
+public class ConsoleSession : IDisposable, IAsyncDisposable
 {
     // Constants
-    public static int MAX_CONCURRENT_REQUESTS = 20;
+    public static int MAX_CONCURRENT_REQUESTS = 4;
     private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);
     private static readonly TimeSpan IdleConnectionCheckPeriod = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan AuthTimeout = TimeSpan.FromSeconds(30);
@@ -93,17 +92,46 @@ public class ConsoleSession
         }
 
         this.connected = true;
-        this.receiverTask = this.ReceiveEventMessagesAsync();
+        this.receiverTask = this.ReceiveMessagesAsync();
         this.idleKeepaliveTask = this.KeepAliveAsync();
     
         if (!await this.TryAuthorizeAsync(authToken, AuthTimeout, this.cancellationTokenSource.Token))
         {
-            // Dispose here?
+            await this.DisconnectAsync();
             throw new InvalidOperationException("Unable to authorize the connection.");
         }
     }
 
-    private async Task ReceiveEventMessagesAsync()
+    private async Task DisconnectAsync()
+    {
+        try
+        {
+            if (this.websocket.State == WebSocketState.Open)
+            {
+                await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", this.cancellationTokenSource.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(DisconnectAsync)}.  {ex}");
+        }
+        finally
+        {
+            if (this.connected == true)
+            {
+                this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+            }
+
+            this.connected = false;
+
+            if (!this.cancellationTokenSource.IsCancellationRequested)
+            {
+                this.cancellationTokenSource.Cancel();
+            }
+        }
+    }
+
+    private async Task ReceiveMessagesAsync()
     {
         bool authMessageExpected = true;
 
@@ -130,22 +158,22 @@ public class ConsoleSession
                     catch (WebSocketException ex)
                     {
                         // stop listening, we are done.
-                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+                        await this.DisconnectAsync();
                         break;
                     }
                     catch (OperationCanceledException)
                     {
                         // stop listening, we are done.
-                        this.logger.LogWarning($"{nameof(ConsoleSession)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.logger.LogWarning($"{nameof(ConsoleSession)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
+                        await this.DisconnectAsync();
                         break;
                     }
                     catch (Exception ex)
                     {
                         // stop listening, we are done.
-                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+                        await this.DisconnectAsync();
                         break;
                     }
 
@@ -385,5 +413,54 @@ public class ConsoleSession
     ////////////////////
     // Readiness
     ////////////////////
-    public bool Ready => this.websocket?.State == WebSocketState.Open;
+    public bool Ready =>
+        this.connected &&
+        !this.cancellationTokenSource.IsCancellationRequested &&
+        !this.disposed &&
+        this.websocket?.State == WebSocketState.Open;
+
+    ////////////////////
+    // Disposal
+    ////////////////////
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!this.disposed)
+        {
+            if (disposing)
+            {
+                this.websocket.Dispose();
+                this.cancellationTokenSource.Dispose();
+            }
+
+            this.disposed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        this.Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await this.DisposeAsyncCore().ConfigureAwait(false);
+        this.Dispose(disposing: false);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        await this.DisconnectAsync().ConfigureAwait(false);
+
+        if (this.receiverTask != null)
+        {
+            await this.receiverTask.ConfigureAwait(false);
+        }
+
+        if (this.idleKeepaliveTask != null)
+        {
+            await this.idleKeepaliveTask.ConfigureAwait(false);
+        }
+    }
 }

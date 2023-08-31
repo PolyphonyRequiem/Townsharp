@@ -102,7 +102,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         }
 
         this.connected = true;
-        this.receiverTask = this.ReceiveEventMessagesAsync();
+        this.receiverTask = this.ReceiveMessagesAsync();
         this.idleKeepaliveTask = this.KeepAliveAsync();
         
     }
@@ -122,15 +122,24 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
         }
         finally
         {
+            if (this.connected == true)
+            {
+                this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+            }
+
             this.connected = false;
-            this.cancellationTokenSource.Cancel();
+
+            if (!this.cancellationTokenSource.IsCancellationRequested)
+            {
+                this.cancellationTokenSource.Cancel();
+            }
         }
     }
 
     ////////////////////
     // Receiver
     ////////////////////
-    private async Task ReceiveEventMessagesAsync()
+    private async Task ReceiveMessagesAsync()
     {
         while (this.Ready)
         {
@@ -156,22 +165,22 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
                     catch (WebSocketException ex)
                     {
                         // stop listening, we are done.
-                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+                        await this.DisconnectAsync();
                         break;
                     }
                     catch (OperationCanceledException)
                     {
                         // stop listening, we are done.
-                        this.logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
+                        await this.DisconnectAsync();
                         break;
                     }
                     catch (Exception ex)
                     {
                         // stop listening, we are done.
-                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
-                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+                        await this.DisconnectAsync();
                         break;
                     }
 
