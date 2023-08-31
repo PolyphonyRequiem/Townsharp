@@ -8,12 +8,12 @@ using Townsharp.Infrastructure.ServerConsole;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
-public class ConsoleSessionManager
+public class ConsoleClientManager
 {
     private readonly WebApiClient webApiClient;
-    private readonly ConsoleClientFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleClientFactory;
     private readonly Task<SubscriptionManager> createSubscriptionManagerTask;
-    private readonly ConcurrentDictionary<GameServerId, ManagedConsoleSession> managedConsoleSessions = new ConcurrentDictionary<GameServerId, ManagedConsoleSession>();
+    private readonly ConcurrentDictionary<GameServerId, ManagedConsoleClient> managedConsoleClients = new ConcurrentDictionary<GameServerId, ManagedConsoleClient>();
     private readonly ConcurrentDictionary<ServerGroupId, bool> heartbeatSubscriptions = new ConcurrentDictionary<ServerGroupId, bool>();
 
     private async Task<SubscriptionManager> GetSubscriptionManager()
@@ -21,13 +21,13 @@ public class ConsoleSessionManager
         return await this.createSubscriptionManagerTask;
     }
 
-    public ConsoleSessionManager(
+    public ConsoleClientManager(
         WebApiClient webApiClient, 
         SubscriptionManagerFactory subscriptionManagerFactory, 
-        ConsoleClientFactory consoleSessionFactory)
+        ConsoleClientFactory consoleClientFactory)
     {
         this.webApiClient = webApiClient;
-        this.consoleSessionFactory = consoleSessionFactory;
+        this.consoleClientFactory = consoleClientFactory;
         this.createSubscriptionManagerTask = InitSubscriptionManagerAsync(subscriptionManagerFactory);
     }
 
@@ -46,9 +46,9 @@ public class ConsoleSessionManager
 
                 if (isOnline)
                 {
-                    if (this.managedConsoleSessions.ContainsKey(id))
+                    if (this.managedConsoleClients.ContainsKey(id))
                     {
-                        Task.Run(this.managedConsoleSessions[id].TryConnectAsync);
+                        Task.Run(this.managedConsoleClients[id].TryConnectAsync);
                     }
                 }
             }
@@ -71,7 +71,7 @@ public class ConsoleSessionManager
         // make sure we have the subscription manager ready.
         var subscriptionManager = await this.GetSubscriptionManager();
 
-        if (this.managedConsoleSessions.ContainsKey(serverId))
+        if (this.managedConsoleClients.ContainsKey(serverId))
         {
             throw new InvalidOperationException($"Already managing a console session for server {serverId}");
         }
@@ -86,9 +86,9 @@ public class ConsoleSessionManager
             this.heartbeatSubscriptions.TryAdd(serverGroupId, true);
         }
 
-        var managedConsole = new ManagedConsoleSession(serverId, this.consoleSessionFactory, GetServerAccess, onConnected, onDisconnected, onGameConsoleEvent);
+        var managedConsole = new ManagedConsoleClient(serverId, this.consoleClientFactory, GetServerAccess, onConnected, onDisconnected, onGameConsoleEvent);
 
-        if (this.managedConsoleSessions.TryAdd(serverId, managedConsole))
+        if (this.managedConsoleClients.TryAdd(serverId, managedConsole))
         {
             await managedConsole.TryConnectAsync();
         }

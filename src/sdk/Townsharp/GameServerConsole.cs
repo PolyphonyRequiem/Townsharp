@@ -8,12 +8,12 @@ namespace Townsharp;
 public class GameServerConsole
 {
     private readonly GameServerId id;
-    private readonly ConsoleClientFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleClientFactory;
 
-    internal GameServerConsole(GameServerId id, ConsoleClientFactory consoleSessionFactory)
+    internal GameServerConsole(GameServerId id, ConsoleClientFactory consoleClientFactory)
     {
         this.id = id;
-        this.consoleSessionFactory = consoleSessionFactory;
+        this.consoleClientFactory = consoleClientFactory;
     }
 
     private ConsoleState state = ConsoleState.Unknown;

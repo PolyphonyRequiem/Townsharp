@@ -8,18 +8,18 @@ internal class InventoryTrackWorker : IHostedService
 {
     private readonly ILogger<InventoryTrackWorker> logger;
     private readonly WebApiClient webApiClient;
-    private readonly ConsoleSessionManager consoleSessionManager;
+    private readonly ConsoleClientManager consoleClientManager;
     private readonly InventoryTracker inventoryTracker;
     private Task workerTask = Task.CompletedTask;
 
     public InventoryTrackWorker(
         WebApiClient webApiClient,
-        ConsoleSessionManager consoleSessionManager,
+        ConsoleClientManager consoleClientManager,
         InventoryTracker tracker,
         ILogger<InventoryTrackWorker> logger)
     {
         this.webApiClient = webApiClient;
-        this.consoleSessionManager = consoleSessionManager;
+        this.consoleClientManager = consoleClientManager;
         this.inventoryTracker = tracker;
         this.logger = logger;
     }
@@ -46,7 +46,7 @@ internal class InventoryTrackWorker : IHostedService
 
     private async Task StartServerManagement(ServerGroupId groupId, GameServerId gameServerId)
     {
-        await this.consoleSessionManager.ManageConsoleForServerAsync(groupId, gameServerId, OnConnected, OnDisconnected, OnGameConsoleEvent);
+        await this.consoleClientManager.ManageConsoleForServerAsync(groupId, gameServerId, OnConnected, OnDisconnected, OnGameConsoleEvent);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

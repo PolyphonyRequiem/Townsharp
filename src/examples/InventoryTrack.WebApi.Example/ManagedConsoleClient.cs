@@ -2,10 +2,10 @@
 using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.ServerConsole;
 
-public class ManagedConsoleSession
+public class ManagedConsoleClient
 {
     private GameServerId serverId;
-    private readonly ConsoleClientFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleClientFactory;
     private Func<GameServerId, Task<ServerAccess>> getServerAccess;
     private Action<GameServerId> onConnected;
     private Action<GameServerId> onDisconnected;
@@ -14,10 +14,10 @@ public class ManagedConsoleSession
     private bool connected = false;
     private bool connecting = false;
 
-    public ManagedConsoleSession(GameServerId serverId, ConsoleClientFactory consoleSessionFactory, Func<GameServerId, Task<ServerAccess>> getServerAccess, Action<GameServerId> onConnected, Action<GameServerId> onDisconnected, Action<GameServerId, GameConsoleEvent> onGameConsoleEvent)
+    public ManagedConsoleClient(GameServerId serverId, ConsoleClientFactory consoleClientFactory, Func<GameServerId, Task<ServerAccess>> getServerAccess, Action<GameServerId> onConnected, Action<GameServerId> onDisconnected, Action<GameServerId, GameConsoleEvent> onGameConsoleEvent)
     {
         this.serverId = serverId;
-        this.consoleSessionFactory = consoleSessionFactory;
+        this.consoleClientFactory = consoleClientFactory;
         this.getServerAccess = getServerAccess;
         this.onConnected = onConnected;
         this.onDisconnected = onDisconnected;
@@ -38,11 +38,11 @@ public class ManagedConsoleSession
             var serverAccess = await this.getServerAccess(this.serverId);
             if (serverAccess != ServerAccess.None)
             {
-                var consoleSession = await this.consoleSessionFactory.CreateAndConnectAsync(serverAccess.Uri, serverAccess.AccessToken);
+                var consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(serverAccess.Uri, serverAccess.AccessToken);
 
-                consoleSession.OnWebsocketFaulted += (s, _) => this.OnDisconnected(default);
-                consoleSession.OnGameConsoleEvent += (s, e) => this.onGameConsoleEvent(this.serverId, e);
-                this.OnConnected(consoleSession);
+                consoleClient.OnWebsocketFaulted += (s, _) => this.OnDisconnected(default);
+                consoleClient.OnGameConsoleEvent += (s, e) => this.onGameConsoleEvent(this.serverId, e);
+                this.OnConnected(consoleClient);
             }
         }
         catch (Exception ex)

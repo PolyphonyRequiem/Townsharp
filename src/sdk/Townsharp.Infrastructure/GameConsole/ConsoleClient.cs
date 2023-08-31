@@ -66,10 +66,10 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
 
     internal static async Task<ConsoleClient> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken, ILogger<ConsoleClient> logger)
     {
-        ConsoleClient consoleSession = new ConsoleClient(logger);
-        await consoleSession.ConnectAsync(consoleWebsocketUri, authToken);
+        ConsoleClient consoleClient = new ConsoleClient(logger);
+        await consoleClient.ConnectAsync(consoleWebsocketUri, authToken);
 
-        return consoleSession;
+        return consoleClient;
     }
 
     private async Task ConnectAsync(Uri consoleWebsocketUri, string authToken)

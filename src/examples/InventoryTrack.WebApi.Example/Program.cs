@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTownsharp();
-builder.Services.AddSingleton<ConsoleSessionManager>();
+builder.Services.AddSingleton<ConsoleClientManager>();
 builder.Services.AddSingleton<InventoryTracker>();
 builder.Services.AddHostedService<InventoryTrackWorker>();
 

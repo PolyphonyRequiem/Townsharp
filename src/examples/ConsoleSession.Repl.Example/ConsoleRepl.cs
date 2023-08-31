@@ -8,13 +8,13 @@ using Townsharp.Infrastructure.WebApi;
 public class ConsoleRepl : IHostedService
 {
     private readonly WebApiClient webApiClient;
-    private readonly ConsoleClientFactory consoleSessionFactory;
+    private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ILogger<ConsoleRepl> logger;
 
-    public ConsoleRepl(WebApiClient webApiClient, ConsoleClientFactory consoleSessionFactory, ILogger<ConsoleRepl> logger)
+    public ConsoleRepl(WebApiClient webApiClient, ConsoleClientFactory consoleClientFactory, ILogger<ConsoleRepl> logger)
     {
         this.webApiClient = webApiClient;
-        this.consoleSessionFactory = consoleSessionFactory;
+        this.consoleClientFactory = consoleClientFactory;
         this.logger = logger;
     }
 
@@ -43,21 +43,21 @@ public class ConsoleRepl : IHostedService
 
         CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        var consoleSession = await this.consoleSessionFactory.CreateAndConnectAsync(
+        var consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(
                         uriBuilder.Uri,
                         response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."));
 
-        consoleSession.OnGameConsoleEvent += (s, e) => this.logger.LogInformation(e.ToString());
-        consoleSession.OnWebsocketFaulted += (s, _) =>
+        consoleClient.OnGameConsoleEvent += (s, e) => this.logger.LogInformation(e.ToString());
+        consoleClient.OnWebsocketFaulted += (s, _) =>
         {
             cancellationTokenSource.Cancel();
             this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
         };
         
-        _ = Task.Run(() => this.GetCommands(consoleSession, cancellationTokenSource.Token));
+        _ = Task.Run(() => this.GetCommands(consoleClient, cancellationTokenSource.Token));
     }
 
-    private async Task GetCommands(ConsoleClient consoleSession, CancellationToken token)
+    private async Task GetCommands(ConsoleClient consoleClient, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
@@ -69,7 +69,7 @@ public class ConsoleRepl : IHostedService
                 break;
             }
 
-            var result = await consoleSession.RunCommand(command!, TimeSpan.FromSeconds(30), token);
+            var result = await consoleClient.RunCommand(command!, TimeSpan.FromSeconds(30), token);
 
             Console.WriteLine(result.ToString());
         }
