@@ -1,12 +1,9 @@
-﻿using System.Net.Http.Json;
-using System.Text.Json;
-
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Identity;
 using Townsharp.Infrastructure.Hosting;
+using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
@@ -28,7 +25,6 @@ host.Run();
 internal class SubscriptionConnectionTest : IHostedService
 {
     private readonly WebApiClient webApiClient;
-    private readonly BotTokenProvider botTokenProvider;
     private readonly ILogger<SubscriptionConnectionTest> logger;
     private readonly ILoggerFactory loggerFactory;
     private readonly SubscriptionClientFactory subscriptionClientFactory;
@@ -36,13 +32,11 @@ internal class SubscriptionConnectionTest : IHostedService
 
     public SubscriptionConnectionTest(
         WebApiClient webApiClient,
-        BotTokenProvider botTokenProvider, 
         ILogger<SubscriptionConnectionTest> logger, 
         ILoggerFactory loggerFactory, 
         SubscriptionClientFactory subscriptionClientFactory)
     {
         this.webApiClient = webApiClient;
-        this.botTokenProvider = botTokenProvider;
         this.logger = logger;
         this.loggerFactory = loggerFactory;
         this.subscriptionClientFactory = subscriptionClientFactory;

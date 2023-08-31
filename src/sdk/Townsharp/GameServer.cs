@@ -3,8 +3,17 @@
 public class GameServer
 {
     private readonly GameServerId id;
+    private readonly ServerGroupId groupId;
 
-    public GameServerId Id => id;
+    internal GameServer(GameServerId id, ServerGroupId groupId)
+    {
+        this.id = id;
+        this.groupId = groupId;
+    }
+
+    public GameServerId Id => this.id;
+
+    public ServerGroupId GroupId => this.groupId;
 }
 
 public readonly record struct GameServerId

@@ -12,7 +12,6 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-using Townsharp.Identity;
 using Townsharp.Infrastructure.Hosting;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
@@ -73,7 +72,6 @@ internal class SubscriptionManagerTest : IHostedService
     public static Meter meter = new Meter(nameof(SubscriptionManagerTest));
 
     private readonly WebApiClient webApiClient;
-    private readonly BotTokenProvider botTokenProvider;
     private readonly SubscriptionManagerFactory subscriptionManagerFactory;
     private readonly ILogger<SubscriptionManagerTest> logger;
 
@@ -84,12 +82,10 @@ internal class SubscriptionManagerTest : IHostedService
 
     public SubscriptionManagerTest(
         WebApiClient webApiClient,
-        BotTokenProvider botTokenProvider,
         SubscriptionManagerFactory subscriptionManagerFactory,
         ILogger<SubscriptionManagerTest> logger)
     {
         this.webApiClient = webApiClient;
-        this.botTokenProvider = botTokenProvider;
         this.subscriptionManagerFactory = subscriptionManagerFactory;
         this.logger = logger;
         this.eventCounter = meter.CreateCounter<long>("tsharp_ex_sm_dm_subscription_events_received");

@@ -38,7 +38,11 @@ public class ManagedConsoleSession
             var serverAccess = await this.getServerAccess(this.serverId);
             if (serverAccess != ServerAccess.None)
             {
-                await this.consoleSessionFactory.StartNew(serverAccess.Uri, serverAccess.AccessToken, OnConnected, HandleEvents, OnDisconnected);
+                var consoleSession = await this.consoleSessionFactory.CreateAndConnectAsync(serverAccess.Uri, serverAccess.AccessToken);
+
+                consoleSession.OnWebsocketFaulted += (s, _) => this.OnDisconnected(default);
+                consoleSession.OnGameConsoleEvent += (s, e) => this.onGameConsoleEvent(this.serverId, e);
+                this.OnConnected(consoleSession);
             }
         }
         catch (Exception ex)

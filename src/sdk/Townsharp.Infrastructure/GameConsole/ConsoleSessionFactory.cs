@@ -13,21 +13,11 @@ public class ConsoleSessionFactory
         this.loggerFactory = loggerFactory;
     }
 
-    public Task StartNew(
-        Uri consoleWebsocketUri,
-        string authToken,
-        Action<ConsoleSession> onSessionConnected,
-        Action<ConsoleSession, IAsyncEnumerable<GameConsoleEvent>> handleEvents,
-        Action<Exception?> onDisconnected,
-        CancellationToken cancellationToken = default)
+    public Task<ConsoleSession> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken)
     {
-        return ConsoleSession.ConnectAsync(
+        return ConsoleSession.CreateAndConnectAsync(
             consoleWebsocketUri,
             authToken,
-            this.loggerFactory.CreateLogger<ConsoleSession>(),
-            onSessionConnected, 
-            handleEvents, 
-            onDisconnected, 
-            cancellationToken);
+            this.loggerFactory.CreateLogger<ConsoleSession>());
     }
 }

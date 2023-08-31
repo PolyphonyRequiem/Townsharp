@@ -43,18 +43,20 @@ public class ConsoleRepl : IHostedService
 
         CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        await this.consoleSessionFactory.StartNew(
-            uriBuilder.Uri,
-            response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."),
-            onSessionConnected: consoleSession => Task.Run(() => this.GetCommands(consoleSession, cancellationTokenSource.Token)),
-            handleEvents: (consoleSession, events) => events.ForEachAsync(e => this.logger.LogInformation(e.ToString())),
-            onDisconnected: exception =>
-            {
-                this.logger.LogInformation(exception, "Disconnected from server {serverId}.", serverId);
-                cancellationTokenSource.Cancel();
-            },
-            cancellationToken);
+        var consoleSession = await this.consoleSessionFactory.CreateAndConnectAsync(
+                        uriBuilder.Uri,
+                        response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."));
+
+        consoleSession.OnGameConsoleEvent += (s, e) => this.logger.LogInformation(e.ToString());
+        consoleSession.OnWebsocketFaulted += (s, _) =>
+        {
+            cancellationTokenSource.Cancel();
+            this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
+        };
+        
+        _ = Task.Run(() => this.GetCommands(consoleSession, cancellationTokenSource.Token));
     }
+
     private async Task GetCommands(ConsoleSession consoleSession, CancellationToken token)
     {
         while (!token.IsCancellationRequested)

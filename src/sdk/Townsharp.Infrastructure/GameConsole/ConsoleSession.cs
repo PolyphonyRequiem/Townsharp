@@ -1,13 +1,13 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Utilities;
 
 namespace Townsharp.Infrastructure.ServerConsole;
@@ -35,12 +35,22 @@ public class ConsoleSession
 
     // Lifecycle
     private Task connectedTask = Task.FromException(new InvalidOperationException("Not connected."));
+    private Task receiverTask = Task.CompletedTask;
+    private Task idleKeepaliveTask = Task.CompletedTask;
+
+    private bool connected = false;
+    private bool disposed = false;
 
     // Disposables
     private readonly ClientWebSocket websocket;
+    private readonly CancellationTokenSource cancellationTokenSource;
 
     // Dependencies
     private readonly MessageIdFactory messageIdFactory;
+
+    // Events
+    public event EventHandler<GameConsoleEvent>? OnGameConsoleEvent;
+    public event EventHandler? OnWebsocketFaulted;
 
     // NOTE TO SELF 8/8/2023 - Okay, hear me out.  The functional design is actually pretty good in concept, INTERNALLY, but I think the external scenario needs a little thinking through.  
     // The main concern I seem to face with the websockets scenario is around lifecycle management, which is why the SubscriptionConnection is such a damned mess.
@@ -52,79 +62,52 @@ public class ConsoleSession
         this.logger = logger;
         this.messageIdFactory = new MessageIdFactory();
         this.websocket = new ClientWebSocket();
+        this.cancellationTokenSource = new CancellationTokenSource();
     }
 
-    internal static async Task ConnectAsync(
-        Uri consoleWebsocketUri, 
-        string authToken,
-        ILogger<ConsoleSession> logger,
-        Action<ConsoleSession> onSessionConnected,
-        Action<ConsoleSession, IAsyncEnumerable<GameConsoleEvent>> handleEvents, 
-        Action<Exception?> onDisconnected,
-        CancellationToken cancellationToken = default)
+    internal static async Task<ConsoleSession> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken, ILogger<ConsoleSession> logger)
     {
-        CancellationTokenSource cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
+        ConsoleSession consoleSession = new ConsoleSession(logger);
+        await consoleSession.ConnectAsync(consoleWebsocketUri, authToken);
+
+        return consoleSession;
+    }
+
+    private async Task ConnectAsync(Uri consoleWebsocketUri, string authToken)
+    {
+        if (this.connected)
+        {
+            throw new InvalidOperationException("Console already connected.");
+        }
+
         if (consoleWebsocketUri.Scheme != "ws")
         {
             throw new ArgumentException("Uri must be an unsecured websocket uri.", nameof(consoleWebsocketUri));
         }
 
-        ConsoleSession consoleSession = new ConsoleSession(logger);
-        await consoleSession.websocket.ConnectAsync(consoleWebsocketUri, cancellationSource.Token);
+        await this.websocket.ConnectAsync(consoleWebsocketUri, this.cancellationTokenSource.Token);
 
-        Task keepAliveTask = consoleSession.KeepAliveAsync(cancellationSource.Token);
-
-        async IAsyncEnumerable<GameConsoleEvent> eventsEmitter()
+        if (this.websocket.State != WebSocketState.Open)
         {
-            IAsyncEnumerator<JsonNode> enumerator = consoleSession.ReceiveMessagesAsync(cancellationSource.Token).GetAsyncEnumerator();
-            JsonNode? result = default;
-            bool hasResult = true;
-            while (hasResult)
-            {
-                try
-                {
-                    hasResult = await enumerator.MoveNextAsync().ConfigureAwait(false);
-                    if (hasResult)
-                    {
-                        result = enumerator.Current;
-                    }
-                    else
-                    {
-                        result = null;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    onDisconnected(ex);
-                    cancellationSource.Cancel();
-                }
-                if (result != null)
-                {
-                    yield return new GameConsoleEvent(result);
-                }
-            }
-
-            cancellationSource.Cancel();
-            yield break;
+            throw new InvalidOperationException($"Failed to connect to subscription endpoint. {this.websocket.CloseStatus ?? WebSocketCloseStatus.Empty} :: {this.websocket.CloseStatusDescription ?? string.Empty}.");
         }
 
-        // publish event handling
-        handleEvents(consoleSession, eventsEmitter());
-
-        if (!await consoleSession.TryAuthorizeAsync(authToken, AuthTimeout, cancellationSource.Token))
+        this.connected = true;
+        this.receiverTask = this.ReceiveEventMessagesAsync();
+        this.idleKeepaliveTask = this.KeepAliveAsync();
+    
+        if (!await this.TryAuthorizeAsync(authToken, AuthTimeout, this.cancellationTokenSource.Token))
         {
+            // Dispose here?
             throw new InvalidOperationException("Unable to authorize the connection.");
         }
-
-        onSessionConnected(consoleSession); // Command handler interface?  This is probably fine though.
     }
 
-    private async IAsyncEnumerable<JsonNode> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    private async Task ReceiveEventMessagesAsync()
     {
         bool authMessageExpected = true;
 
-        while (!cancellationToken.IsCancellationRequested && this.websocket.State == WebSocketState.Open)
+        while (!this.cancellationTokenSource.IsCancellationRequested && this.websocket.State == WebSocketState.Open)
         {
             // Rent a buffer from the array pool
             byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
@@ -139,21 +122,39 @@ public class ConsoleSession
                     // Use the rented buffer for receiving data
                     try
                     {
-                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), cancellationToken);
+                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), this.cancellationTokenSource.Token);
+
+                        // Message received, reset the idle timer
+                        this.MarkLastMessageTime();
+                    }
+                    catch (WebSocketException ex)
+                    {
+                        // stop listening, we are done.
+                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
+                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        break;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // stop listening, we are done.
+                        this.logger.LogWarning($"{nameof(ConsoleSession)} operation has been cancelled in {nameof(ReceiveEventMessagesAsync)}.");
+                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        break;
                     }
                     catch (Exception ex)
                     {
-                        this.logger.LogError(ex, "Error receiving message from console.");
-                        continue;
+                        // stop listening, we are done.
+                        this.logger.LogError($"{nameof(ConsoleSession)} Error has occurred in {nameof(ReceiveEventMessagesAsync)}.  {ex}");
+                        this.OnWebsocketFaulted?.Invoke(this, EventArgs.Empty);
+                        break;
                     }
 
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        yield break;
+                        // stop listening, we are done.
+                        break;
                     }
 
-                    // Message received, reset the idle timer
-                    this.MarkLastMessageTime();
 
                     totalStream.Write(rentedBuffer, 0, result.Count);
 
@@ -188,13 +189,12 @@ public class ConsoleSession
                             }
                         }
 
-
                         if (this.IsEventMessage(messageJson))
                         {
-                            yield return messageJson;
+                            this.OnGameConsoleEvent?.Invoke(this, new GameConsoleEvent(messageJson));
                         }
                     }
-                } while ((!result?.EndOfMessage ?? false) && (!cancellationToken.IsCancellationRequested));
+                } while ((!result?.EndOfMessage ?? false) && (!this.cancellationTokenSource.Token.IsCancellationRequested));
             }
             finally
             {
@@ -202,8 +202,6 @@ public class ConsoleSession
                 ArrayPool<byte>.Shared.Return(rentedBuffer);
             }
         }
-
-        yield break;
     }
 
     private bool IsEventMessage(JsonNode messageJson) => messageJson["eventType"] != null;
@@ -347,13 +345,13 @@ public class ConsoleSession
     ////////////////////
     // Idle ping timeout
     ////////////////////
-    private async Task KeepAliveAsync(CancellationToken cancellationToken)
+    private async Task KeepAliveAsync()
     {
-        while (!cancellationToken.IsCancellationRequested)
+        while (!this.cancellationTokenSource.IsCancellationRequested)
         {
             try
             {
-                await Task.Delay(IdleConnectionCheckPeriod, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(IdleConnectionCheckPeriod, this.cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException ex)
             {
@@ -369,7 +367,7 @@ public class ConsoleSession
                 try
                 {
                     this.logger.LogTrace("Idle keepalive, pinging.");
-                    await this.SendRawStringAsync("ping", cancellationToken).ConfigureAwait(false);
+                    await this.SendRawStringAsync("ping", this.cancellationTokenSource.Token).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

@@ -96,80 +96,77 @@ public class CaptureInventoryOnJoin : IHostedService
         await foreach (var joinedServer in this.webApiClient.GetJoinedServersAsync())
         {
             _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        if (!joinedServer["is_online"]?.GetValue<bool>() ?? false)
-                        {
-                            return;
-                        }
-
-                        var serverId = joinedServer["id"]?.GetValue<ulong>() ?? throw new Exception("Failed to get id from response.");
-                        
-                        var response = await this.webApiClient.RequestConsoleAccessAsync(serverId);
-
-                        if (!response["allowed"]?.GetValue<bool>() ?? false)
-                        {
-                            throw new InvalidOperationException("Server is not online.");
-                        }
-
-                        UriBuilder uriBuilder = new UriBuilder();
-
-                        uriBuilder.Scheme = "ws";
-                        uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");
-                        uriBuilder.Port = response["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response."); ;
-
-                        CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-                        await this.consoleSessionFactory.StartNew(
-                            uriBuilder.Uri,
-                            response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."),
-                            onSessionConnected: async consoleSession => await this.SubscribePlayerJoined(consoleSession, cancellationTokenSource.Token),
-                            handleEvents: (consoleSession, events) => events.ForEachAsync(async ev => await this.HandleEvent(consoleSession, ev)),
-                            onDisconnected: exception =>
-                            {
-                                this.logger.LogInformation(exception, "Disconnected from server {serverId}.", serverId);
-                                cancellationTokenSource.Cancel();
-                            },
-                            cancellationToken);
-
-                    }
-                    catch (Exception ex)
-                    {
-                        this.logger.LogError(ex, "Failed to get console access a server.");
-                    }
-                });
-        }
-    }
-
-    private async Task HandleEvent(ConsoleSession consoleSession, GameConsoleEvent ev)
-    {
-        try
-        {
-            if (ev.Result["eventType"]?.GetValue<string>() == "PlayerJoined")
             {
-                this.logger.LogInformation("EVENT: {playerJoinedEvent}", ev.Result.ToJsonString());
-            }
+                try
+                {
+                    if (!joinedServer["is_online"]?.GetValue<bool>() ?? false)
+                    {
+                        return;
+                    }
 
-            var playerId = ev.Result["data"]?["user"]?["id"]?.GetValue<long>() ?? throw new InvalidDataException("Failed to get user id from event.");
+                    var serverId = joinedServer["id"]?.GetValue<ulong>() ?? throw new Exception("Failed to get id from response.");
+                        
+                    var response = await this.webApiClient.RequestConsoleAccessAsync(serverId);
 
-            await Task.Delay(TimeSpan.FromSeconds(10));
-            var inventoryCommand = await consoleSession.RunCommand($"player inventory {playerId}", TimeSpan.FromSeconds(30));
+                    if (!response["allowed"]?.GetValue<bool>() ?? false)
+                    {
+                        throw new InvalidOperationException("Server is not online.");
+                    }
 
-            this.logger.LogInformation("Inventory Response: {inventoryResponse}", inventoryCommand.Result?.ToJsonString());
+                    UriBuilder uriBuilder = new UriBuilder();
 
-        }
-        catch (Exception ex)
-        {
-            this.logger.LogError(ex, "Failed to handle event.");
+                    uriBuilder.Scheme = "ws";
+                    uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");
+                    uriBuilder.Port = response["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response."); ;
+
+                    var consoleSession = await this.consoleSessionFactory.CreateAndConnectAsync(
+                        uriBuilder.Uri,
+                        response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."));
+
+                    await this.SubscribePlayerJoined(consoleSession);
+
+                    consoleSession.OnGameConsoleEvent += (s, e) => this.HandleEvent(consoleSession, e);
+                    consoleSession.OnWebsocketFaulted += (s, _) => this.logger.LogInformation("Disconnected from server {serverId}.", serverId);
+                }
+                catch (Exception ex)
+                {
+                    this.logger.LogError(ex, "Failed to get console access a server.");
+                }
+            });
         }
     }
 
-    private async Task SubscribePlayerJoined(ConsoleSession consoleSession, CancellationToken token)
+    private void HandleEvent(ConsoleSession consoleSession, GameConsoleEvent ev)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                if (ev.Result["eventType"]?.GetValue<string>() == "PlayerJoined")
+                {
+                    this.logger.LogInformation("EVENT: {playerJoinedEvent}", ev.Result.ToJsonString());
+                }
+
+                var playerId = ev.Result["data"]?["user"]?["id"]?.GetValue<long>() ?? throw new InvalidDataException("Failed to get user id from event.");
+
+                await Task.Delay(TimeSpan.FromSeconds(10));
+                var inventoryCommand = await consoleSession.RunCommand($"player inventory {playerId}", TimeSpan.FromSeconds(30));
+
+                this.logger.LogInformation("Inventory Response: {inventoryResponse}", inventoryCommand.Result?.ToJsonString());
+
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "Failed to handle event.");
+            }
+        });
+    }
+
+    private async Task SubscribePlayerJoined(ConsoleSession consoleSession)
     {
         try
         {
-            _ = await consoleSession.RunCommand("websocket subscribe PlayerJoined", TimeSpan.FromSeconds(30), token);
+            _ = await consoleSession.RunCommand("websocket subscribe PlayerJoined", TimeSpan.FromSeconds(30));
         }
         catch (Exception ex)
         {

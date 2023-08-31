@@ -7,35 +7,26 @@ using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
-namespace Townsharp.Infrastructure.Hosting;
+namespace Townsharp.Hosting;
 
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddTownsharp(this IServiceCollection services)
     {
         services.AddHttpClient();
-        services.AddSingleton<IBotTokenProvider>(
+        services.AddSingleton(
             services => new BotTokenProvider(
                    new BotCredential(
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
                    services.GetRequiredService<HttpClient>()));
 
-        var userCredential = new UserCredential(
-            Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",
-            Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH") ?? "");
-
-        if (userCredential.IsConfigured)
-        {
-            services.AddSingleton<IUserTokenProvider>(
+        services.AddSingleton(
             services => new UserTokenProvider(
-                userCredential,
-                services.GetRequiredService<HttpClient>()));
-        }
-        else
-        {
-            services.AddSingleton<IUserTokenProvider>(new DisabledUserTokenProvider());
-        }
+                   new UserCredential(
+                       Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME")!,
+                       Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH")!),
+                   services.GetRequiredService<HttpClient>()));
 
         services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();

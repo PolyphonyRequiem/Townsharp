@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Townsharp.Identity;
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 
 Console.WriteLine("Starting a SubscriptionClient test.");
