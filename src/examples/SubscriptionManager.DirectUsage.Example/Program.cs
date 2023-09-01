@@ -61,7 +61,7 @@ builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation()
             .AddOtlpExporter());
 
-builder.Services.AddTownsharp();
+builder.Services.AddTownsharpInfra();
 builder.Services.AddHostedService<SubscriptionManagerTest>();
 
 IHost host = builder.Build();

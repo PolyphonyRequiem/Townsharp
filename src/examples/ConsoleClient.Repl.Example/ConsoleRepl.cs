@@ -90,7 +90,7 @@ public class ConsoleRepl : IHostedService
             }
             catch (Exception ex)
             {
-                this.logger.LogError($"Something went wrong while trying to run the main console REPL.");
+                this.logger.LogError(ex, $"Something went wrong while trying to run the main console REPL.");
             }
         }        
     }

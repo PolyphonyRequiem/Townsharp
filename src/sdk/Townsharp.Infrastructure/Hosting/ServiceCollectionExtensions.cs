@@ -11,7 +11,7 @@ namespace Townsharp.Infrastructure.Hosting;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddTownsharp(this IServiceCollection services)
+    public static IServiceCollection AddTownsharpInfra(this IServiceCollection services)
     {
         services.AddHttpClient();
         services.AddSingleton<IBotTokenProvider>(

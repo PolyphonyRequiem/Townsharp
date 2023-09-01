@@ -61,7 +61,7 @@ builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation()
             .AddOtlpExporter());
 
-builder.Services.AddTownsharp();
+builder.Services.AddTownsharpInfra();
 builder.Services.AddHostedService<CaptureInventoryOnJoin>();
 
 IHost host = builder.Build();

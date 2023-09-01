@@ -1,6 +1,6 @@
 ﻿namespace Townsharp.Infrastructure.Identity;
 
-internal class DisabledUserTokenProvider : IUserTokenProvider
+public class DisabledUserTokenProvider : IUserTokenProvider
 {
     public bool IsEnabled => false;
 

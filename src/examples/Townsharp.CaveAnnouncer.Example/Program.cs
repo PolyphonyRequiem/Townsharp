@@ -11,12 +11,12 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-using Townsharp.Infrastructure.Hosting;
+using Townsharp.Hosting;
 
 string ServiceName = Assembly.GetExecutingAssembly().GetName().Name ?? "Unknown Assembly";
 ActivitySource ActivitySource = new ActivitySource(ServiceName);
 
-Console.WriteLine("Starting a SubscriptionManager test.");
+Console.WriteLine("Starting a CaveAnnouncer test.");
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 
@@ -52,12 +52,12 @@ builder.Services.AddOpenTelemetry()
         metricsProviderBuilder
             .ConfigureResource(resource => resource
                 .AddService(ServiceName))
-            .AddMeter(nameof(ConsoleRepl))
+            .AddMeter(nameof(CaveAnnouncerHostedService))
             .AddHttpClientInstrumentation()
             .AddOtlpExporter());
 
-builder.Services.AddTownsharpInfra();
-builder.Services.AddHostedService<ConsoleRepl>();
+builder.Services.AddTownsharp();
+builder.Services.AddHostedService<CaveAnnouncerHostedService>();
 
 IHost host = builder.Build();
 host.Run();

@@ -1,11 +1,16 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using MediatR;
 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Townsharp.Configuration;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
+using Townsharp.Internals;
 
 namespace Townsharp.Hosting;
 
@@ -13,26 +18,66 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddTownsharp(this IServiceCollection services)
     {
+        var internalProvider = BuildInternalServiceProvider();
+
+        Session sessionInstance = new Session(
+                internalProvider.GetRequiredService<IMediator>(),
+                new SessionConfiguration(),
+                internalProvider.GetRequiredService<GameServerManager>(),
+                internalProvider.GetRequiredService<ServerGroupManager>(),
+                internalProvider.GetRequiredService<GameServerConsoleManager>(),
+                internalProvider.GetRequiredService<ConsoleClientFactory>(),
+                internalProvider.GetRequiredService<ConsoleAccessProvider>(),
+                internalProvider.GetRequiredService<ILoggerFactory>());
+
+        services.AddSingleton(sessionInstance);
+
+        return services;
+    }
+
+    private static IServiceProvider BuildInternalServiceProvider()
+    {
+        IServiceCollection services = new ServiceCollection();
+
+        services.AddMediatR(config =>
+        {
+            config.RegisterServicesFromAssembly(typeof(ServiceCollectionExtensions).Assembly);
+        });
+
         services.AddHttpClient();
-        services.AddSingleton(
+        services.AddSingleton<IBotTokenProvider>(
             services => new BotTokenProvider(
                    new BotCredential(
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
                    services.GetRequiredService<HttpClient>()));
 
-        services.AddSingleton(
+        var userCredential = new UserCredential(
+            Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",
+            Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH") ?? "");
+
+        if (userCredential.IsConfigured)
+        {
+            services.AddSingleton<IUserTokenProvider>(
             services => new UserTokenProvider(
-                   new UserCredential(
-                       Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME")!,
-                       Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH")!),
-                   services.GetRequiredService<HttpClient>()));
+                userCredential,
+                services.GetRequiredService<HttpClient>()));
+        }
+        else
+        {
+            services.AddSingleton<IUserTokenProvider>(new DisabledUserTokenProvider());
+        }
 
         services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionManagerFactory>();
         services.AddSingleton<ConsoleClientFactory>();
+        services.AddSingleton<GameServerManager>();
+        services.AddSingleton<ServerGroupManager>();
+        services.AddSingleton<GameServerConsoleManager>();
+        services.AddSingleton<ConsoleAccessProvider>();
 
-        return services;
+        return services.BuildServiceProvider();
     }
+
 }

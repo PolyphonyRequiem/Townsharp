@@ -28,15 +28,15 @@ public class AsyncCache<T>
             return this.cachedValue;
         }
 
-        await semaphore.WaitAsync(cancellationToken);
+        await this.semaphore.WaitAsync(cancellationToken);
 
         try
         {
-            var state = await cacheTask;
+            var state = await this.cacheTask;
             if (DateTimeOffset.UtcNow + this.marginOfRefresh > this.expirationTime)
             {
                 this.cacheTask = fetchDataAsync(cancellationToken);
-                state = await cacheTask;
+                state = await this.cacheTask;
                 this.expirationTime = state.ExpirationTime;
                 this.cachedValue = state.Value;
             }
@@ -44,7 +44,7 @@ public class AsyncCache<T>
         }
         finally
         {
-            semaphore.Release();
+            this.semaphore.Release();
         }
     }
 }

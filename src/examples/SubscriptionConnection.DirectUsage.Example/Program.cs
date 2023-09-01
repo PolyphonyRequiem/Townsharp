@@ -12,7 +12,7 @@ Console.WriteLine("Starting a SubscriptionConnection test.");
 HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 
 builder.Services.AddHttpClient();
-builder.Services.AddTownsharp();
+builder.Services.AddTownsharpInfra();
 
 builder.Logging.AddConsole();
 //builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
