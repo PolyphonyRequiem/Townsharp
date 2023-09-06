@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-
 using Townsharp;
 
 namespace InventoryTrack.WebApi.Example;

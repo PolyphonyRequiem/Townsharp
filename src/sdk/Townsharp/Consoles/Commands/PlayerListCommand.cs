@@ -10,6 +10,6 @@ public class PlayerListCommand : ICommand<UserInfo[]>
     {
         var playerList = responseJson["data"]?["Result"]?.AsArray();
 
-        return playerList?.Select(p => new UserInfo(p["id"]?.GetValue<ulong>() ?? 0, p["username"]?.GetValue<string>()!)).ToArray() ?? new UserInfo[0];
+        return playerList?.Select(p => new UserInfo(p?["id"]?.GetValue<ulong>() ?? 0, p?["username"]?.GetValue<string>()!)).ToArray() ?? new UserInfo[0];
     }    
 }

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 
-namespace Townsharp.Consoles;
+namespace Townsharp.Consoles.Commands;
 
 public interface ICommand<TResult>
 {

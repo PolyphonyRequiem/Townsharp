@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 using MediatR;
 
-namespace Townsharp.Internals;
+namespace Townsharp.Internals.ServerGroups;
 
 internal class ServerGroupManager : IReadOnlyDictionary<ServerGroupId, ServerGroup>
 {

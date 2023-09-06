@@ -1,7 +1,6 @@
 ﻿using InventoryTrack.WebApi.Example;
 
 using MediatR;
-
 using Townsharp;
 
 internal class GetInventoryCommand : IRequest<IEnumerable<InventoryItem>>

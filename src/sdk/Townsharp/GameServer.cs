@@ -11,9 +11,9 @@ public class GameServer
         this.groupId = groupId;
     }
 
-    public GameServerId Id => this.id;
+    public GameServerId Id => id;
 
-    public ServerGroupId GroupId => this.groupId;
+    public ServerGroupId GroupId => groupId;
 }
 
 public readonly record struct GameServerId
@@ -26,12 +26,12 @@ public readonly record struct GameServerId
     }
 
     public static implicit operator ulong(GameServerId id) => id.value;
-    public static implicit operator long(GameServerId id) => (long) id.value;
+    public static implicit operator long(GameServerId id) => (long)id.value;
     public static implicit operator GameServerId(ulong value) => new GameServerId(value);
 
     public override string ToString()
     {
-        return this.value.ToString();
+        return value.ToString();
     }
 }
 

@@ -3,7 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 
 using MediatR;
 
-namespace Townsharp.Internals;
+using Townsharp.Internals.Notifications;
+
+namespace Townsharp.Internals.GameServers;
 
 internal class GameServerManager : IReadOnlyDictionary<GameServerId, GameServer>
 {
@@ -32,6 +34,12 @@ internal class GameServerManager : IReadOnlyDictionary<GameServerId, GameServer>
     public IEnumerator<KeyValuePair<GameServerId, GameServer>> GetEnumerator() => managedGameServers.GetEnumerator();
 
     public bool TryGetValue(GameServerId key, [MaybeNullWhen(false)] out GameServer value) => managedGameServers.TryGetValue(key, out value);
+
+    internal async Task ManageGameServerAsync(GameServerId serverId, ServerGroupId groupId)
+    {
+        this.managedGameServers.Add(serverId, new GameServer(serverId, groupId));
+        await mediator.Publish(new GameServerManagedNotification(serverId));
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => managedGameServers.GetEnumerator();
 }

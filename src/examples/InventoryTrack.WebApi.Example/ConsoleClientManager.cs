@@ -12,18 +12,18 @@ public class ConsoleClientManager
 {
     private readonly WebApiClient webApiClient;
     private readonly ConsoleClientFactory consoleClientFactory;
-    private readonly Task<SubscriptionManager> createSubscriptionManagerTask;
+    private readonly Task<SubscriptionMultiplexer> createSubscriptionManagerTask;
     private readonly ConcurrentDictionary<GameServerId, ManagedConsoleClient> managedConsoleClients = new ConcurrentDictionary<GameServerId, ManagedConsoleClient>();
     private readonly ConcurrentDictionary<ServerGroupId, bool> heartbeatSubscriptions = new ConcurrentDictionary<ServerGroupId, bool>();
 
-    private async Task<SubscriptionManager> GetSubscriptionManager()
+    private async Task<SubscriptionMultiplexer> GetSubscriptionManager()
     {
         return await this.createSubscriptionManagerTask;
     }
 
     public ConsoleClientManager(
         WebApiClient webApiClient, 
-        SubscriptionManagerFactory subscriptionManagerFactory, 
+        SubscriptionMultiplexerFactory subscriptionManagerFactory, 
         ConsoleClientFactory consoleClientFactory)
     {
         this.webApiClient = webApiClient;
@@ -31,7 +31,7 @@ public class ConsoleClientManager
         this.createSubscriptionManagerTask = InitSubscriptionManagerAsync(subscriptionManagerFactory);
     }
 
-    private async Task<SubscriptionManager> InitSubscriptionManagerAsync(SubscriptionManagerFactory subscriptionManagerFactory)
+    private async Task<SubscriptionMultiplexer> InitSubscriptionManagerAsync(SubscriptionMultiplexerFactory subscriptionManagerFactory)
     {
         var subscriptionManager = await subscriptionManagerFactory.CreateAsync();
 

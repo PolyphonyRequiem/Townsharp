@@ -72,17 +72,17 @@ internal class SubscriptionManagerTest : IHostedService
     public static Meter meter = new Meter(nameof(SubscriptionManagerTest));
 
     private readonly WebApiClient webApiClient;
-    private readonly SubscriptionManagerFactory subscriptionManagerFactory;
+    private readonly SubscriptionMultiplexerFactory subscriptionManagerFactory;
     private readonly ILogger<SubscriptionManagerTest> logger;
 
     private readonly Counter<long> eventCounter;
     private long totalCount;
 
-    private SubscriptionManager? subscriptionManager;
+    private SubscriptionMultiplexer? subscriptionManager;
 
     public SubscriptionManagerTest(
         WebApiClient webApiClient,
-        SubscriptionManagerFactory subscriptionManagerFactory,
+        SubscriptionMultiplexerFactory subscriptionManagerFactory,
         ILogger<SubscriptionManagerTest> logger)
     {
         this.webApiClient = webApiClient;

@@ -10,7 +10,9 @@ using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
-using Townsharp.Internals;
+using Townsharp.Internals.Consoles;
+using Townsharp.Internals.GameServers;
+using Townsharp.Internals.ServerGroups;
 
 namespace Townsharp.Hosting;
 
@@ -26,9 +28,7 @@ public static class ServiceCollectionExtensions
                 internalProvider.GetRequiredService<GameServerManager>(),
                 internalProvider.GetRequiredService<ServerGroupManager>(),
                 internalProvider.GetRequiredService<GameServerConsoleManager>(),
-                internalProvider.GetRequiredService<ConsoleClientFactory>(),
-                internalProvider.GetRequiredService<ConsoleAccessProvider>(),
-                internalProvider.GetRequiredService<ILoggerFactory>());
+                internalProvider.GetRequiredService<ILogger<Session>>());
 
         services.AddSingleton(sessionInstance);
 
@@ -70,7 +70,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<WebApiClient>();
         services.AddSingleton<SubscriptionClientFactory>();
-        services.AddSingleton<SubscriptionManagerFactory>();
+        services.AddSingleton<SubscriptionMultiplexerFactory>();
         services.AddSingleton<ConsoleClientFactory>();
         services.AddSingleton<GameServerManager>();
         services.AddSingleton<ServerGroupManager>();

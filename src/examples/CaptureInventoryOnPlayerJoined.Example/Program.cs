@@ -71,13 +71,13 @@ public class CaptureInventoryOnJoin : IHostedService
 {
     private readonly WebApiClient webApiClient;
     private readonly ConsoleClientFactory consoleClientFactory;
-    private readonly SubscriptionManagerFactory subscriptionManagerFactory;
+    private readonly SubscriptionMultiplexerFactory subscriptionManagerFactory;
     private readonly ILogger<CaptureInventoryOnJoin> logger;
 
     public CaptureInventoryOnJoin(
         WebApiClient webApiClient,
         ConsoleClientFactory consoleClientFactory,
-        SubscriptionManagerFactory subscriptionManagerFactory,
+        SubscriptionMultiplexerFactory subscriptionManagerFactory,
         ILogger<CaptureInventoryOnJoin> logger)
     {
         this.webApiClient = webApiClient;

@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Net.Mime;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -251,7 +252,9 @@ public class WebApiClient
     public async Task<JsonObject> RequestConsoleAccessAsync(ulong serverId)
     {
         var client = await GetClientAsync();
-        var response = await client.PostAsync($"api/servers/{serverId}/console", new StringContent("{\"should_launch\":true, \"ignore_offline\":true}"));
+        
+        client.DefaultRequestHeaders.Host = "webapi.townshiptale.com";
+        var response = await client.PostAsync($"api/servers/{serverId}/console", JsonContent.Create(new { should_launch=true, ignore_offline=true}));
         
         if (!response.IsSuccessStatusCode)
         {

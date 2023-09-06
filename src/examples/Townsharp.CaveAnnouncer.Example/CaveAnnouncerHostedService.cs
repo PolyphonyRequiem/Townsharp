@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 
 using Townsharp;
-using Townsharp.Consoles;
 using Townsharp.Consoles.Commands;
 
 internal class CaveAnnouncerHostedService : IHostedService
@@ -26,14 +25,34 @@ internal class CaveAnnouncerHostedService : IHostedService
 
     private async Task SessionTest()
     {
-        this.session.TEST_AddGameServerConsole(1685353492);
-        var server = this.session.Consoles[1685353492];
-        var commandResult = await server.RunConsoleCommandAsync(new PlayerListCommand());
-        this.logger.LogInformation(
-            string.Join(
-                Environment.NewLine,
-                commandResult.Value.Select(
-                    p => $"{p.Name} ({p.Id})")));
+        await this.session.initTask;
+        // we can likely defer init for managed servers to individual servers.
+        
+        foreach (var c in this.session.Consoles)
+        {
+            var id = c.Key;
+
+            try
+            {
+                var commandResult = await c.Value.RunConsoleCommandAsync(new PlayerListCommand());
+
+                if (commandResult.ConsoleNotAvailable)
+                {
+                    this.logger.LogWarning($"Attempted to send command to {id} but the console was not available.");
+                    continue;
+                }
+
+                var playerListString = string.Join(
+                        Environment.NewLine,
+                        commandResult.Value.Select(
+                            p => $"{p.Name} ({p.Id})"));
+                this.logger.LogInformation($"{id}:{Environment.NewLine}{playerListString}");
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogWarning($"Unable to get players for {id} - {ex.Message}");
+            }
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

@@ -10,7 +10,7 @@ public class ConsoleCommandResult<TResult>
     public TResult Value => 
         succeeded ?
             this.result ?? throw new InvalidOperationException("Result was not set.") :
-            throw new InvalidOperationException("Unable to get a result from a failed command.");
+            throw new InvalidOperationException($"Unable to get a result from a failed command. {this.errorMessage}");
 
     public string ErrorMessage =>
         succeeded ?

@@ -1,10 +1,10 @@
 ﻿using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
-
+using Townsharp.Consoles.Commands;
 using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.ServerConsole;
-using Townsharp.Internals;
+using Townsharp.Internals.Consoles;
 
 namespace Townsharp.Consoles;
 

@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Townsharp.Infrastructure\Townsharp.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Servers\" />
+  </ItemGroup>
+
 </Project>

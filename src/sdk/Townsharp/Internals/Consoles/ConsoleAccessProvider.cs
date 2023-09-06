@@ -2,7 +2,7 @@
 
 using Townsharp.Infrastructure.WebApi;
 
-namespace Townsharp.Internals;
+namespace Townsharp.Internals.Consoles;
 
 internal class ConsoleAccessProvider
 {
@@ -19,10 +19,10 @@ internal class ConsoleAccessProvider
     {
         try
         {
-            var response = await this.webApiClient.RequestConsoleAccessAsync(serverId);
+            var response = await webApiClient.RequestConsoleAccessAsync(serverId);
             if (!response["allowed"]?.GetValue<bool>() ?? false)
             {
-                this.logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
+                logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
                 return ConsoleAccess.None;
             }
 
@@ -33,7 +33,7 @@ internal class ConsoleAccessProvider
             string? hostAddress = response["connection"]?["address"]?.GetValue<string>();
             if (hostAddress == default)
             {
-                this.logger.LogTrace($"Failed to get connection.address from response. Access not currently available for {serverId}");
+                logger.LogTrace($"Failed to get connection.address from response. Access not currently available for {serverId}");
                 return ConsoleAccess.None;
             }
             uriBuilder.Host = hostAddress!;
@@ -41,16 +41,16 @@ internal class ConsoleAccessProvider
             int? post = response["connection"]?["websocket_port"]?.GetValue<int>();
             if (post == default)
             {
-                this.logger.LogTrace($"Failed to get connection.host from response. Access not currently available for {serverId}");
+                logger.LogTrace($"Failed to get connection.host from response. Access not currently available for {serverId}");
                 return ConsoleAccess.None;
             }
             uriBuilder.Port = post.GetValueOrDefault();
 
             return new ConsoleAccess(uriBuilder.Uri, response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."));
         }
-        catch (Exception ex) 
+        catch (Exception ex)
         {
-            this.logger.LogError(ex, $"An error occurred while attempting to get access for {serverId}");
+            logger.LogError(ex, $"An error occurred while attempting to get access for {serverId}");
             return ConsoleAccess.None;
         }
     }
