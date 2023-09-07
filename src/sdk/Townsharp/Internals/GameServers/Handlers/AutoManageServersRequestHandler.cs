@@ -23,7 +23,7 @@ internal class AutoManageServersRequestHandler : IRequestHandler<AutoManageServe
             ulong serverId = server["id"]?.GetValue<ulong>() ?? throw new InvalidOperationException("Unable to parse server id from joined servers response.");
             ulong groupId = server["group_id"]?.GetValue<ulong>() ?? throw new InvalidOperationException("Unable to parse group id from joined servers response.");
 
-            gameServerManager.ManageGameServerAsync(serverId, groupId);
+            await this.gameServerManager.ManageGameServerAsync(serverId, groupId);
         }
     }
 }

@@ -32,9 +32,26 @@ public class GameServerConsole
 
     private ConsoleState consoleState = ConsoleState.Disconnected;
 
+    internal void TryToConnect()
+    {
+        if (consoleState == ConsoleState.Connected)
+        {
+            logger.LogTrace($"Attempted to reconnect {nameof(GameServerConsole)} for server {id} while it was already connected.");
+        }
+        else if (consoleState == ConsoleState.Connecting)
+        {
+            logger.LogTrace($"Attempted to connect {nameof(GameServerConsole)} for server {id} while it was already connecting.");
+        }
+        else if (consoleState == ConsoleState.Disconnected)
+        {
+            consoleState = ConsoleState.Connecting;
+            consoleClientFactoryTask = TryGetConsoleClientAsync();
+        }
+    }
+
     public async Task<ConsoleCommandResult<TResult>> RunConsoleCommandAsync<TResult>(ICommand<TResult> command)
     {
-        return await this.TryWithConsole<ConsoleCommandResult<TResult>>(
+        return await this.TryWithConsole(
             clientAction: async (consoleClient) =>
             {
                 CommandResult commandResult = await consoleClient.RunCommand(command.BuildCommandString(), TimeSpan.FromSeconds(30));
@@ -51,23 +68,6 @@ public class GameServerConsole
                 return Task.FromResult(ConsoleCommandResult<TResult>.AsConsoleNotAvailable());
                 
             });
-    }
-
-    internal void TryToConnect()
-    {
-        if (consoleState == ConsoleState.Connected)
-        {
-            logger.LogTrace($"Attempted to reconnect {nameof(GameServerConsole)} for server {id} while it was already connected.");
-        }
-        else if (consoleState == ConsoleState.Connecting)
-        {
-            logger.LogTrace($"Attempted to connect {nameof(GameServerConsole)} for server {id} while it was already connecting.");
-        }
-        else if (consoleState == ConsoleState.Disconnected)
-        {
-            consoleState = ConsoleState.Connecting;
-            consoleClientFactoryTask = TryGetConsoleClientAsync();
-        }
     }
 
     private async Task<TResult> TryWithConsole<TResult>(Func<ConsoleClient, Task<TResult>> clientAction, Func<Task<TResult>> consoleNotAvailable)
@@ -131,7 +131,7 @@ public class GameServerConsole
 
     private async Task<ConsoleClient?> CreateConsoleClientAsync()
     {
-        var access = await consoleAccessProvider.GetConsoleAccess(id);
+        var access = await consoleAccessProvider.GetConsoleAccessAsync(id);
         if (access == ConsoleAccess.None)
         {
             return default;

@@ -4,5 +4,9 @@ public interface IBotTokenProvider
 {
     public ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default);
 
+    public ValueTask<ulong> GetBotUserIdAsync(CancellationToken cancellationToken = default);
+
+    public ValueTask<string> GetBotUserNameAsync(CancellationToken cancellationToken = default);
+
     public bool IsEnabled { get; }
 }

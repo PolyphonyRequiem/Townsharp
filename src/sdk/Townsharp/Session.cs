@@ -71,5 +71,6 @@ public class Session
 
     public IReadOnlyDictionary<ServerGroupId, ServerGroup> Groups => this.serverGroupManager;
 
+    // we shouldn't have this, go through Servers.
     public IReadOnlyDictionary<GameServerId, GameServerConsole> Consoles => this.gameServerConsoleManager;
 }
