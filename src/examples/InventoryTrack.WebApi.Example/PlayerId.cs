@@ -2,16 +2,16 @@
 
 public record struct PlayerId
 {
-    private readonly ulong value;
+    private readonly int value;
 
-    public PlayerId(ulong value)
+    public PlayerId(int value)
     {
         this.value = value;
     }
 
-    public static implicit operator ulong(PlayerId id) => id.value;
+    public static implicit operator int(PlayerId id) => id.value;
     public static implicit operator long(PlayerId id) => (long) id.value;
-    public static implicit operator PlayerId(ulong value) => new PlayerId(value);
+    public static implicit operator PlayerId(int value) => new PlayerId(value);
 
     public override string ToString()
     {

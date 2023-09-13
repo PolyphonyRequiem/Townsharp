@@ -3,7 +3,6 @@
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.Identity;
-using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 

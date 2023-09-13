@@ -2,7 +2,7 @@
 
 namespace Townsharp.Infrastructure.Subscriptions.Models;
 
-public record Message(long id, string @event, string key, string content, int responseCode)
+public record Message(int id, string @event, string key, string content, int responseCode)
 {
     public static Message None => NoEventMessage.Instance;
 }
@@ -20,10 +20,10 @@ file record NoEventMessage : Message
 public record SubscriptionEvent
 {
     public string EventId { get; init; }
-    public long KeyId { get; init; }
+    public int KeyId { get; init; }
     public JsonElement Content { get; init; }
 
-    private SubscriptionEvent(string eventId, long key, JsonElement content)
+    private SubscriptionEvent(string eventId, int key, JsonElement content)
     {
         this.EventId = eventId;
         this.KeyId = key;
@@ -32,6 +32,6 @@ public record SubscriptionEvent
 
     public static SubscriptionEvent Create(Message eventMessage)
     {
-        return new SubscriptionEvent(eventMessage.@event, long.Parse(eventMessage.key), JsonSerializer.Deserialize<JsonElement>(eventMessage.content));
+        return new SubscriptionEvent(eventMessage.@event, int.Parse(eventMessage.key), JsonSerializer.Deserialize<JsonElement>(eventMessage.content));
     }
 }

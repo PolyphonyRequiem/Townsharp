@@ -2,7 +2,7 @@
 
 public record RequestMessage
 {
-    public long id { get; init; }
+    public int id { get; init; }
 
     public string path { get; init; }
     
@@ -12,7 +12,7 @@ public record RequestMessage
     
     public object? content { get; init; }
 
-    private RequestMessage(long id, string path, string method, string token, object? content = default )        
+    private RequestMessage(int id, string path, string method, string token, object? content = default )        
     { 
         this.id = id;
         this.path = path;
@@ -21,25 +21,25 @@ public record RequestMessage
         this.content = content;
     }
 
-    public static RequestMessage CreateSubscriptionRequestMessage(long id, string token, string eventId, long eventKey)
+    public static RequestMessage CreateSubscriptionRequestMessage(int id, string token, string eventId, int eventKey)
         => new(id, $"subscription/{eventId}/{eventKey}", "POST", token);
 
-    public static RequestMessage CreateUnsubscriptionRequestMessage(long id, string token, string eventId, long eventKey)
+    public static RequestMessage CreateUnsubscriptionRequestMessage(int id, string token, string eventId, int eventKey)
         => new(id, $"subscription/{eventId}/{eventKey}", "DELETE", token);
 
-    public static RequestMessage CreateBatchSubscriptionRequestMessage(long id, string token, string eventId, long[] eventKeys)
+    public static RequestMessage CreateBatchSubscriptionRequestMessage(int id, string token, string eventId, int[] eventKeys)
         => new(id, $"subscription/batch", "POST", token, new BatchSubscriptionContentElement[] { new (eventId, eventKeys)}); // single element cuz of noted bugs
 
-    public static RequestMessage CreateGetMigrationTokenRequestMessage(long id, string token)
+    public static RequestMessage CreateGetMigrationTokenRequestMessage(int id, string token)
         => new(id, $"migrate", "GET", token);
 
-    public static RequestMessage CreateSendMigrationTokenRequestMessage(long id, string token, string migrationToken)
+    public static RequestMessage CreateSendMigrationTokenRequestMessage(int id, string token, string migrationToken)
         => new(id, $"migrate", "POST", token, new {token=migrationToken});
 }
 
 file record struct BatchSubscriptionContentElement(string @event, string[] keys)
 {
-    public BatchSubscriptionContentElement(string @event, long[] keys)
+    public BatchSubscriptionContentElement(string @event, int[] keys)
         : this(@event, keys.Select(k => k.ToString()).ToArray())
     {
 

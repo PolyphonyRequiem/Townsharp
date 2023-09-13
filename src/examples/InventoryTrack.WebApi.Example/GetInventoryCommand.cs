@@ -5,13 +5,13 @@ using Townsharp;
 
 internal class GetInventoryCommand : IRequest<IEnumerable<InventoryItem>>
 {
-    public GetInventoryCommand(GameServerId gameServerId, PlayerId playerId)
+    public GetInventoryCommand(ServerId serverId, PlayerId playerId)
     {
-        this.GameServerId = gameServerId;
+        this.ServerId = serverId;
         this.PlayerId = playerId;
     }
 
-    public GameServerId GameServerId { get; }
+    public ServerId ServerId { get; }
 
     public PlayerId PlayerId { get; }
 }

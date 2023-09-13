@@ -347,7 +347,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             return Task.CompletedTask;
         }
 
-        // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
+        // Note, we no inter have the notion of an error response etc.  We will need to handle the message ourselves.
         var response = this.SubscriptionClient.SubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
             .ContinueWith(task =>
             {
@@ -402,7 +402,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
             return Task.CompletedTask;
         }
 
-        // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
+        // Note, we no inter have the notion of an error response etc.  We will need to handle the message ourselves.
         var response = this.SubscriptionClient.UnsubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
             .ContinueWith(task =>
             {

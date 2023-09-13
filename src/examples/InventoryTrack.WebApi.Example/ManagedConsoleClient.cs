@@ -4,17 +4,17 @@ using Townsharp.Infrastructure.ServerConsole;
 
 public class ManagedConsoleClient
 {
-    private GameServerId serverId;
+    private ServerId serverId;
     private readonly ConsoleClientFactory consoleClientFactory;
-    private Func<GameServerId, Task<ServerAccess>> getServerAccess;
-    private Action<GameServerId> onConnected;
-    private Action<GameServerId> onDisconnected;
-    private Action<GameServerId, GameConsoleEvent> onGameConsoleEvent;
+    private Func<ServerId, Task<ServerAccess>> getServerAccess;
+    private Action<ServerId> onConnected;
+    private Action<ServerId> onDisconnected;
+    private Action<ServerId, GameConsoleEvent> onGameConsoleEvent;
 
     private bool connected = false;
     private bool connecting = false;
 
-    public ManagedConsoleClient(GameServerId serverId, ConsoleClientFactory consoleClientFactory, Func<GameServerId, Task<ServerAccess>> getServerAccess, Action<GameServerId> onConnected, Action<GameServerId> onDisconnected, Action<GameServerId, GameConsoleEvent> onGameConsoleEvent)
+    public ManagedConsoleClient(ServerId serverId, ConsoleClientFactory consoleClientFactory, Func<ServerId, Task<ServerAccess>> getServerAccess, Action<ServerId> onConnected, Action<ServerId> onDisconnected, Action<ServerId, GameConsoleEvent> onGameConsoleEvent)
     {
         this.serverId = serverId;
         this.consoleClientFactory = consoleClientFactory;

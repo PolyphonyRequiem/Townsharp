@@ -32,10 +32,10 @@ internal class InventoryTrackWorker : IHostedService
 
             await foreach (var server in this.webApiClient.GetJoinedServersAsync())
             {
-                ulong id = server["id"]?.GetValue<ulong>() ?? 0;
-                ulong groupId = server["group_id"]?.GetValue<ulong>() ?? 0;
+                int id = server["id"]?.GetValue<int>() ?? 0;
+                int groupId = server["group_id"]?.GetValue<int>() ?? 0;
                 this.logger.LogTrace($"Starting inventory tracking for server {id} in group {groupId}.");
-                pendingTasks.Add(this.StartServerManagement(new ServerGroupId(groupId), new GameServerId(id)));
+                pendingTasks.Add(this.StartServerManagement(new GroupId(groupId), new ServerId(id)));
             }
 
             await Task.WhenAll(pendingTasks);
@@ -44,9 +44,9 @@ internal class InventoryTrackWorker : IHostedService
         return Task.CompletedTask;
     }
 
-    private async Task StartServerManagement(ServerGroupId groupId, GameServerId gameServerId)
+    private async Task StartServerManagement(GroupId groupId, ServerId serverId)
     {
-        await this.consoleClientManager.ManageConsoleForServerAsync(groupId, gameServerId, OnConnected, OnDisconnected, OnGameConsoleEvent);
+        await this.consoleClientManager.ManageConsoleForServerAsync(groupId, serverId, OnConnected, OnDisconnected, OnGameConsoleEvent);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
@@ -54,22 +54,22 @@ internal class InventoryTrackWorker : IHostedService
         return Task.CompletedTask;
     }
 
-    private void OnConnected(GameServerId serverId)
+    private void OnConnected(ServerId serverId)
     {
         this.logger.LogTrace($"Server {serverId} connected.");
     }
 
-    private void OnDisconnected(GameServerId serverId)
+    private void OnDisconnected(ServerId serverId)
     {
         this.logger.LogTrace($"Server {serverId} disconnected.");
     }
 
-    private void OnGameConsoleEvent(GameServerId serverId, GameConsoleEvent gameConsoleEvent)
+    private void OnGameConsoleEvent(ServerId serverId, GameConsoleEvent gameConsoleEvent)
     {
         var eventType = gameConsoleEvent.Result["eventType"]?.GetValue<string>();
         if (eventType == "InventoryChanged")
         {
-            var userId = gameConsoleEvent.Result["data"]?["User"]?["id"]?.GetValue<ulong>() ?? throw new InvalidDataException("Failed to get user id from event.");
+            var userId = gameConsoleEvent.Result["data"]?["User"]?["id"]?.GetValue<int>() ?? throw new InvalidDataException("Failed to get user id from event.");
             var userName = gameConsoleEvent.Result["data"]?["User"]?["username"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get user name from event.");
             var item = gameConsoleEvent.Result["data"]?["ItemName"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get item name from event.");
             var quantity = gameConsoleEvent.Result["data"]?["Quantity"]?.GetValue<uint>() ?? throw new InvalidDataException("Failed to get quantity from event.");

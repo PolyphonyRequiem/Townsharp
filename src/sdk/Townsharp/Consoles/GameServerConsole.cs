@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Logging;
 using Townsharp.Consoles.Commands;
 using Townsharp.Infrastructure.GameConsole;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.ServerConsole;
 using Townsharp.Internals.Consoles;
 
@@ -10,7 +11,7 @@ namespace Townsharp.Consoles;
 
 public class GameServerConsole
 {
-    private readonly GameServerId id;
+    private readonly ServerId id;
     private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ConsoleAccessProvider consoleAccessProvider;
     private readonly ILogger<GameServerConsole> logger;
@@ -19,7 +20,7 @@ public class GameServerConsole
     private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
     internal GameServerConsole(
-        GameServerId id,
+        ServerId id,
         ConsoleClientFactory consoleClientFactory,
         ConsoleAccessProvider consoleAccessProvider,
         ILogger<GameServerConsole> logger)

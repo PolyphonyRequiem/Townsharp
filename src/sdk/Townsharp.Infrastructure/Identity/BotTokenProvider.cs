@@ -62,13 +62,13 @@ public class BotTokenProvider : IBotTokenProvider
         return this.tokenCache.GetAsync(cancellationToken);
     }
 
-    public async ValueTask<ulong> GetBotUserIdAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<int> GetBotUserIdAsync(CancellationToken cancellationToken = default)
     {
         var token = await this.GetTokenAsync(cancellationToken).ConfigureAwait(false);
         var claims = JwtDecoder.DecodeJwtClaims(token);
 
         string userIdString = claims["client_sub"]?.GetValue<string>() ?? throw new InvalidOperationException("Unable to find client_sub claim on JWT, so not bot user id could be determined.");
-        return UInt64.Parse(userIdString);
+        return int.Parse(userIdString);
     }
 
     public async ValueTask<string> GetBotUserNameAsync(CancellationToken cancellationToken = default)

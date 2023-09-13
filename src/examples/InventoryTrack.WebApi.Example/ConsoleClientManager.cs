@@ -8,13 +8,15 @@ using Townsharp.Infrastructure.ServerConsole;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
+namespace InventoryTrack.WebApi.Example;
+
 public class ConsoleClientManager
 {
     private readonly WebApiClient webApiClient;
     private readonly ConsoleClientFactory consoleClientFactory;
     private readonly Task<SubscriptionMultiplexer> createSubscriptionManagerTask;
-    private readonly ConcurrentDictionary<GameServerId, ManagedConsoleClient> managedConsoleClients = new ConcurrentDictionary<GameServerId, ManagedConsoleClient>();
-    private readonly ConcurrentDictionary<ServerGroupId, bool> heartbeatSubscriptions = new ConcurrentDictionary<ServerGroupId, bool>();
+    private readonly ConcurrentDictionary<ServerId, ManagedConsoleClient> managedConsoleClients = new ConcurrentDictionary<ServerId, ManagedConsoleClient>();
+    private readonly ConcurrentDictionary<GroupId, bool> heartbeatSubscriptions = new ConcurrentDictionary<GroupId, bool>();
 
     private async Task<SubscriptionMultiplexer> GetSubscriptionManager()
     {
@@ -40,7 +42,7 @@ public class ConsoleClientManager
             try
             {
                 var content = e.Content.Deserialize<JsonObject>()!;
-                ulong id = content["id"]?.GetValue<ulong>() ?? 0;
+                int id = content["id"]?.GetValue<int>() ?? 0;
 
                 bool isOnline = content["is_online"]?.GetValue<bool>() ?? false;
 
@@ -62,11 +64,11 @@ public class ConsoleClientManager
     }
 
     public async Task ManageConsoleForServerAsync(
-        ServerGroupId serverGroupId,
-        GameServerId serverId, 
-        Action<GameServerId> onConnected, 
-        Action<GameServerId> onDisconnected,
-        Action<GameServerId, GameConsoleEvent> onGameConsoleEvent)
+        GroupId GroupId,
+        ServerId serverId, 
+        Action<ServerId> onConnected, 
+        Action<ServerId> onDisconnected,
+        Action<ServerId, GameConsoleEvent> onGameConsoleEvent)
     {
         // make sure we have the subscription manager ready.
         var subscriptionManager = await this.GetSubscriptionManager();
@@ -76,14 +78,14 @@ public class ConsoleClientManager
             throw new InvalidOperationException($"Already managing a console session for server {serverId}");
         }
 
-        if (!this.heartbeatSubscriptions.ContainsKey(serverGroupId))
+        if (!this.heartbeatSubscriptions.ContainsKey(GroupId))
         {
             subscriptionManager.RegisterSubscriptions(new SubscriptionDefinition[]
             {
-                new SubscriptionDefinition("group-server-heartbeat", serverGroupId)
+                new SubscriptionDefinition("group-server-heartbeat", GroupId)
             });
 
-            this.heartbeatSubscriptions.TryAdd(serverGroupId, true);
+            this.heartbeatSubscriptions.TryAdd(GroupId, true);
         }
 
         var managedConsole = new ManagedConsoleClient(serverId, this.consoleClientFactory, GetServerAccess, onConnected, onDisconnected, onGameConsoleEvent);
@@ -98,7 +100,7 @@ public class ConsoleClientManager
         }
     }
 
-    public async Task<ServerAccess> GetServerAccess(GameServerId serverId)
+    public async Task<ServerAccess> GetServerAccess(ServerId serverId)
     {
         try
         {
@@ -108,7 +110,7 @@ public class ConsoleClientManager
                 return ServerAccess.None;
             }
 
-            UriBuilder uriBuilder = new UriBuilder();
+            UriBuilder uriBuilder = new();
 
             uriBuilder.Scheme = "ws";
             uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");

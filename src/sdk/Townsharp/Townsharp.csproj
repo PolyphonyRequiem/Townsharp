@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Townsharp.Common\Townsharp.Common.csproj" />
+    <ProjectReference Include="..\Townsharp.Core\Townsharp.Core.csproj" />
     <ProjectReference Include="..\Townsharp.Infrastructure\Townsharp.Infrastructure.csproj" />
   </ItemGroup>
 

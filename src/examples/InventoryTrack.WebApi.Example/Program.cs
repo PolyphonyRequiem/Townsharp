@@ -47,9 +47,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapGet("/server/{serverId}/user/{userMoniker}", async (ulong serverId, string userMoniker, IMediator mediator) =>
+app.MapGet("/server/{serverId}/user/{userMoniker}", async (int serverId, string userMoniker, IMediator mediator) =>
 {
-    var inventory = await mediator.Send(new GetInventoryCommand(serverId, ulong.Parse(userMoniker)));
+    var inventory = await mediator.Send(new GetInventoryCommand(serverId, int.Parse(userMoniker)));
     return Results.Ok(inventory);
 })
 .WithName("GetUserInServer")

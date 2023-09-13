@@ -104,7 +104,7 @@ public class CaptureInventoryOnJoin : IHostedService
                         return;
                     }
 
-                    var serverId = joinedServer["id"]?.GetValue<ulong>() ?? throw new Exception("Failed to get id from response.");
+                    var serverId = joinedServer["id"]?.GetValue<int>() ?? throw new Exception("Failed to get id from response.");
                         
                     var response = await this.webApiClient.RequestConsoleAccessAsync(serverId);
 
@@ -113,7 +113,7 @@ public class CaptureInventoryOnJoin : IHostedService
                         throw new InvalidOperationException("Server is not online.");
                     }
 
-                    UriBuilder uriBuilder = new UriBuilder();
+                    UriBuilder uriBuilder = new();
 
                     uriBuilder.Scheme = "ws";
                     uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");

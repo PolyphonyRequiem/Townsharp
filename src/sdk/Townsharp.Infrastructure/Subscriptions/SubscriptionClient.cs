@@ -25,7 +25,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
 
     // State
     private DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
-    private readonly ConcurrentDictionary<long, TaskCompletionSource<Message>> pendingRequests = new();
+    private readonly ConcurrentDictionary<int, TaskCompletionSource<Message>> pendingRequests = new();
     private readonly SemaphoreSlim sendSemaphore = new SemaphoreSlim(MAX_CONCURRENT_REQUESTS);
 
     // Buffers
@@ -261,21 +261,21 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
     ////////////////////
     /// Requests
     ////////////////////
-    public async Task<Response> SubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Response> SubscribeAsync(string eventId, int key, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
         return await this.SendRequestAsync(request, timeout, cancellationToken);
     }
 
-    public async Task<Response> UnsubscribeAsync(string eventId, long key, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Response> UnsubscribeAsync(string eventId, int key, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateUnsubscriptionRequestMessage(id,  await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
         return await this.SendRequestAsync(request, timeout, cancellationToken);
     }
 
-    public async Task<Response> BatchSubscribeAsync(string eventId, long[] keys, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public async Task<Response> BatchSubscribeAsync(string eventId, int[] keys, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         var id = this.messageIdFactory.GetNextId();
         RequestMessage request = RequestMessage.CreateBatchSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, keys);

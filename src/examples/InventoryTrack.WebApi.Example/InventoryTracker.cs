@@ -5,11 +5,11 @@ namespace InventoryTrack.WebApi.Example;
 
 public class InventoryTracker
 {
-    private readonly ConcurrentDictionary<GameServerId, ConcurrentDictionary<PlayerId, PlayerInventory>> playerInventories = new ConcurrentDictionary<GameServerId, ConcurrentDictionary<PlayerId, PlayerInventory>>();
+    private readonly ConcurrentDictionary<ServerId, ConcurrentDictionary<PlayerId, PlayerInventory>> playerInventories = new ConcurrentDictionary<ServerId, ConcurrentDictionary<PlayerId, PlayerInventory>>();
 
-    public ConcurrentDictionary<GameServerId, ConcurrentDictionary<PlayerId, PlayerInventory>> PlayerInventories => this.playerInventories;
+    public ConcurrentDictionary<ServerId, ConcurrentDictionary<PlayerId, PlayerInventory>> PlayerInventories => this.playerInventories;
 
-    public void TrackInventoryEvent(GameServerId serverId, PlayerId playerId, string userName, InventoryChangedEvent changeEvent)
+    public void TrackInventoryEvent(ServerId serverId, PlayerId playerId, string userName, InventoryChangedEvent changeEvent)
     {
         if (!this.PlayerInventories.ContainsKey(serverId))
         {

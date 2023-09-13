@@ -1,11 +1,11 @@
 ﻿namespace Townsharp.Infrastructure.Utilities;
 public class MessageIdFactory
 {
-    long messageId = 0;
+    int messageId = 0;
 
-    public long MessagesSent => messageId;
+    public int MessagesSent => messageId;
 
-    public long GetNextId()
+    public int GetNextId()
     {
         return Interlocked.Increment(ref messageId);
     }

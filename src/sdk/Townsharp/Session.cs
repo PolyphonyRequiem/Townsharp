@@ -3,11 +3,10 @@
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Configuration;
-using Townsharp.Consoles;
-using Townsharp.Internals.Consoles;
-using Townsharp.Internals.GameServers;
-using Townsharp.Internals.ServerGroups;
+using Townsharp.Internals.Groups;
+using Townsharp.Internals.Servers;
 using Townsharp.Internals.Sessions.Requests;
+using Townsharp.Servers;
 
 namespace Townsharp;
 
@@ -15,25 +14,23 @@ public class Session
 {
     private readonly IMediator mediator;
     private readonly SessionConfiguration sessionConfiguration;
-    private readonly GameServerManager gameServerManager;
-    private readonly ServerGroupManager serverGroupManager;
-    private readonly GameServerConsoleManager gameServerConsoleManager;
+    private readonly ServerManager serverManager;
+    private readonly GroupManager groupManager;
     private readonly ILogger<Session> logger;
     public readonly Task initTask;
 
     internal Session(
         IMediator sessionMediator,
         SessionConfiguration sessionConfiguration,
-        GameServerManager gameServerManager,
-        ServerGroupManager serverGroupManager,
-        GameServerConsoleManager gameServerConsoleManager,
+        ServerManager serverManager,
+        GroupManager groupManager,
         ILogger<Session> logger)
     {
         this.mediator = sessionMediator;
         this.sessionConfiguration = sessionConfiguration;
-        this.gameServerManager = gameServerManager;
-        this.serverGroupManager = serverGroupManager;
-        this.gameServerConsoleManager = gameServerConsoleManager;
+        this.serverManager = serverManager;
+        this.groupManager = groupManager;
+        this.serverManager = serverManager;
         this.logger = logger;
 
         this.initTask = this.InitializeAsync();
@@ -67,10 +64,7 @@ public class Session
         await this.mediator.Send(new AutoAcceptInvitationsRequest());
     }
 
-    public IReadOnlyDictionary<GameServerId, GameServer> Servers => this.gameServerManager;
+    public IReadOnlyDictionary<ServerId, Server> Servers => this.serverManager;
 
-    public IReadOnlyDictionary<ServerGroupId, ServerGroup> Groups => this.serverGroupManager;
-
-    // we shouldn't have this, go through Servers.
-    public IReadOnlyDictionary<GameServerId, GameServerConsole> Consoles => this.gameServerConsoleManager;
+    public IReadOnlyDictionary<GroupId, Group> Groups => this.groupManager;
 }

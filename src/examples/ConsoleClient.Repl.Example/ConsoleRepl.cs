@@ -37,7 +37,7 @@ public class ConsoleRepl : IHostedService
             string accessToken = "";
             try
             {
-                var response = await this.webApiClient.RequestConsoleAccessAsync(ulong.Parse(serverId!));
+                var response = await this.webApiClient.RequestConsoleAccessAsync(int.Parse(serverId!));
 
                 if (!response["allowed"]?.GetValue<bool>() ?? false)
                 {

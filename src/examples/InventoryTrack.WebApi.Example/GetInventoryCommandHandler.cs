@@ -13,16 +13,16 @@ public class GetInventoryCommandHandler : IRequestHandler<GetInventoryCommand, I
 
     Task<IEnumerable<InventoryItem>> IRequestHandler<GetInventoryCommand, IEnumerable<InventoryItem>>.Handle(GetInventoryCommand request, CancellationToken cancellationToken)
     {
-        if (!this.inventoryTracker.PlayerInventories.ContainsKey(request.GameServerId))
+        if (!this.inventoryTracker.PlayerInventories.ContainsKey(request.ServerId))
         {
             return Task.FromResult(Enumerable.Empty<InventoryItem>());
         }
 
-        if (!this.inventoryTracker.PlayerInventories[request.GameServerId].ContainsKey(request.PlayerId))
+        if (!this.inventoryTracker.PlayerInventories[request.ServerId].ContainsKey(request.PlayerId))
         {
             return Task.FromResult(Enumerable.Empty<InventoryItem>());
         }
 
-        return Task.FromResult(this.inventoryTracker.PlayerInventories[request.GameServerId][request.PlayerId].GetInventory());
+        return Task.FromResult(this.inventoryTracker.PlayerInventories[request.ServerId][request.PlayerId].GetInventory());
     }
 }
