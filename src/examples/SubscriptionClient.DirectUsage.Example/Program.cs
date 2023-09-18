@@ -51,7 +51,7 @@ async Task Subscribe(int groupId, CancellationToken cancellationToken)
         // setup our event handler.
         client.SubscriptionEventReceived += (sender, subscriptionEvent) =>
         {
-            Console.WriteLine($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+            Console.WriteLine($"Received Event - {subscriptionEvent.@event}/{subscriptionEvent.key} - {subscriptionEvent.content.GetRawText()}");
         };
 
         // They gave us a number, so let's try to subscribe to the heartbeat.

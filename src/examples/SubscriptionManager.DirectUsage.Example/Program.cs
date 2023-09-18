@@ -103,7 +103,7 @@ internal class SubscriptionManagerTest : IHostedService
                 logger.LogInformation($"Received {this.totalCount} events.");
             }
 
-            logger.LogTrace($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+            logger.LogInformation($"Received Event - {subscriptionEvent.@event}/{subscriptionEvent.key} - {subscriptionEvent.content.GetRawText()}");
         };
 
         var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);

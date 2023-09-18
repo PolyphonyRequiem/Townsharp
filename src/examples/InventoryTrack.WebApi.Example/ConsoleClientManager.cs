@@ -41,7 +41,7 @@ public class ConsoleClientManager
         {
             try
             {
-                var content = e.Content.Deserialize<JsonObject>()!;
+                var content = e.content.Deserialize<JsonObject>()!;
                 int id = content["id"]?.GetValue<int>() ?? 0;
 
                 bool isOnline = content["is_online"]?.GetValue<bool>() ?? false;

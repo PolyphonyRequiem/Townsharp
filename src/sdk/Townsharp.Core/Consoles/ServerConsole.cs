@@ -1,6 +1,6 @@
 ﻿namespace Townsharp.Consoles;
 
-internal class ServerConsole
+public class ServerConsole
 {
     private readonly ICommandExecutor commandExecutor;
 
@@ -46,13 +46,13 @@ internal class ServerConsole
     // Events for Events
     //public async Task SubscribeForEvent<TConsoleEvent>
 
-    internal void SetConnected()
+    public void SetConnected()
     {
         this.state = ServerConsoleState.Connected;
 
     }
 
-    internal void SetDisconnected()
+    public void SetDisconnected()
     {
         this.state = ServerConsoleState.Disconnected;
     }

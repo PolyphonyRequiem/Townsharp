@@ -58,7 +58,7 @@ public class ServerConsoleTests
         var command = ConsoleCommand.FromString(commandString);
 
         // Assert that our substitute executor was called with the command string.
-        await Assert.ThrowsAsync<AggregateException>(async () => await console.RunConsoleCommandAsync(command));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await console.RunConsoleCommandAsync(command));
     }
 }
 

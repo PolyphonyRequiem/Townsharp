@@ -49,7 +49,7 @@ internal class SubscriptionConnectionTest : IHostedService
 
         this.subscriptionConnection.OnSubscriptionEvent += (sender, subscriptionEvent) =>
         {
-            logger.LogInformation($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+            logger.LogInformation($"Received Event - {subscriptionEvent.@event}/{subscriptionEvent.key} - {subscriptionEvent.content.GetRawText()}");
         };
     }
     

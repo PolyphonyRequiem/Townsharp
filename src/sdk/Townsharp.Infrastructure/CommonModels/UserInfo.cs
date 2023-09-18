@@ -2,9 +2,9 @@
 
 public record UserInfo
 {
-    public int Id { get; set; } = -1;
+    public int id { get; set; } = -1;
 
-    public string Username { get; set; } = string.Empty;
+    public string username { get; set; } = string.Empty;
 
     public static readonly UserInfo None = new ();
 }
