@@ -1,6 +1,5 @@
 ﻿using MediatR;
 
-using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Internals.Sessions.Requests;
 
 namespace Townsharp.Internals.Subscriptions.Handlers;

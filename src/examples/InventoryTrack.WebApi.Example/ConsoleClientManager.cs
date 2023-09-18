@@ -2,11 +2,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-using Townsharp;
-using Townsharp.Infrastructure.GameConsole;
-using Townsharp.Infrastructure.ServerConsole;
+using Townsharp.Groups;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
+using Townsharp.Servers;
 
 namespace InventoryTrack.WebApi.Example;
 
@@ -68,7 +68,7 @@ public class ConsoleClientManager
         ServerId serverId, 
         Action<ServerId> onConnected, 
         Action<ServerId> onDisconnected,
-        Action<ServerId, GameConsoleEvent> onGameConsoleEvent)
+        Action<ServerId, ConsoleEvent> onGameConsoleEvent)
     {
         // make sure we have the subscription manager ready.
         var subscriptionManager = await this.GetSubscriptionManager();

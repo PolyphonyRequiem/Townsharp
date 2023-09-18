@@ -11,7 +11,7 @@ Console.WriteLine("Starting a SubscriptionClient test.");
 Console.WriteLine("Please enter a group id to subscribe to heartbeats on:");
 var groupIdString = Console.ReadLine();
 
-if (long.TryParse(groupIdString, out var groupId))
+if (int.TryParse(groupIdString, out int groupId))
 {
     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
     Task subscribeTask = Subscribe(groupId, cancellationTokenSource.Token);
@@ -36,7 +36,7 @@ else
     throw new Exception("Invalid group id, need a numeric value.");
 }
 
-async Task Subscribe(long groupId, CancellationToken cancellationToken)
+async Task Subscribe(int groupId, CancellationToken cancellationToken)
 {
     // We need to get a token for our bot to use.  We will use the BotTokenProvider to get one.
     var tokenProvider = new BotTokenProvider(

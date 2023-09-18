@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Configuration;
+using Townsharp.Groups;
 using Townsharp.Internals.Groups;
 using Townsharp.Internals.Servers;
 using Townsharp.Internals.Sessions.Requests;

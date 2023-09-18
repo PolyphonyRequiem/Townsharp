@@ -164,5 +164,21 @@ Responding to a player joining the server
 -------
 
 ```
- {"type":"Subscription","timeStamp":"2023-07-13T23:39:23.462604Z","eventType":"PlayerJoined","data":{"user":{"id":1741816681,"username":"jjamesdh2007"},"mode":"MetaQuest","position":[-645.957031,128.205,209.908966]}}
+{
+    "type": "Subscription",
+    "timeStamp": "2023-07-13T23:39:23.462604Z",
+    "eventType": "PlayerJoined",
+    "data": {
+        "user": {
+            "id": 1741816681,
+            "username": "jjamesdh2007"
+        },
+        "mode": "MetaQuest",
+        "position": [
+            -645.957031,
+            128.205,
+            209.908966
+        ]
+    }
+}
 ```

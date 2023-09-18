@@ -376,7 +376,7 @@ public class SubscriptionClient : IDisposable, IAsyncDisposable
             this.logger.LogTrace($"SEND: {messageJson}");
         }
 
-        byte[] messageBytes = Encoding.Default.GetBytes(messageJson);
+        byte[] messageBytes = Encoding.UTF8.GetBytes(messageJson);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(messageBytes.Length);
         try
         {

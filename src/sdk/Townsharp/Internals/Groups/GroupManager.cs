@@ -3,6 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 
 using MediatR;
 
+using Townsharp.Groups;
+
 namespace Townsharp.Internals.Groups;
 
 internal class GroupManager : IReadOnlyDictionary<GroupId, Group>

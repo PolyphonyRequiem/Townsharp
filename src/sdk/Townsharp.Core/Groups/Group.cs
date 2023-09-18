@@ -1,4 +1,4 @@
-﻿namespace Townsharp;
+﻿namespace Townsharp.Groups;
 
 public class Group
 {

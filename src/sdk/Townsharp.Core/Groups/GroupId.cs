@@ -1,4 +1,4 @@
-﻿namespace Townsharp;
+﻿namespace Townsharp.Groups;
 
 public readonly record struct GroupId
 {
@@ -15,6 +15,6 @@ public readonly record struct GroupId
 
     public override string ToString()
     {
-        return this.value.ToString();
+        return value.ToString();
     }
 }

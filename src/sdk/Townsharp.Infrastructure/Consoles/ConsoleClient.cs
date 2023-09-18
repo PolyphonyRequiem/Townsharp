@@ -49,7 +49,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
     private readonly MessageIdFactory messageIdFactory;
 
     // Events
-    public event EventHandler<GameConsoleEvent>? GameConsoleEventReceived;
+    public event EventHandler<ConsoleEvent>? GameConsoleEventReceived;
     public event EventHandler? Disconnected;
 
     // NOTE TO SELF 8/8/2023 - Okay, hear me out.  The functional design is actually pretty good in concept, INTERNALLY, but I think the external scenario needs a little thinking through.  
@@ -220,7 +220,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
 
                         if (this.IsEventMessage(messageJson))
                         {
-                            this.GameConsoleEventReceived?.Invoke(this, new GameConsoleEvent(messageJson));
+                            this.GameConsoleEventReceived?.Invoke(this, new ConsoleEvent(messageJson));
                         }
                     }
                 } while ((!result?.EndOfMessage ?? false) && !this.cancellationTokenSource.Token.IsCancellationRequested);
@@ -357,7 +357,7 @@ public class ConsoleClient : IDisposable, IAsyncDisposable
             this.logger.LogTrace($"SEND: {messageJson}");
         }
 
-        byte[] messageBytes = Encoding.Default.GetBytes(messageJson);
+        byte[] messageBytes = Encoding.UTF8.GetBytes(messageJson);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(messageBytes.Length);
         try
         {

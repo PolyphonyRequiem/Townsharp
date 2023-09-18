@@ -1,9 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.GameConsoles;
-using Townsharp.Infrastructure.ServerConsole;
-
-namespace Townsharp.Infrastructure.GameConsole;
+namespace Townsharp.Infrastructure.GameConsoles;
 
 public class ConsoleClientFactory
 {

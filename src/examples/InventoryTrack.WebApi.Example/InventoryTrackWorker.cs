@@ -1,8 +1,8 @@
 ﻿using InventoryTrack.WebApi.Example;
 
-using Townsharp;
-using Townsharp.Infrastructure.ServerConsole;
+using Townsharp.Groups;
 using Townsharp.Infrastructure.WebApi;
+using Townsharp.Servers;
 
 internal class InventoryTrackWorker : IHostedService
 {
@@ -64,31 +64,31 @@ internal class InventoryTrackWorker : IHostedService
         this.logger.LogTrace($"Server {serverId} disconnected.");
     }
 
-    private void OnGameConsoleEvent(ServerId serverId, GameConsoleEvent gameConsoleEvent)
+    private void OnGameConsoleEvent(ServerId serverId, Townsharp.Infrastructure.GameConsoles.ConsoleEvent gameConsoleEvent)
     {
-        var eventType = gameConsoleEvent.Result["eventType"]?.GetValue<string>();
-        if (eventType == "InventoryChanged")
-        {
-            var userId = gameConsoleEvent.Result["data"]?["User"]?["id"]?.GetValue<int>() ?? throw new InvalidDataException("Failed to get user id from event.");
-            var userName = gameConsoleEvent.Result["data"]?["User"]?["username"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get user name from event.");
-            var item = gameConsoleEvent.Result["data"]?["ItemName"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get item name from event.");
-            var quantity = gameConsoleEvent.Result["data"]?["Quantity"]?.GetValue<uint>() ?? throw new InvalidDataException("Failed to get quantity from event.");
-            var changeType = gameConsoleEvent.Result["data"]?["ChangeType"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get change type from event.");
-            var inventoryType = gameConsoleEvent.Result["data"]?["InventoryType"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get inventory type from event.");
+        //var eventType = gameConsoleEvent.Result["eventType"]?.GetValue<string>();
+        //if (eventType == "InventoryChanged")
+        //{
+        //    var userId = gameConsoleEvent.Result["data"]?["User"]?["id"]?.GetValue<int>() ?? throw new InvalidDataException("Failed to get user id from event.");
+        //    var userName = gameConsoleEvent.Result["data"]?["User"]?["username"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get user name from event.");
+        //    var item = gameConsoleEvent.Result["data"]?["ItemName"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get item name from event.");
+        //    var quantity = gameConsoleEvent.Result["data"]?["Quantity"]?.GetValue<uint>() ?? throw new InvalidDataException("Failed to get quantity from event.");
+        //    var changeType = gameConsoleEvent.Result["data"]?["ChangeType"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get change type from event.");
+        //    var inventoryType = gameConsoleEvent.Result["data"]?["InventoryType"]?.GetValue<string>() ?? throw new InvalidDataException("Failed to get inventory type from event.");
 
-            var logMessage = $"[Server {serverId.ToString()} | User {userId} ({userName})] - [{changeType}]: {quantity} {item} at {inventoryType}.";
-            logger.LogTrace(logMessage);
+        //    var logMessage = $"[Server {serverId.ToString()} | User {userId} ({userName})] - [{changeType}]: {quantity} {item} at {inventoryType}.";
+        //    logger.LogTrace(logMessage);
 
-            logger.LogTrace(gameConsoleEvent.ToString());
+        //    logger.LogTrace(gameConsoleEvent.ToString());
 
-            var playerId = new PlayerId(userId);
-            var changeEvent = InventoryChangedEvent.Create(changeType, inventoryType, item, quantity);
+        //    var playerId = new PlayerId(userId);
+        //    var changeEvent = InventoryChangedEvent.Create(changeType, inventoryType, item, quantity);
 
-            this.inventoryTracker.TrackInventoryEvent(serverId, playerId, userName, changeEvent);
-        }
-        else
-        {
-            logger.LogWarning(gameConsoleEvent.ToString());
-        }
+        //    this.inventoryTracker.TrackInventoryEvent(serverId, playerId, userName, changeEvent);
+        //}
+        //else
+        //{
+        //    logger.LogWarning(gameConsoleEvent.ToString());
+        //}
     }
 }

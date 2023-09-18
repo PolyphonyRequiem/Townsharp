@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.GameConsole;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;

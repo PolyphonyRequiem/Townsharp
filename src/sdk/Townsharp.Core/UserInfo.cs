@@ -14,4 +14,6 @@ public class UserInfo
     public UserId Id => this.id;
 
     public string Username => this.username;
+
+    public static readonly UserInfo None = new(UserId.None, string.Empty);
 }

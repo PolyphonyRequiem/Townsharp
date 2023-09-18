@@ -1,10 +1,7 @@
-﻿using System.Net.Http.Headers;
-
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.GameConsole;
-using Townsharp.Infrastructure.ServerConsole;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.WebApi;
 
 public class ConsoleRepl : IHostedService
@@ -69,7 +66,7 @@ public class ConsoleRepl : IHostedService
                 ConsoleClient consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(uriBuilder.Uri, accessToken);
                 Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
 
-                void handleGameConsoleEvent(object? sender, GameConsoleEvent e)
+                void handleGameConsoleEvent(object? sender, ConsoleEvent e)
                 {
                     this.logger.LogInformation(e.ToString());
                 }
@@ -109,7 +106,14 @@ public class ConsoleRepl : IHostedService
 
             var result = await consoleClient.RunCommand(command!, TimeSpan.FromSeconds(30), token);
 
-            Console.WriteLine(result.ToString());
+            if (result.IsCompleted)
+            {
+                Console.WriteLine(result.Result?.Root.ToJsonString(new System.Text.Json.JsonSerializerOptions {WriteIndented=true }) ?? "ERROR PARSING JSON");
+            }
+            else
+            {
+                Console.WriteLine(result.ToString());
+            }
         }
     }
 

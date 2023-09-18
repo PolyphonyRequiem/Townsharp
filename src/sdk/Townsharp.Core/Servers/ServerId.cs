@@ -1,4 +1,4 @@
-﻿namespace Townsharp;
+﻿namespace Townsharp.Servers;
 
 public readonly record struct ServerId
 {
@@ -14,6 +14,6 @@ public readonly record struct ServerId
 
     public override string ToString()
     {
-        return this.value.ToString();
+        return value.ToString();
     }
 }

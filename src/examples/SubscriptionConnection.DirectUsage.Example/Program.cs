@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Hosting;
-using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
@@ -60,10 +59,10 @@ internal class SubscriptionConnectionTest : IHostedService
         this.subscriptionConnection!.Subscribe(groupIds.Take(500).Select(id => new SubscriptionDefinition("group-server-heartbeat", id)).ToArray());
     }
 
-    private async Task<long[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
+    private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
     {
         return await webApiClient.GetJoinedGroupsAsync()
-            .Select(g => g!["group"]!["id"]!.GetValue<long>())
+            .Select(g => g!["group"]!["id"]!.GetValue<int>())
             .ToArrayAsync(cancellationToken);
     }
 

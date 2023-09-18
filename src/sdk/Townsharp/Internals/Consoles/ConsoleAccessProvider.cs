@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.WebApi;
+using Townsharp.Servers;
 
 namespace Townsharp.Internals.Consoles;
 

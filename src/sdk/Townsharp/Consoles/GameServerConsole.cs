@@ -1,11 +1,12 @@
 ﻿using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
+
 using Townsharp.Consoles.Commands;
-using Townsharp.Infrastructure.GameConsole;
 using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.ServerConsole;
 using Townsharp.Internals.Consoles;
+using Townsharp.Servers;
 
 namespace Townsharp.Consoles;
 
@@ -17,7 +18,7 @@ public class GameServerConsole
     private readonly ILogger<GameServerConsole> logger;
     private Task<ConsoleClient?> consoleClientFactoryTask = Task.FromResult<ConsoleClient?>(null);
 
-    private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim semaphore = new(1, 1);
 
     internal GameServerConsole(
         ServerId id,

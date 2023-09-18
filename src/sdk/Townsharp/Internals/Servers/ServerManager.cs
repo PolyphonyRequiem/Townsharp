@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 using MediatR;
 
-using Townsharp.Internals.Notifications;
+using Townsharp.Groups;
 using Townsharp.Servers;
 
 namespace Townsharp.Internals.Servers;

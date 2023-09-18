@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -12,9 +11,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-using Townsharp.Infrastructure.GameConsole;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Hosting;
-using Townsharp.Infrastructure.ServerConsole;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
@@ -136,7 +134,7 @@ public class CaptureInventoryOnJoin : IHostedService
         }
     }
 
-    private void HandleEvent(ConsoleClient consoleClient, GameConsoleEvent ev)
+    private void HandleEvent(ConsoleClient consoleClient, ConsoleEvent ev)
     {
         Task.Run(async () =>
         {

@@ -1,6 +1,5 @@
-﻿using Townsharp;
-using Townsharp.Infrastructure.GameConsole;
-using Townsharp.Infrastructure.ServerConsole;
+﻿using Townsharp.Infrastructure.GameConsoles;
+using Townsharp.Servers;
 
 public class ManagedConsoleClient
 {
@@ -9,12 +8,12 @@ public class ManagedConsoleClient
     private Func<ServerId, Task<ServerAccess>> getServerAccess;
     private Action<ServerId> onConnected;
     private Action<ServerId> onDisconnected;
-    private Action<ServerId, GameConsoleEvent> onGameConsoleEvent;
+    private Action<ServerId, Townsharp.Infrastructure.GameConsoles.ConsoleEvent> onGameConsoleEvent;
 
     private bool connected = false;
     private bool connecting = false;
 
-    public ManagedConsoleClient(ServerId serverId, ConsoleClientFactory consoleClientFactory, Func<ServerId, Task<ServerAccess>> getServerAccess, Action<ServerId> onConnected, Action<ServerId> onDisconnected, Action<ServerId, GameConsoleEvent> onGameConsoleEvent)
+    public ManagedConsoleClient(ServerId serverId, ConsoleClientFactory consoleClientFactory, Func<ServerId, Task<ServerAccess>> getServerAccess, Action<ServerId> onConnected, Action<ServerId> onDisconnected, Action<ServerId, Townsharp.Infrastructure.GameConsoles.ConsoleEvent> onGameConsoleEvent)
     {
         this.serverId = serverId;
         this.consoleClientFactory = consoleClientFactory;
@@ -66,7 +65,7 @@ public class ManagedConsoleClient
         });
     }
         
-    private async void HandleEvents(ConsoleClient session, IAsyncEnumerable<GameConsoleEvent> enumerable)
+    private async void HandleEvents(ConsoleClient session, IAsyncEnumerable<Townsharp.Infrastructure.GameConsoles.ConsoleEvent> enumerable)
     {
         await foreach (var gameConsoleEvent in enumerable)
         {

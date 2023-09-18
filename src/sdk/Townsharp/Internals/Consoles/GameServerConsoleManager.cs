@@ -6,7 +6,8 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Consoles;
-using Townsharp.Infrastructure.GameConsole;
+using Townsharp.Infrastructure.GameConsoles;
+using Townsharp.Servers;
 
 namespace Townsharp.Internals.Consoles;
 

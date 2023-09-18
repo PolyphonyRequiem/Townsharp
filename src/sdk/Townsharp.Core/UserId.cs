@@ -15,4 +15,6 @@ public readonly record struct UserId
     {
         return this.value.ToString();
     }
+
+    public static UserId None = new(-1);
 }

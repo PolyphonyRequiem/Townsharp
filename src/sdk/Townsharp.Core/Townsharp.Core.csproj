@@ -1,18 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <RootNamespace>Townsharp</RootNamespace>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Townsharp</RootNamespace>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Townsharp.Common\Townsharp.Common.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="Tests.Townsharp.Core" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="GameConsoles\" />
-  </ItemGroup>
+	<ItemGroup>
+	  <PackageReference Include="FluentResults" Version="3.15.2" />
+	</ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
-﻿using Townsharp;
+﻿using Townsharp.Servers;
 
-namespace Tests.Townsharp.Common.Ids;
+namespace Tests.Townsharp.Ids;
 
 public class ServerIdTests
 {

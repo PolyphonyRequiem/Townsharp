@@ -1,6 +1,6 @@
 ﻿using Townsharp;
 
-namespace Tests.Townsharp.Common.Ids;
+namespace Tests.Townsharp.Ids;
 public class UserIdTests
 {
     [Fact]

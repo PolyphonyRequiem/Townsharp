@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Subscriptions.Models;

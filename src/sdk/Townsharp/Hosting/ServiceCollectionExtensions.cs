@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Configuration;
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.GameConsole;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
     {
         var internalProvider = BuildInternalServiceProvider();
 
-        Session sessionInstance = new Session(
+        Session sessionInstance = new(
                 internalProvider.GetRequiredService<IMediator>(),
                 new SessionConfiguration(),
                 internalProvider.GetRequiredService<ServerManager>(),

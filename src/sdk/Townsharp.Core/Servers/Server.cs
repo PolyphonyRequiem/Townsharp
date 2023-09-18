@@ -1,4 +1,6 @@
-﻿namespace Townsharp.Servers;
+﻿using Townsharp.Groups;
+
+namespace Townsharp.Servers;
 
 /// <summary>
 /// 
@@ -22,7 +24,16 @@ public class Server
 {
     private readonly ServerId id;
     private readonly GroupId groupId;
-    private readonly ServerState lastKnownState = ServerState.Unknown;
+
+    private ServerState lastKnownState = ServerState.Unknown;
+
+    // These should be rich Player entities, soon perhaps.
+    private UserInfo[] currentPopulation = Array.Empty<UserInfo>();
+
+    public event EventHandler<PopulationChangedEvent>? PopulationChanged;
+    public event EventHandler<CommandExecutedEvent>? CommandExecuted;
+    public event EventHandler? ServerOnline;
+    public event EventHandler? ServerOffline;
 
     internal Server(
         ServerId id,
@@ -40,7 +51,51 @@ public class Server
 
     internal void UpdatePopulation(UserInfo[] newPopulation)
     {
-        throw new NotImplementedException();
+        var addedUsers = newPopulation.Except(currentPopulation).ToArray();
+        var removedUsers = currentPopulation.Except(newPopulation).ToArray();
+        this.currentPopulation = newPopulation;
+        if (addedUsers.Any() || removedUsers.Any())
+        {
+            this.OnPopulationChanged(new PopulationChangedEvent(addedUsers, removedUsers));
+        }
+    }
+
+    internal void SetOnline()
+    {
+        if (this.lastKnownState != ServerState.Online)
+        {
+            this.lastKnownState = ServerState.Online;
+            this.OnServerOnline();
+        }
+    }
+
+    internal void SetOffline()
+    {
+        if (this.lastKnownState != ServerState.Offline)
+        {
+            this.lastKnownState = ServerState.Offline;
+            this.OnServerOffline();
+        }
+    }
+
+    private void OnPopulationChanged(PopulationChangedEvent e)
+    {
+        this.PopulationChanged?.Invoke(this, e);
+    }
+
+    private void OnCommandExecuted(CommandExecutedEvent e)
+    {
+        this.CommandExecuted?.Invoke(this, e);
+    }
+
+    private void OnServerOnline()
+    {
+        this.ServerOnline?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnServerOffline()
+    {
+        this.ServerOffline?.Invoke(this, EventArgs.Empty);
     }
 }
 
@@ -98,3 +153,5 @@ public class Server
 //        this.CommandExecutedLogger.LogWarning($"Command {e.CommandString} was run by user {e.ExecutingUser.ToString()}");
 //    }
 //}
+
+
