@@ -47,7 +47,7 @@ public class ServerConsoleTests
     }
 
     [Fact]
-    public void ServerConsole_CannotExecuteUnlessConnected()
+    public async Task ServerConsole_CannotExecuteUnlessConnected()
     {
         var executor = Substitute.For<ICommandExecutor>();
         var console = new ServerConsole(executor);
@@ -58,7 +58,7 @@ public class ServerConsoleTests
         var command = ConsoleCommand.FromString(commandString);
 
         // Assert that our substitute executor was called with the command string.
-        Assert.Throws<AggregateException>(() => console.RunConsoleCommandAsync(command).Wait());
+        await Assert.ThrowsAsync<AggregateException>(async () => await console.RunConsoleCommandAsync(command));
     }
 }
 
