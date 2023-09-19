@@ -15,7 +15,7 @@ namespace Townsharp.Infrastructure.Subscriptions;
 /// Used to manage lifecycle of <see cref="SubscriptionClient"/> objects, including migrations and fault recovery.
 /// Tracks subscriptions it is responsible for, used in recovery.
 /// </remarks>
-public class SubscriptionConnection : IDisposable, IAsyncDisposable
+internal class SubscriptionConnection : IDisposable, IAsyncDisposable
 {
     // Constants
     private const uint MAX_SUBSCRIPTION_RETRIES = 5;
@@ -38,7 +38,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private bool Ready => !this.disposed && this.SubscriptionClient.Ready && !this.isMigrating && !this.isRecovering && this.isHandlingWork;
 
     // Disposables
-    private SubscriptionClient? subscriptionClient;
+    private SubscriptionMessageClient? subscriptionClient;
 
     // Background Tasks
     private Task? workerTask;
@@ -54,19 +54,19 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
     private readonly ILogger<SubscriptionConnection> logger;
 
     // Properties
-    protected SubscriptionClient SubscriptionClient { get => this.subscriptionClient ?? throw new InvalidOperationException("SubscriptionClient may not be accessed before CreateAsync is called."); set => this.subscriptionClient = value; }
+    internal SubscriptionMessageClient SubscriptionClient { get => this.subscriptionClient ?? throw new InvalidOperationException("SubscriptionClient may not be accessed before CreateAsync is called."); set => this.subscriptionClient = value; }
     
     public ConnectionId ConnectionId { get; }
 
     // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
+    public event EventHandler<SubscriptionEventMessage>? OnSubscriptionEvent;
 
-    private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
+    private void RaiseOnSubscriptionEvent(SubscriptionEventMessage subscriptionEvent)
     {
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    internal SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
         this.ConnectionId = connectionId;
         this.subscriptionClientFactory = subscriptionClientFactory;
@@ -74,7 +74,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         this.logger = loggerFactory.CreateLogger<SubscriptionConnection>();
     }
 
-    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    internal static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
         var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, loggerFactory);
         await connection.InitializeAsync();
@@ -89,23 +89,23 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         this.periodicMigrationTask = this.MigratePeriodically();
     }
 
-    private async Task<SubscriptionClient> CreateNewSubscriptionClientAsync()
+    private async Task<SubscriptionMessageClient> CreateNewSubscriptionClientAsync()
     {
         var subscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
-        subscriptionClient.SubscriptionEventReceived += this.HandleSubscriptionEvent;
+        subscriptionClient.EventReceived += this.HandleSubscriptionEvent;
         subscriptionClient.Disconnected += this.HandleOnWebsocketFaulted;
 
         return subscriptionClient;
     }
 
-    private async Task CleanupSubscriptionClientAsync(SubscriptionClient subscriptionClient)
+    private async Task CleanupSubscriptionClientAsync(SubscriptionMessageClient subscriptionClient)
     {
-        subscriptionClient.SubscriptionEventReceived -= this.HandleSubscriptionEvent;
+        subscriptionClient.EventReceived -= this.HandleSubscriptionEvent;
         subscriptionClient.Disconnected -= this.HandleOnWebsocketFaulted;
-        await subscriptionClient.DisposeAsync();
+        await subscriptionClient.DisconnectAsync();
     }
 
-    private void HandleSubscriptionEvent(object? sender, SubscriptionEvent e) => this.RaiseOnSubscriptionEvent(e);
+    private void HandleSubscriptionEvent(object? sender, SubscriptionEventMessage e) => this.RaiseOnSubscriptionEvent(e);
 
     private void HandleOnWebsocketFaulted(object? sender, EventArgs e) => this.InitiateRecovery();
 
@@ -143,11 +143,11 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
     private async Task<bool> TryMigrateAsync()
     {
-        SubscriptionClient oldClient = this.SubscriptionClient;
+        SubscriptionMessageClient oldClient = this.SubscriptionClient;
 
         // GET TOKEN
         this.logger.LogTrace("Getting Migration Token.");
-        Response getMigrationTokenResponse = await oldClient.GetMigrationTokenAsync(TimeSpan.FromSeconds(15));
+        var getMigrationTokenResponse = await oldClient.GetMigrationTokenAsync(TimeSpan.FromSeconds(15));
         if (!getMigrationTokenResponse.IsCompleted)
         {
             this.logger.LogError($"{this.ConnectionId} Failed to get migration token.");
@@ -164,7 +164,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
         // NEW CLIENT
         this.logger.LogTrace("Connecting new client.");
-        SubscriptionClient newClient = await this.CreateNewSubscriptionClientAsync();
+        SubscriptionMessageClient newClient = await this.CreateNewSubscriptionClientAsync();
 
         // SENT TOKEN
         this.logger.LogTrace("Sending Migration Token.");
@@ -348,7 +348,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         }
 
         // Note, we no inter have the notion of an error response etc.  We will need to handle the message ourselves.
-        var response = this.SubscriptionClient.SubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
+        var response = this.SubscriptionClient.SubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15))
             .ContinueWith(task =>
             {
                 // handle result.
@@ -403,7 +403,7 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
         }
 
         // Note, we no inter have the notion of an error response etc.  We will need to handle the message ourselves.
-        var response = this.SubscriptionClient.UnsubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
+        var response = this.SubscriptionClient.UnsubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15))
             .ContinueWith(task =>
             {
                 // handle result.
@@ -513,9 +513,9 @@ public class SubscriptionConnection : IDisposable, IAsyncDisposable
 
         if (this.subscriptionClient != null)
         {
-            this.subscriptionClient.SubscriptionEventReceived -= this.HandleSubscriptionEvent;
+            this.subscriptionClient.EventReceived -= this.HandleSubscriptionEvent;
             this.subscriptionClient.Disconnected -= this.HandleOnWebsocketFaulted;
-            await this.subscriptionClient.DisposeAsync();
+            await this.subscriptionClient.DisconnectAsync();
         }
     }
 }

@@ -4,40 +4,20 @@ using Townsharp.Infrastructure.CommonModels;
 
 namespace Townsharp.Infrastructure.Subscriptions.Models;
 
-public record Message(int id, string @event, string key, string content, int responseCode)
+public record SubscriptionMessage(int id, string @event)
 {
-    public static Message None => NoEventMessage.Instance;
+    public static SubscriptionMessage None = new(-1, string.Empty);
 }
 
-file record NoEventMessage : Message
+public record SubscriptionResponseMessage(int id, string content, int responseCode)
 {
-    public static NoEventMessage Instance = new();
-
-    private NoEventMessage() : base(0, string.Empty, string.Empty, string.Empty, 0)
-    {
-
-    }
+    public static SubscriptionResponseMessage None = new (-1, string.Empty, -1);
 }
 
-public record SubscriptionEvent
+
+public record SubscriptionEventMessage (string @event, string key, JsonElement content)
 {
-    public string @event { get; set; }
-
-    public string key { get; init; }
-
-    public JsonElement content { get; init; }
-
-    public SubscriptionEvent(string @event, string key, JsonElement content)
-    {
-        this.@event = @event;
-        this.key = key;
-        this.content = content;
-    }
-
-    public static SubscriptionEvent Create(Message eventMessage)
-    {
-        return new SubscriptionEvent(eventMessage.@event, eventMessage.key, JsonSerializer.Deserialize<JsonElement>(eventMessage.content));
-    }
+    public static SubscriptionEventMessage None = new(string.Empty, string.Empty, new JsonElement());
 }
 
 public record GroupServerHeartbeatContent(

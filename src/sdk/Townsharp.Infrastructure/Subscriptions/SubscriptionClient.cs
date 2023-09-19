@@ -1,487 +1,487 @@
-using System.Buffers;
-using System.Collections.Concurrent;
-using System.Net.WebSockets;
-using System.Text;
-using System.Text.Json;
+//using System.Buffers;
+//using System.Collections.Concurrent;
+//using System.Net.WebSockets;
+//using System.Text;
+//using System.Text.Json;
 
-using Microsoft.Extensions.Logging;
+//using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Identity;
-using Townsharp.Infrastructure.Subscriptions.Models;
-using Townsharp.Infrastructure.Utilities;
+//using Townsharp.Infrastructure.Identity;
+//using Townsharp.Infrastructure.Subscriptions.Models;
+//using Townsharp.Infrastructure.Utilities;
 
-namespace Townsharp.Infrastructure.Subscriptions;
+//namespace Townsharp.Infrastructure.Subscriptions;
 
-public class SubscriptionClient : IDisposable, IAsyncDisposable
-{
-    // Constants
-    public static int MAX_CONCURRENT_REQUESTS = 20;
-    private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
-    private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);
-    private static readonly TimeSpan IdleConnectionCheckPeriod = TimeSpan.FromMinutes(2);
+//public class SubscriptionClient : IDisposable, IAsyncDisposable
+//{
+//    // Constants
+//    public static int MAX_CONCURRENT_REQUESTS = 20;
+//    private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
+//    private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);
+//    private static readonly TimeSpan IdleConnectionCheckPeriod = TimeSpan.FromMinutes(2);
 
-    // Logging
-    private readonly ILogger<SubscriptionClient> logger;
+//    // Logging
+//    private readonly ILogger<SubscriptionClient> logger;
 
-    // State
-    private DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
-    private readonly ConcurrentDictionary<int, TaskCompletionSource<Message>> pendingRequests = new();
-    private readonly SemaphoreSlim sendSemaphore = new SemaphoreSlim(MAX_CONCURRENT_REQUESTS);
+//    // State
+//    private DateTimeOffset lastMessage = DateTimeOffset.UtcNow;
+//    private readonly ConcurrentDictionary<int, TaskCompletionSource<SubscriptionMessage>> pendingRequests = new();
+//    private readonly SemaphoreSlim sendSemaphore = new SemaphoreSlim(MAX_CONCURRENT_REQUESTS);
 
-    // Buffers
-    private readonly byte[] sendBuffer = new byte[1024 * 4];
-    private readonly byte[] receiveBuffer = new byte[1024 * 4];
+//    // Buffers
+//    private readonly byte[] sendBuffer = new byte[1024 * 4];
+//    private readonly byte[] receiveBuffer = new byte[1024 * 4];
 
-    // Lifecycle
-    private Task? receiverTask;
-    private Task? idleKeepaliveTask;
+//    // Lifecycle
+//    private Task? receiverTask;
+//    private Task? idleKeepaliveTask;
 
-    private bool connected = false;
-    private bool disposed = false;
+//    private bool connected = false;
+//    private bool disposed = false;
 
-    // Disposables
-    private readonly ClientWebSocket websocket;
-    private readonly CancellationTokenSource cancellationTokenSource;
-    private readonly IBotTokenProvider botTokenProvider;
+//    // Disposables
+//    private readonly ClientWebSocket websocket;
+//    private readonly CancellationTokenSource cancellationTokenSource;
+//    private readonly IBotTokenProvider botTokenProvider;
 
-    // Dependencies
-    private readonly MessageIdFactory messageIdFactory;
+//    // Dependencies
+//    private readonly MessageIdFactory messageIdFactory;
 
-    // Events
-    public event EventHandler<SubscriptionEvent>? SubscriptionEventReceived;
-    public event EventHandler? Disconnected;
+//    // Events
+//    public event EventHandler<SubscriptionEventMessage>? SubscriptionEventReceived;
+//    public event EventHandler? Disconnected;
 
-    protected SubscriptionClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
-    {
-        this.botTokenProvider = botTokenProvider;
-        this.messageIdFactory = new MessageIdFactory();
-        this.websocket = new ClientWebSocket();       
-        this.cancellationTokenSource = new CancellationTokenSource();
-        this.logger = logger;
-    }
+//    protected SubscriptionClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+//    {
+//        this.botTokenProvider = botTokenProvider;
+//        this.messageIdFactory = new MessageIdFactory();
+//        this.websocket = new ClientWebSocket();       
+//        this.cancellationTokenSource = new CancellationTokenSource();
+//        this.logger = logger;
+//    }
 
-    public static async Task<SubscriptionClient> CreateAndConnectAsync(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
-    {
-        SubscriptionClient client;
+//    public static async Task<SubscriptionClient> CreateAndConnectAsync(IBotTokenProvider botTokenProvider, ILogger<SubscriptionClient> logger)
+//    {
+//        SubscriptionClient client;
         
-        do
-        {
-            client = new SubscriptionClient(botTokenProvider, logger);
+//        do
+//        {
+//            client = new SubscriptionClient(botTokenProvider, logger);
 
-            try
-            {
-                await client.ConnectAsync();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(CreateAndConnectAsync)}.  {ex}");
-                await client.DisposeAsync();
-            }
-        }
-        while (!client.Ready);
+//            try
+//            {
+//                await client.ConnectAsync();
+//            }
+//            catch (Exception ex)
+//            {
+//                logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(CreateAndConnectAsync)}.  {ex}");
+//                await client.DisposeAsync();
+//            }
+//        }
+//        while (!client.Ready);
 
-        return client;
-    }
+//        return client;
+//    }
 
-    ////////////////////
-    // Lifecycle
-    ////////////////////
-    protected async Task ConnectAsync()
-    {
-        if (this.connected)
-        {
-            throw new InvalidOperationException("Client already connected.");
-        }
+//    ////////////////////
+//    // Lifecycle
+//    ////////////////////
+//    protected async Task ConnectAsync()
+//    {
+//        if (this.connected)
+//        {
+//            throw new InvalidOperationException("Client already connected.");
+//        }
 
-        this.websocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync()}");
-        await this.websocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
+//        this.websocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync()}");
+//        await this.websocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
 
-        if (this.websocket.State != WebSocketState.Open)
-        {
-            throw new InvalidOperationException($"Failed to connect to subscription endpoint. {this.websocket.CloseStatus ?? WebSocketCloseStatus.Empty} :: {this.websocket.CloseStatusDescription ?? string.Empty}.");
-        }
+//        if (this.websocket.State != WebSocketState.Open)
+//        {
+//            throw new InvalidOperationException($"Failed to connect to subscription endpoint. {this.websocket.CloseStatus ?? WebSocketCloseStatus.Empty} :: {this.websocket.CloseStatusDescription ?? string.Empty}.");
+//        }
 
-        this.connected = true;
-        this.receiverTask = this.ReceiveMessagesAsync();
-        this.idleKeepaliveTask = this.KeepAliveAsync();
+//        this.connected = true;
+//        this.receiverTask = this.ReceiveMessagesAsync();
+//        this.idleKeepaliveTask = this.KeepAliveAsync();
         
-    }
+//    }
 
-    private async Task DisconnectAsync()
-    {
-        try
-        {
-            if (this.websocket.State == WebSocketState.Open)
-            {
-                await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", this.cancellationTokenSource.Token);
-            }
-        }
-        catch (Exception ex)
-        {
-            this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(DisconnectAsync)}.  {ex}");
-        }
-        finally
-        {
-            if (this.connected == true)
-            {
-                this.Disconnected?.Invoke(this, EventArgs.Empty);
-            }
+//    private async Task DisconnectAsync()
+//    {
+//        try
+//        {
+//            if (this.websocket.State == WebSocketState.Open)
+//            {
+//                await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", this.cancellationTokenSource.Token);
+//            }
+//        }
+//        catch (Exception ex)
+//        {
+//            this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(DisconnectAsync)}.  {ex}");
+//        }
+//        finally
+//        {
+//            if (this.connected == true)
+//            {
+//                this.Disconnected?.Invoke(this, EventArgs.Empty);
+//            }
 
-            this.connected = false;
+//            this.connected = false;
 
-            if (!this.cancellationTokenSource.IsCancellationRequested)
-            {
-                this.cancellationTokenSource.Cancel();
-            }
-        }
-    }
+//            if (!this.cancellationTokenSource.IsCancellationRequested)
+//            {
+//                this.cancellationTokenSource.Cancel();
+//            }
+//        }
+//    }
 
-    ////////////////////
-    // Receiver
-    ////////////////////
-    private async Task ReceiveMessagesAsync()
-    {
-        while (this.Ready)
-        {
-            // Rent a buffer from the array pool
-            byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
-            using MemoryStream ms = new MemoryStream();
+//    ////////////////////
+//    // Receiver
+//    ////////////////////
+//    private async Task ReceiveMessagesAsync()
+//    {
+//        while (this.Ready)
+//        {
+//            // Rent a buffer from the array pool
+//            byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
+//            using MemoryStream ms = new MemoryStream();
 
-            try
-            {
-                WebSocketReceiveResult result;
-                using MemoryStream totalStream = new MemoryStream();
+//            try
+//            {
+//                WebSocketReceiveResult result;
+//                using MemoryStream totalStream = new MemoryStream();
 
-                do
-                {
-                    try
-                    {
-                        // Use the rented buffer for receiving data
-                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), this.cancellationTokenSource.Token);
+//                do
+//                {
+//                    try
+//                    {
+//                        // Use the rented buffer for receiving data
+//                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), this.cancellationTokenSource.Token);
 
-                        // Message received, reset the idle timer
-                        this.MarkLastMessageTime();
-                    }
-                    catch (WebSocketException ex)
-                    {
-                        // stop listening, we are done.
-                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
-                        await this.DisconnectAsync();
-                        break;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // stop listening, we are done.
-                        this.logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
-                        await this.DisconnectAsync();
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        // stop listening, we are done.
-                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
-                        await this.DisconnectAsync();
-                        break;
-                    }
+//                        // Message received, reset the idle timer
+//                        this.MarkLastMessageTime();
+//                    }
+//                    catch (WebSocketException ex)
+//                    {
+//                        // stop listening, we are done.
+//                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+//                        await this.DisconnectAsync();
+//                        break;
+//                    }
+//                    catch (OperationCanceledException)
+//                    {
+//                        // stop listening, we are done.
+//                        this.logger.LogWarning($"{nameof(SubscriptionClient)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
+//                        await this.DisconnectAsync();
+//                        break;
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        // stop listening, we are done.
+//                        this.logger.LogError($"{nameof(SubscriptionClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
+//                        await this.DisconnectAsync();
+//                        break;
+//                    }
 
                     
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        // stop listening, we are done.
-                        await this.DisconnectAsync();
-                        break;
-                    }
+//                    if (result.MessageType == WebSocketMessageType.Close)
+//                    {
+//                        // stop listening, we are done.
+//                        await this.DisconnectAsync();
+//                        break;
+//                    }
 
-                    totalStream.Write(rentedBuffer, 0, result.Count);
+//                    totalStream.Write(rentedBuffer, 0, result.Count);
 
-                    if (result.EndOfMessage)
-                    {
-                        string rawMessage = Encoding.UTF8.GetString(totalStream.ToArray());
-                        totalStream.SetLength(0);
+//                    if (result.EndOfMessage)
+//                    {
+//                        string rawMessage = Encoding.UTF8.GetString(totalStream.ToArray());
+//                        totalStream.SetLength(0);
 
-                        if (this.logger.IsEnabled(LogLevel.Trace))
-                        {
-                            this.logger.LogTrace($"RECV: {rawMessage}");
-                        }
+//                        if (this.logger.IsEnabled(LogLevel.Trace))
+//                        {
+//                            this.logger.LogTrace($"RECV: {rawMessage}");
+//                        }
 
-                        // We have the raw message!
-                        this.HandleRawMessage(rawMessage);
-                    }                   
-                } while (!result.EndOfMessage && !this.cancellationTokenSource.Token.IsCancellationRequested);
-            }
-            finally
-            {
-                // Return the buffer to the pool
-                ArrayPool<byte>.Shared.Return(rentedBuffer);
-            }
-        }
-    }
+//                        // We have the raw message!
+//                        this.HandleRawMessage(rawMessage);
+//                    }                   
+//                } while (!result.EndOfMessage && !this.cancellationTokenSource.Token.IsCancellationRequested);
+//            }
+//            finally
+//            {
+//                // Return the buffer to the pool
+//                ArrayPool<byte>.Shared.Return(rentedBuffer);
+//            }
+//        }
+//    }
 
-    private void HandleRawMessage(string rawMessage)
-    {
-        // Parse message to see what we have.
-        // If it's a Response message, we need to find the request and complete it.
-        // If it's an Event message, we need to raise an event.
+//    private void HandleRawMessage(string rawMessage)
+//    {
+//        // Parse message to see what we have.
+//        // If it's a Response message, we need to find the request and complete it.
+//        // If it's an Event message, we need to raise an event.
 
-        // These are more willing to map than I expected and may need a little more inspection at a json level before attempting to bind.
-        Message? eventMessage = JsonSerializer.Deserialize<Message>(rawMessage);
+//        // These are more willing to map than I expected and may need a little more inspection at a json level before attempting to bind.
+//        SubscriptionMessage? eventMessage = JsonSerializer.Deserialize<SubscriptionMessage>(rawMessage);
 
-        if (eventMessage == null || string.IsNullOrWhiteSpace(eventMessage.@event))
-        {
-            // might be an infrastructure issue.
-            InfrastructureError? infrastructureError = JsonSerializer.Deserialize<InfrastructureError>(rawMessage);
+//        if (eventMessage == null || string.IsNullOrWhiteSpace(eventMessage.@event))
+//        {
+//            // might be an infrastructure issue.
+//            InfrastructureError? infrastructureError = JsonSerializer.Deserialize<InfrastructureError>(rawMessage);
 
-            if (infrastructureError == null)
-            {
-                this.logger.LogError($"Unknown message format {rawMessage}");
-            }
-            else
-            {
-                this.logger.LogError($"Infrastructure Error: {infrastructureError}");
-            }
-        }
-        else
-        {
-            // If it's a response
-            if (eventMessage.@event.Equals("response", StringComparison.InvariantCultureIgnoreCase))
-            {               
-                // complete the request
-                if (this.pendingRequests.TryGetValue(eventMessage.id, out var tcs))
-                {
-                    tcs.SetResult(eventMessage);
-                }
-            }
-            else // If it's an event, we raise the event.
-            {
-                this.SubscriptionEventReceived?.Invoke(this, SubscriptionEvent.Create(eventMessage));               
-            }
-        }
-    }
+//            if (infrastructureError == null)
+//            {
+//                this.logger.LogError($"Unknown message format {rawMessage}");
+//            }
+//            else
+//            {
+//                this.logger.LogError($"Infrastructure Error: {infrastructureError}");
+//            }
+//        }
+//        else
+//        {
+//            // If it's a response
+//            if (eventMessage.@event.Equals("response", StringComparison.InvariantCultureIgnoreCase))
+//            {               
+//                // complete the request
+//                if (this.pendingRequests.TryGetValue(eventMessage.id, out var tcs))
+//                {
+//                    tcs.SetResult(eventMessage);
+//                }
+//            }
+//            else // If it's an event, we raise the event.
+//            {
+//                //this.SubscriptionEventReceived?.Invoke(this, SubscriptionEventMessage.Create(eventMessage));               
+//            }
+//        }
+//    }
 
-    ////////////////////
-    /// Requests
-    ////////////////////
-    public async Task<Response> SubscribeAsync(string eventId, int key, TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        var id = this.messageIdFactory.GetNextId();
-        RequestMessage request = RequestMessage.CreateSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
-        return await this.SendRequestAsync(request, timeout, cancellationToken);
-    }
+//    ////////////////////
+//    /// Requests
+//    ////////////////////
+//    public async Task<Response> SubscribeAsync(string eventId, int key, TimeSpan timeout, CancellationToken cancellationToken = default)
+//    {
+//        var id = this.messageIdFactory.GetNextId();
+//        RequestMessage request = RequestMessage.CreateSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
+//        return await this.SendRequestAsync(request, timeout, cancellationToken);
+//    }
 
-    public async Task<Response> UnsubscribeAsync(string eventId, int key, TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        var id = this.messageIdFactory.GetNextId();
-        RequestMessage request = RequestMessage.CreateUnsubscriptionRequestMessage(id,  await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
-        return await this.SendRequestAsync(request, timeout, cancellationToken);
-    }
+//    public async Task<Response> UnsubscribeAsync(string eventId, int key, TimeSpan timeout, CancellationToken cancellationToken = default)
+//    {
+//        var id = this.messageIdFactory.GetNextId();
+//        RequestMessage request = RequestMessage.CreateUnsubscriptionRequestMessage(id,  await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, key);
+//        return await this.SendRequestAsync(request, timeout, cancellationToken);
+//    }
 
-    public async Task<Response> BatchSubscribeAsync(string eventId, int[] keys, TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        var id = this.messageIdFactory.GetNextId();
-        RequestMessage request = RequestMessage.CreateBatchSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, keys);
-        return await this.SendRequestAsync(request, timeout, cancellationToken);
-    }
+//    public async Task<Response> BatchSubscribeAsync(string eventId, int[] keys, TimeSpan timeout, CancellationToken cancellationToken = default)
+//    {
+//        var id = this.messageIdFactory.GetNextId();
+//        RequestMessage request = RequestMessage.CreateBatchSubscriptionRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), eventId, keys);
+//        return await this.SendRequestAsync(request, timeout, cancellationToken);
+//    }
 
-    public async Task<Response> GetMigrationTokenAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        var id = this.messageIdFactory.GetNextId();
-        RequestMessage request = RequestMessage.CreateGetMigrationTokenRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken));
-        return await this.SendRequestAsync(request, timeout, cancellationToken);
-    }
+//    public async Task<Response> GetMigrationTokenAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+//    {
+//        var id = this.messageIdFactory.GetNextId();
+//        RequestMessage request = RequestMessage.CreateGetMigrationTokenRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken));
+//        return await this.SendRequestAsync(request, timeout, cancellationToken);
+//    }
 
-    public async Task<Response> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
-    {
-        var id = this.messageIdFactory.GetNextId();
-        RequestMessage request = RequestMessage.CreateSendMigrationTokenRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), migrationToken);
-        return await this.SendRequestAsync(request, timeout, cancellationToken);
-    }
+//    public async Task<Response> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
+//    {
+//        var id = this.messageIdFactory.GetNextId();
+//        RequestMessage request = RequestMessage.CreateSendMigrationTokenRequestMessage(id, await this.botTokenProvider.GetTokenAsync(cancellationToken), migrationToken);
+//        return await this.SendRequestAsync(request, timeout, cancellationToken);
+//    }
 
-    ////////////////////
-    // Sending
-    ////////////////////
-    private async Task<Response> SendRequestAsync(RequestMessage request, TimeSpan timeout, CancellationToken cancellationToken)
-    {
-        TaskCompletionSource<Message> tcs = new TaskCompletionSource<Message>();
-        await this.sendSemaphore.WaitAsync(cancellationToken);
+//    ////////////////////
+//    // Sending
+//    ////////////////////
+//    private async Task<Response> SendRequestAsync(RequestMessage request, TimeSpan timeout, CancellationToken cancellationToken)
+//    {
+//        TaskCompletionSource<SubscriptionMessage> tcs = new TaskCompletionSource<SubscriptionMessage>();
+//        await this.sendSemaphore.WaitAsync(cancellationToken);
 
-        string messageJson = JsonSerializer.Serialize(request);
+//        string messageJson = JsonSerializer.Serialize(request);
 
-        Task sendTask = this.SendRawStringAsync(messageJson, cancellationToken)
-             .ContinueWith(task =>
-             {
-                 this.sendSemaphore.Release();
-                 if (task.IsFaulted)
-                 {
-                     tcs.SetException(task.Exception!.InnerExceptions);
-                 }
-                 else if (task.IsCanceled)
-                 {
-                     tcs.SetCanceled();
-                 }
-             });
+//        Task sendTask = this.SendRawStringAsync(messageJson, cancellationToken)
+//             .ContinueWith(task =>
+//             {
+//                 this.sendSemaphore.Release();
+//                 if (task.IsFaulted)
+//                 {
+//                     tcs.SetException(task.Exception!.InnerExceptions);
+//                 }
+//                 else if (task.IsCanceled)
+//                 {
+//                     tcs.SetCanceled();
+//                 }
+//             });
 
-        if (!this.pendingRequests.TryAdd(request.id, tcs))
-        {
-            tcs.SetException(new InvalidOperationException("Failed to add request to pending requests"));
-        }
+//        if (!this.pendingRequests.TryAdd(request.id, tcs))
+//        {
+//            tcs.SetException(new InvalidOperationException("Failed to add request to pending requests"));
+//        }
 
-        var result = tcs.Task.WaitAsync(timeout)
-            .ContinueWith(task =>
-            {
-                if (task.IsFaulted)
-                {
-                    if (task.Exception?.InnerExceptions.Any(e => e is TimeoutException) ?? false)
-                    {
-                        return Response.Timeout();
-                    }
-                    else
-                    {
-                        return Response.Error(task.Exception?.ToString() ?? "Unknown Error Occurred.");
-                    }
-                }
-                else if (task.IsCanceled)
-                {
-                    return Response.Cancelled();
-                }
+//        var result = tcs.Task.WaitAsync(timeout)
+//            .ContinueWith(task =>
+//            {
+//                if (task.IsFaulted)
+//                {
+//                    if (task.Exception?.InnerExceptions.Any(e => e is TimeoutException) ?? false)
+//                    {
+//                        return Response.Timeout();
+//                    }
+//                    else
+//                    {
+//                        return Response.Error(task.Exception?.ToString() ?? "Unknown Error Occurred.");
+//                    }
+//                }
+//                else if (task.IsCanceled)
+//                {
+//                    return Response.Cancelled();
+//                }
 
-                return Response.Completed(task.Result);
-            });
+//                return Response.Completed(task.Result);
+//            });
 
-        try
-        {
-            await sendTask; // just to close the loop.
-            var response = await result.ConfigureAwait(false);
-            return response;
-        }
-        catch (Exception ex)
-        {
-            this.logger.LogError(ex, $"Failed to send request {request}");
-            throw;
-        }
-        finally
-        {
-            this.pendingRequests.TryRemove(request.id, out _);
-        }
-    }
+//        try
+//        {
+//            await sendTask; // just to close the loop.
+//            var response = await result.ConfigureAwait(false);
+//            return response;
+//        }
+//        catch (Exception ex)
+//        {
+//            this.logger.LogError(ex, $"Failed to send request {request}");
+//            throw;
+//        }
+//        finally
+//        {
+//            this.pendingRequests.TryRemove(request.id, out _);
+//        }
+//    }
 
-    private async Task SendRawStringAsync(string messageJson, CancellationToken cancellationToken)
-    {
-        if (!this.Ready)
-        {
-            throw new InvalidOperationException("The client is not ready.  Make sure it is connected and not disposed.");
-        }
+//    private async Task SendRawStringAsync(string messageJson, CancellationToken cancellationToken)
+//    {
+//        if (!this.Ready)
+//        {
+//            throw new InvalidOperationException("The client is not ready.  Make sure it is connected and not disposed.");
+//        }
 
-        if (this.logger.IsEnabled(LogLevel.Trace))
-        {
-            this.logger.LogTrace($"SEND: {messageJson}");
-        }
+//        if (this.logger.IsEnabled(LogLevel.Trace))
+//        {
+//            this.logger.LogTrace($"SEND: {messageJson}");
+//        }
 
-        byte[] messageBytes = Encoding.UTF8.GetBytes(messageJson);
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(messageBytes.Length);
-        try
-        {
-            Buffer.BlockCopy(messageBytes, 0, buffer, 0, messageBytes.Length);
-            var arraySegment = new ArraySegment<byte>(buffer, 0, messageBytes.Length);
+//        byte[] messageBytes = Encoding.UTF8.GetBytes(messageJson);
+//        byte[] buffer = ArrayPool<byte>.Shared.Rent(messageBytes.Length);
+//        try
+//        {
+//            Buffer.BlockCopy(messageBytes, 0, buffer, 0, messageBytes.Length);
+//            var arraySegment = new ArraySegment<byte>(buffer, 0, messageBytes.Length);
 
-            await this.websocket.SendAsync(arraySegment, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
-            this.MarkLastMessageTime();
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
+//            await this.websocket.SendAsync(arraySegment, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
+//            this.MarkLastMessageTime();
+//        }
+//        finally
+//        {
+//            ArrayPool<byte>.Shared.Return(buffer);
+//        }
+//    }
 
-    ////////////////////
-    // Idle ping timeout
-    ////////////////////
-    private async Task KeepAliveAsync()
-    {
-        while (this.Ready)
-        {
-            await Task.Delay(IdleConnectionCheckPeriod, this.cancellationTokenSource.Token).ContinueWith(async task =>
-            {
-                if (task.IsCanceled)
-                {
-                    return;
-                }
+//    ////////////////////
+//    // Idle ping timeout
+//    ////////////////////
+//    private async Task KeepAliveAsync()
+//    {
+//        while (this.Ready)
+//        {
+//            await Task.Delay(IdleConnectionCheckPeriod, this.cancellationTokenSource.Token).ContinueWith(async task =>
+//            {
+//                if (task.IsCanceled)
+//                {
+//                    return;
+//                }
 
-                this.logger.LogTrace("Checking for idle timeout");
+//                this.logger.LogTrace("Checking for idle timeout");
 
-                if (DateTimeOffset.UtcNow - this.lastMessage > IdleConnectionTimeout)
-                {
-                    // We haven't received a message in a while, we should ping.
-                    try
-                    {
-                        this.logger.LogTrace("Idle keepalive, pinging.");
-                        await this.SendRawStringAsync("ping", this.cancellationTokenSource.Token).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        this.logger.LogError($"Idle keepalive failed. {ex}");
-                    }
-                }
-            }).ConfigureAwait(false);
+//                if (DateTimeOffset.UtcNow - this.lastMessage > IdleConnectionTimeout)
+//                {
+//                    // We haven't received a message in a while, we should ping.
+//                    try
+//                    {
+//                        this.logger.LogTrace("Idle keepalive, pinging.");
+//                        await this.SendRawStringAsync("ping", this.cancellationTokenSource.Token).ConfigureAwait(false);
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        this.logger.LogError($"Idle keepalive failed. {ex}");
+//                    }
+//                }
+//            }).ConfigureAwait(false);
 
-        }
-    }
+//        }
+//    }
 
-    private void MarkLastMessageTime()
-    {
-        this.lastMessage = DateTimeOffset.UtcNow;
-    }
+//    private void MarkLastMessageTime()
+//    {
+//        this.lastMessage = DateTimeOffset.UtcNow;
+//    }
 
-    ////////////////////
-    // Readiness
-    ////////////////////
-    public bool Ready => 
-        this.connected && 
-        !this.cancellationTokenSource.IsCancellationRequested &&
-        !this.disposed &&
-        this.websocket?.State == WebSocketState.Open;
+//    ////////////////////
+//    // Readiness
+//    ////////////////////
+//    public bool Ready => 
+//        this.connected && 
+//        !this.cancellationTokenSource.IsCancellationRequested &&
+//        !this.disposed &&
+//        this.websocket?.State == WebSocketState.Open;
 
-    ////////////////////
-    // Disposal
-    ////////////////////
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!this.disposed)
-        {
-            if (disposing)
-            {
-                this.websocket.Dispose();
-                this.cancellationTokenSource.Dispose();
-            }
+//    ////////////////////
+//    // Disposal
+//    ////////////////////
+//    protected virtual void Dispose(bool disposing)
+//    {
+//        if (!this.disposed)
+//        {
+//            if (disposing)
+//            {
+//                this.websocket.Dispose();
+//                this.cancellationTokenSource.Dispose();
+//            }
 
-            this.disposed = true;
-        }
-    }
+//            this.disposed = true;
+//        }
+//    }
 
-    public void Dispose()
-    {
-        this.Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
+//    public void Dispose()
+//    {
+//        this.Dispose(disposing: true);
+//        GC.SuppressFinalize(this);
+//    }
 
-    public async ValueTask DisposeAsync()
-    {
-        await this.DisposeAsyncCore().ConfigureAwait(false);
-        this.Dispose(disposing: false);
-        GC.SuppressFinalize(this);
-    }
+//    public async ValueTask DisposeAsync()
+//    {
+//        await this.DisposeAsyncCore().ConfigureAwait(false);
+//        this.Dispose(disposing: false);
+//        GC.SuppressFinalize(this);
+//    }
 
-    protected virtual async ValueTask DisposeAsyncCore()
-    {
-        await this.DisconnectAsync().ConfigureAwait(false);
+//    protected virtual async ValueTask DisposeAsyncCore()
+//    {
+//        await this.DisconnectAsync().ConfigureAwait(false);
 
-        if (this.receiverTask != null)
-        {
-            await this.receiverTask.ConfigureAwait(false);
-        }
+//        if (this.receiverTask != null)
+//        {
+//            await this.receiverTask.ConfigureAwait(false);
+//        }
 
-        if (this.idleKeepaliveTask != null)
-        {
-            await this.idleKeepaliveTask.ConfigureAwait(false);
-        }
-    }
-}
+//        if (this.idleKeepaliveTask != null)
+//        {
+//            await this.idleKeepaliveTask.ConfigureAwait(false);
+//        }
+//    }
+//}

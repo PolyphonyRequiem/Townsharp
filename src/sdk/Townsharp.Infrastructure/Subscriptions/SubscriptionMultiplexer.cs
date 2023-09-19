@@ -12,14 +12,14 @@ public class SubscriptionMultiplexer
     private readonly int concurrentConnections;
 
     // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
+    public event EventHandler<SubscriptionEventMessage>? OnSubscriptionEvent;
     
-    private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
+    private void RaiseOnSubscriptionEvent(SubscriptionEventMessage subscriptionEvent)
     {
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
 
-    protected SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
+    internal SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
     {
         this.concurrentConnections = connections.Count;
         this.connections = connections;
@@ -32,7 +32,7 @@ public class SubscriptionMultiplexer
         }
     }
 
-    public static async Task<SubscriptionMultiplexer> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory, int concurrentConnections)
+    internal static async Task<SubscriptionMultiplexer> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory, int concurrentConnections)
     {
         // TODO: Switch to something that auto-scales if at all possible.
         // That means that upon a fault that might lead to recovery, we should defer to the manager to determine if we should recover.
