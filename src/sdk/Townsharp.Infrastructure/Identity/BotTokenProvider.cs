@@ -34,7 +34,6 @@ public class BotTokenProvider : IBotTokenProvider
 
         FormUrlEncodedContent content = new FormUrlEncodedContent(request);
 
-        // This is not (yet) fault tolerant, but it needs to be, so we could use Polly for this, but if we are going to keep the code free of dependencies, we need to write our own retry logic.
         this.tokenCache = new AsyncCache<string>(
             TimeSpan.FromMinutes(15),
             async (CancellationToken cancellationToken) =>

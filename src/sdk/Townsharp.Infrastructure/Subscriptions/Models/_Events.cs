@@ -4,21 +4,14 @@ using Townsharp.Infrastructure.CommonModels;
 
 namespace Townsharp.Infrastructure.Subscriptions.Models;
 
-public record SubscriptionMessage(int id, string @event)
+public enum SubscriptionEventType
 {
-    public static SubscriptionMessage None = new(-1, string.Empty);
+    GroupServerHeartbeat
 }
 
-public record SubscriptionResponseMessage(int id, string content, int responseCode)
-{
-    public static SubscriptionResponseMessage None = new (-1, string.Empty, -1);
-}
+public abstract record SubscriptionEvent (SubscriptionEventType SubscriptionEventType);
 
-
-public record SubscriptionEventMessage (string @event, string key, JsonElement content)
-{
-    public static SubscriptionEventMessage None = new(string.Empty, string.Empty, new JsonElement());
-}
+public record GroupServerHeartbeatEvent (GroupServerHeartbeatContent Content) : SubscriptionEvent(SubscriptionEventType.GroupServerHeartbeat);
 
 public record GroupServerHeartbeatContent(
     int id,

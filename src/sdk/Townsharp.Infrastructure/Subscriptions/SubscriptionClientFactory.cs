@@ -15,10 +15,8 @@ public class SubscriptionClientFactory
         this.loggerFactory = loggerFactory;
     }
 
-    internal async Task<SubscriptionMessageClient> CreateAndConnectAsync()
+    internal SubscriptionMessageClient CreateClient()
     {
-        var client = new SubscriptionMessageClient(this.botTokenProvider, loggerFactory.CreateLogger<SubscriptionMessageClient>());
-        await client.ConnectAsync();
-        return client;
+        return new SubscriptionMessageClient(this.botTokenProvider, loggerFactory.CreateLogger<SubscriptionMessageClient>());
     }
 }

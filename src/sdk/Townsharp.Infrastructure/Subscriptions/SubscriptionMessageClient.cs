@@ -1,4 +1,5 @@
 ﻿using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
@@ -16,15 +17,31 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
     private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
     private readonly IBotTokenProvider botTokenProvider;
 
-    // Events
-    public event EventHandler<SubscriptionEventMessage>? EventReceived;
-
     public SubscriptionMessageClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionMessageClient> logger) 
         : base(logger, MAX_CONCURRENT_REQUESTS)
     {
         this.botTokenProvider = botTokenProvider;
     }
 
+    public async IAsyncEnumerable<SubscriptionEvent> ReceiveSubscriptionEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        await foreach (var @event in base.ReceiveEventsAsync(cts.Token))
+        {
+            yield return @event.@event switch
+            {
+                "group_server_heartbeat" => JsonSerializer.Deserialize<GroupServerHeartbeatContent>(@event.content.GetRawText()) switch
+                {
+                    { } heartbeat => new GroupServerHeartbeatEvent(heartbeat),
+                    _ => throw new InvalidOperationException("Unable to deserialize group server heartbeat content")
+                },
+                _ => throw new NotImplementedException(),
+            };
+        }
+    }
+
+    // I don't love these return types.
     public async Task<Response<SubscriptionResponseMessage>> SubscribeAsync(string eventId, int key, TimeSpan timeout)
     {
         return await this.RequestAsync((id, token) => RequestMessage.CreateSubscriptionRequestMessage(id, token, eventId, key), timeout);
@@ -62,9 +79,33 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
         await clientWebSocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
     }
 
-    protected override bool IsError(string message) => true;
+    protected override ErrorInfo CheckForError(string message) => new ErrorInfo(ErrorType.FatalError, message);
 
-    protected override bool IsError(JsonDocument document) => document.RootElement.TryGetProperty("connectionId", out _);
+    protected override ErrorInfo CheckForError(JsonDocument document)
+    {
+        if (document.RootElement.TryGetProperty("connectionId", out _))
+        {
+            return new ErrorInfo(ErrorType.InfrastructureError, $"An infrastructure error has occurred. {document.RootElement.GetRawText()}");
+        }
+
+        return ErrorInfo.None;
+    }
+
+
+    protected override ErrorInfo CheckResponseForError(SubscriptionResponseMessage response)
+    {
+        if (response.responseCode <= 400 && response.responseCode > 0)
+        {
+            if (response.responseCode >= 400 && response.responseCode < 500)
+            {
+                return new ErrorInfo(ErrorType.UserError, $"Received {response.responseCode} response code for pending request {response.id} with key {response.key}. Content is '{response.content}'");
+            }
+            
+            return new ErrorInfo(ErrorType.ServiceError, $"Received {response.responseCode} response code for pending request {response.id} with key {response.key}. Content is '{response.content}'");
+        }
+
+        return ErrorInfo.None;
+    }
 
     protected override bool IsResponse(SubscriptionMessage message) => message.@event == "response";
 
@@ -109,6 +150,4 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
         return eventMessage;
     }
     protected override int GetResponseId(SubscriptionResponseMessage responseMessage) => responseMessage.id;
-
-    protected override void HandleEvent(SubscriptionEventMessage @event) => this.EventReceived?.Invoke(this, @event);
 }

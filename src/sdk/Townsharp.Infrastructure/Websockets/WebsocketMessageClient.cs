@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using Microsoft.Extensions.Logging;
@@ -23,8 +24,6 @@ internal abstract class WebsocketMessageClient
     private readonly byte[] receiveBuffer = new byte[1024 * 4];
 
     // Lifecycle
-    private Task? receiverTask;
-    private Task? idleKeepaliveTask;
     private WebsocketMessageClientState state;
 
     protected WebsocketMessageClientState State => this.state;
@@ -32,8 +31,10 @@ internal abstract class WebsocketMessageClient
     // Disposables
     private readonly ClientWebSocket websocket;
 
-    // Events
-    internal event EventHandler? Disconnected;
+    // Error
+    public bool ErrorOccurred { get; private set; } = false;
+
+    public string? ErrorMessage { get; private set; }
 
     protected WebsocketMessageClient(ILogger logger)
     {
@@ -42,32 +43,115 @@ internal abstract class WebsocketMessageClient
         this.logger = logger;
     }
 
-    public async Task ConnectAsync()
+    protected async IAsyncEnumerable<string> ListenForMessagesAsync([EnumeratorCancellation]CancellationToken cancellationToken)
     {
-        if (this.state != WebsocketMessageClientState.Created)
+        if (this.state != WebsocketMessageClientState.Connected)
         {
-            throw new InvalidOperationException("Cannot connect client unless it was just created.");
+            throw new InvalidOperationException("Cannot listen for messages unless the client is connected.");
         }
 
-        this.state = WebsocketMessageClientState.Connecting;
-        
-        await this.ConnectClientWebSocket(this.websocket);
-
-        if (this.websocket.State != WebSocketState.Open)
-        {
-            await this.DisconnectAsync();
-            this.state = WebsocketMessageClientState.Disposed;
-        }
-
-        this.state = WebsocketMessageClientState.Connected;
-
-        this.receiverTask = this.ReceiveMessagesAsync();
         //this.idleKeepaliveTask = this.KeepAliveAsync();
+
+        while (this.Ready)
+        {
+            // Rent a buffer from the array pool
+            byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
+            using MemoryStream ms = new MemoryStream();
+
+            try
+            {
+                WebSocketReceiveResult result;
+                using MemoryStream totalStream = new MemoryStream();
+
+                do
+                {
+                    try
+                    {
+                        // Use the rented buffer for receiving data
+                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), cancellationToken);
+
+                        // Message received, reset the idle timer
+                        // this.MarkLastMessageTime();
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            await this.DisconnectAsync();
+                            yield break;
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        await this.DisconnectAsync($"{nameof(WebsocketMessageClient)} operation has been cancelled in {nameof(ListenForMessagesAsync)}.");
+                        yield break;
+                    }
+                    catch (Exception ex)
+                    {
+                        await this.DisconnectAsync($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(ListenForMessagesAsync)}.  {ex}");
+                        yield break;
+                    }
+
+                    totalStream.Write(rentedBuffer, 0, result.Count);
+
+                    if (result.EndOfMessage)
+                    {
+                        string rawMessage = Encoding.UTF8.GetString(totalStream.ToArray());
+                        totalStream.SetLength(0);
+
+                        if (this.logger.IsEnabled(LogLevel.Trace))
+                        {
+                            this.logger.LogTrace($"RECV: {rawMessage}");
+                        }
+
+                        yield return rawMessage;
+                    }
+                } while (!result.EndOfMessage && this.state == WebsocketMessageClientState.Connected && !cancellationToken.IsCancellationRequested);
+            }
+            finally
+            {
+                // Return the buffer to the pool
+                ArrayPool<byte>.Shared.Return(rentedBuffer);
+            }
+        }
+
+        yield break;
+    }
+
+    private void SetError(string? errorMessage = default)
+    {
+        this.ErrorOccurred = true;
+        this.ErrorMessage = errorMessage;
+    }
+
+    public async Task<bool> ConnectAsync()
+    {
+        try
+        {
+            if (this.state != WebsocketMessageClientState.Created)
+            {
+                throw new InvalidOperationException("Cannot connect client unless it was just created.");
+            }
+
+            this.state = WebsocketMessageClientState.Connecting;
+
+            await this.ConnectClientWebSocket(this.websocket);
+
+            if (this.websocket.State != WebSocketState.Open)
+            {
+                await this.DisconnectAsync();
+                this.state = WebsocketMessageClientState.Disposed;
+                return false;
+            }
+
+            this.state = WebsocketMessageClientState.Connected;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            this.logger.LogError($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(ConnectAsync)}.  {ex}");
+            return false;
+        }       
     }
 
     protected abstract Task ConnectClientWebSocket(ClientWebSocket clientWebSocket);
-
-    protected abstract void HandleMessage(string message);
 
     protected async Task SendMessageAsync(string message)
     {
@@ -94,78 +178,6 @@ internal abstract class WebsocketMessageClient
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
-
-    private async Task ReceiveMessagesAsync()
-    {
-        while (this.Ready)
-        {
-            // Rent a buffer from the array pool
-            byte[] rentedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 4);
-            using MemoryStream ms = new MemoryStream();
-
-            try
-            {
-                WebSocketReceiveResult result;
-                using MemoryStream totalStream = new MemoryStream();
-
-                do
-                {
-                    try
-                    {
-                        // Use the rented buffer for receiving data
-                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), CancellationToken.None);
-
-                        // Message received, reset the idle timer
-                        this.MarkLastMessageTime();
-                    }
-                    catch (WebSocketException ex)
-                    {
-                        this.logger.LogError($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
-                        await this.DisconnectAsync();
-                        break;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        this.logger.LogWarning($"{nameof(WebsocketMessageClient)} operation has been cancelled in {nameof(ReceiveMessagesAsync)}.");
-                        await this.DisconnectAsync();
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        this.logger.LogError($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(ReceiveMessagesAsync)}.  {ex}");
-                        await this.DisconnectAsync();
-                        break;
-                    }
-
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await this.DisconnectAsync();
-                        break;
-                    }
-
-                    totalStream.Write(rentedBuffer, 0, result.Count);
-
-                    if (result.EndOfMessage)
-                    {
-                        string rawMessage = Encoding.UTF8.GetString(totalStream.ToArray());
-                        totalStream.SetLength(0);
-
-                        if (this.logger.IsEnabled(LogLevel.Trace))
-                        {
-                            this.logger.LogTrace($"RECV: {rawMessage}");
-                        }
-
-                        this.HandleMessage(rawMessage);
-                    }
-                } while (!result.EndOfMessage && this.state == WebsocketMessageClientState.Connected);
-            }
-            finally
-            {
-                // Return the buffer to the pool
-                ArrayPool<byte>.Shared.Return(rentedBuffer);
-            }
         }
     }
 
@@ -209,7 +221,7 @@ internal abstract class WebsocketMessageClient
         this.state == WebsocketMessageClientState.Connected &&
         this.websocket?.State == WebSocketState.Open;
 
-    public async Task DisconnectAsync()
+    private async Task DisconnectAsync(string? errorMessage = default)
     {
         try
         {
@@ -227,8 +239,8 @@ internal abstract class WebsocketMessageClient
 
             if (this.state == WebsocketMessageClientState.Connecting)
             {
+                this.SetError(errorMessage);
                 this.websocket.Dispose();
-                this.Disconnected?.Invoke(this, EventArgs.Empty);
                 this.state = WebsocketMessageClientState.Disposed;
             }
 
@@ -239,18 +251,7 @@ internal abstract class WebsocketMessageClient
                     await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", CancellationToken.None);
                 }
 
-                if (this.receiverTask != null)
-                {
-                    await this.receiverTask.ConfigureAwait(false);
-                }
-
-                if (this.idleKeepaliveTask != null)
-                {
-                    await this.idleKeepaliveTask.ConfigureAwait(false);
-                }
-
                 this.websocket.Dispose();
-                this.Disconnected?.Invoke(this, EventArgs.Empty);
                 this.state = WebsocketMessageClientState.Disposed;
             }
         }

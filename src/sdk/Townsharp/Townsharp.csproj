@@ -7,6 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Serializers\**" />
+    <Compile Remove="Servers\**" />
+    <EmbeddedResource Remove="Serializers\**" />
+    <EmbeddedResource Remove="Servers\**" />
+    <None Remove="Serializers\**" />
+    <None Remove="Servers\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MediatR" Version="12.1.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0-rc.1.23419.4" />
   </ItemGroup>
@@ -14,11 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Townsharp.Core\Townsharp.Core.csproj" />
     <ProjectReference Include="..\Townsharp.Infrastructure\Townsharp.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Serializers\" />
-    <Folder Include="Servers\" />
   </ItemGroup>
 
 </Project>
