@@ -38,6 +38,12 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
     {
         CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
+        // Mixing the concepts of events and messages here by deferring the call for receiveeventsasync to the calling class.
+        // Issuing requests such as migration will fail if we are not receiving events. 
+        // This could easily result in astonishing behavior.
+        // It probably makes sense to split these two concepts up and use channel or similar to communicate between the "on connected" message handler, and the event handler.
+        // Consider lifecycle implications of this.
+        // Most likely we should make event handling subordinate to the message handling.
         await foreach (var message in base.ListenForMessagesAsync(cts.Token))
         {
             ErrorInfo errorInfo = ErrorInfo.None;

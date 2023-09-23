@@ -20,25 +20,12 @@ namespace Townsharp.Infrastructure.Subscriptions;
 internal class SubscriptionConnection
 {
     // Constants
-    private const uint MAX_SUBSCRIPTION_RETRIES = 5;
+    //private const uint MAX_SUBSCRIPTION_RETRIES = 5;
     private const uint MAX_SUBSCRIPTIONS_AT_ONCE = 50;
 
     private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(105);
     // private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(2); // Testing only, James will hate you.
     private static TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
-
-    // State
-    private readonly ConcurrentDictionary<SubscriptionDefinition, uint> ownedSubscriptions = new ConcurrentDictionary<SubscriptionDefinition, uint>();
-    private readonly ConcurrentQueue<SubscriptionDefinition> pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
-    private readonly ConcurrentQueue<SubscriptionDefinition> pendingUnsubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
-
-    // Background Tasks
-    private Task? workerTask;
-    private Task? periodicMigrationTask;
-
-    // State Transition Tasks
-    private Task migratingTask = Task.CompletedTask;
-    private Task recoveryTask = Task.CompletedTask;
 
     // Dependencies
     private readonly SubscriptionClientFactory subscriptionClientFactory;
@@ -48,10 +35,11 @@ internal class SubscriptionConnection
     // Policies
     private static int[] RETRY_DELAYS_IN_SECONDS = new int[] { 0, 1, 5, 15, 30, 60};
     private readonly ResiliencePipeline<SubscriptionMessageClient> SubscriptionClientCreationRetryPolicy;
+    private readonly SubscriptionWorkTracker workTracker;
 
     public ConnectionId ConnectionId { get; init; }
 
-    private readonly SubscriptionConnectionStateMachine stateMachine;
+    private SubscriptionConnectionState connectionState;
 
     internal SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
@@ -59,43 +47,56 @@ internal class SubscriptionConnection
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.loggerFactory = loggerFactory;
         this.logger = loggerFactory.CreateLogger<SubscriptionConnection>();
-        this.stateMachine = new SubscriptionConnectionStateMachine();
+        this.connectionState = SubscriptionConnectionState.Created;
+        this.
 
         this.SubscriptionClientCreationRetryPolicy = new ResiliencePipelineBuilder<SubscriptionMessageClient>()
-        .AddRetry(new RetryStrategyOptions<SubscriptionMessageClient>
-        {
-            ShouldHandle = new PredicateBuilder<SubscriptionMessageClient>().Handle<Exception>(),
-            DelayGenerator = generatorArgs =>
+            .AddRetry(new RetryStrategyOptions<SubscriptionMessageClient>
             {
-                int delayInSeconds = generatorArgs.AttemptNumber < RETRY_DELAYS_IN_SECONDS.Length
-                    ? RETRY_DELAYS_IN_SECONDS[generatorArgs.AttemptNumber - 1]
-                    : RETRY_DELAYS_IN_SECONDS[^1];
-
-                if (generatorArgs.AttemptNumber != 1)
+                ShouldHandle = new PredicateBuilder<SubscriptionMessageClient>().Handle<Exception>(),
+                DelayGenerator = generatorArgs =>
                 {
-                    this.logger.LogWarning($"An error occurred in {nameof(SubscriptionConnection)} while attempting to create a {nameof(SubscriptionMessageClient)}.  Retrying in {delayInSeconds}s");
-                }
+                    int delayInSeconds = generatorArgs.AttemptNumber < RETRY_DELAYS_IN_SECONDS.Length
+                        ? RETRY_DELAYS_IN_SECONDS[generatorArgs.AttemptNumber - 1]
+                        : RETRY_DELAYS_IN_SECONDS[^1];
 
-                TimeSpan? delay = TimeSpan.FromSeconds(delayInSeconds);
+                    if (generatorArgs.AttemptNumber != 1)
+                    {
+                        this.logger.LogWarning($"An error occurred in {nameof(SubscriptionConnection)} while attempting to create a {nameof(SubscriptionMessageClient)}.  Retrying in {delayInSeconds}s");
+                    }
 
-                return ValueTask.FromResult(delay);
-            },
-            MaxRetryAttempts = int.MaxValue,
-            BackoffType = DelayBackoffType.Exponential
-        })
-        .Build();
+                    TimeSpan? delay = TimeSpan.FromSeconds(delayInSeconds);
+
+                    return ValueTask.FromResult(delay);
+                },
+                MaxRetryAttempts = int.MaxValue,
+                BackoffType = DelayBackoffType.Exponential
+            })
+            .Build();
     }
+
+    //create client
+    //        send token if present ?
+    //            close old client | initiate and wait for recovery-> throw recovered event.
+    //	      get events
+    //        send pending requests
+    //        ---
+    //        Time to Migrate | Cancel -> cleanup.
+    //        Get Token?
+    //        |   success -> set token for next iteration
+    //        |   fail -> cleanup old client
+    //loop  <-/
 
     internal async IAsyncEnumerable<SubscriptionEvent> ReceiveSubscriptionEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         SubscriptionMessageClient? currentClient;
-        SubscriptionMessageClient? migrationClient;
-
+        CancellationTokenSource currentClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         MigrationToken migrationToken = MigrationToken.None;
 
         do
         {
-            SubscriptionMessageClient? newClient = await this.CreateAndConnectNewClientAsync(cancellationToken);
+            CancellationTokenSource newClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            SubscriptionMessageClient? newClient = await this.CreateAndConnectNewClientAsync(newClientCancellationTokenSource.Token);
             
             if (newClient == null)
             {
@@ -106,13 +107,14 @@ internal class SubscriptionConnection
                 }
             }
 
-            if (this.stateMachine.State == SubscriptionConnectionState.Created)
+            if (this.connectionState == SubscriptionConnectionState.Created)
             {
-                this.stateMachine.TransitionTo(SubscriptionConnectionState.ConnectedReady);
+                this.connectionState = SubscriptionConnectionState.ConnectedReady;
                 currentClient = newClient;
+                currentClientCancellationTokenSource = newClientCancellationTokenSource;
             }
 
-            if (this.stateMachine.State == SubscriptionConnectionState.MigrationTokenAcquired)
+            if (this.connectionState == SubscriptionConnectionState.MigrationTokenAcquired)
             {
                 if (migrationToken == MigrationToken.None)
                 {
@@ -125,45 +127,52 @@ internal class SubscriptionConnection
                 if (!sendMigrationTokenResponse.IsCompleted)
                 {
                     this.logger.LogError($"{this.ConnectionId} Send migration token operation did not complete in time. Error provided is '{sendMigrationTokenResponse.ErrorMessage}'.  Transitioning to Faulted.");
-                    this.stateMachine.TransitionTo(SubscriptionConnectionState.Faulted);
+                    this.connectionState = SubscriptionConnectionState.Faulted;
+                    
+                    // clean up new client
+                    newClientCancellationTokenSource.Cancel();
+
+                    // clean up current client
+                    if (!currentClientCancellationTokenSource.IsCancellationRequested)
+                    {
+                        currentClientCancellationTokenSource.Cancel();
+                    }
+                    currentClient = null;
                     continue;
                 }
                 else
                 {
-                    this.stateMachine.TransitionTo(SubscriptionConnectionState.ConnectedReady);
+                    this.connectionState = SubscriptionConnectionState.ConnectedReady;
                     currentClient = newClient;
+                    currentClientCancellationTokenSource = newClientCancellationTokenSource;
                 }
             }
 
             migrationToken = MigrationToken.None; // We have attempted to consume it, so we should reset it.
 
-
-            if (this.stateMachine.State == SubscriptionConnectionState.Faulted)
+            if (this.connectionState == SubscriptionConnectionState.Faulted)
             {
                 // initiate recovery
+                this.workTracker.ResetDispositionsForRecovery();
+                continue;
             }
 
             // The lifetime of newClient should be ended by this comment, so I probably need to refactor a bit.
 
-            if (this.stateMachine.State == SubscriptionConnectionState.ConnectedReady)
+            // Okay, if we faulted, we are now clear to recover
+            // Let's handle work, and emit events.
+
+            // should only be connected ready, otherwise something went weird.
+            if (this.connectionState == SubscriptionConnectionState.ConnectedReady)
             {
                 currentClient = newClient;
                 // we are ready to receive events and handle work!
 
+                 
             }
 
 
-            //create client
-            //        send token if present ?
-            //            close old client | initiate and wait for recovery-> throw recovered event.
-            //	      get events
-            //        send pending requests
-            //        ---
-            //        Time to Migrate | Cancel -> cleanup.
-            //        Get Token?
-            //        |   success -> set token for next iteration
-            //        |   fail -> cleanup old client
-            //loop  <-/
+           
 
             // do we have a migration token already?  
             // if so, let's try to migrate.
@@ -624,4 +633,12 @@ internal class SubscriptionConnection
     //        await this.subscriptionClient.DisconnectAsync();
     //    }
     //}
+}
+
+internal enum SubscriptionConnectionState
+{
+    Created,
+    MigrationTokenAcquired,
+    Faulted,
+    ConnectedReady
 }

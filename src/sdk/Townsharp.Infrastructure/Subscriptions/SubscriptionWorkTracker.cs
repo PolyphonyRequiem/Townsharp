@@ -141,6 +141,31 @@ public class SubscriptionWorkTracker
         }        
     }
 
+    public void ResetDispositionsForRecovery()
+    {
+        // We likely don't need to worry -as- about concurrency here as nothing should be processing work while we are in a recovery state.
+        // We should reconcile all intents and dispositions.
+        List<SubscriptionDefinition> unsubscriptionIntentsToRemove = new();
+
+        foreach (var intent in this.trackedSubscriptions)
+        {
+            if (intent.Value == SubscriptionIntent.Subscribed)
+            {
+                this.subscriptionDispositions[intent.Key] = SubscriptionDisposition.New;
+            }
+            else // Unsubcribed
+            {
+                unsubscriptionIntentsToRemove.Add(intent.Key);
+                this.subscriptionDispositions.TryRemove(intent.Key, out _);
+            }
+        }
+
+        foreach (var intentToRemove in unsubscriptionIntentsToRemove)
+        {
+            this.trackedSubscriptions.TryRemove(intentToRemove, out _);
+        }
+    }
+
     private void ReconcileTrackedSubscriptions(SubscriptionDefinition[] subscriptionDefinitions, SubscriptionIntent intent)
     {
         foreach (var subscriptionDefinition in subscriptionDefinitions)
