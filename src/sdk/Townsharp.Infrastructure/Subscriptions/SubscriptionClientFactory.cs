@@ -1,6 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Runtime.CompilerServices;
+using System.Threading.Channels;
+
+using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Identity;
+using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
@@ -15,8 +19,8 @@ public class SubscriptionClientFactory
         this.loggerFactory = loggerFactory;
     }
 
-    internal SubscriptionMessageClient CreateClient()
+    internal SubscriptionMessageClient CreateClient(ChannelWriter<SubscriptionEvent> channelWriter)
     {
-        return new SubscriptionMessageClient(this.botTokenProvider, loggerFactory.CreateLogger<SubscriptionMessageClient>());
+        return new SubscriptionMessageClient(this.botTokenProvider, channelWriter, loggerFactory.CreateLogger<SubscriptionMessageClient>());
     }
 }

@@ -103,12 +103,18 @@ internal class SubscriptionManagerTest : IHostedService
                 logger.LogInformation($"Received {this.totalCount} events.");
             }
 
-            logger.LogInformation($"Received Event - {subscriptionEvent.@event}/{subscriptionEvent.key} - {subscriptionEvent.content.GetRawText()}");
+            logger.LogInformation($"Received Event - {subscriptionEvent}");
         };
 
         var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
 
-        var subscriptions = new[] { "group-server-heartbeat", "group-server-status", "group-update", "group-member-update" }
+        var subscriptions = new[] 
+        { 
+            "group-server-heartbeat",
+            //"group-server-status",
+            //"group-update",
+            //"group-member-update" 
+        }
             .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
             .ToArray();
 

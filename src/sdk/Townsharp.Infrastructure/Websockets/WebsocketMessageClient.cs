@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
@@ -23,11 +23,21 @@ internal abstract class WebsocketMessageClient
     private readonly byte[] sendBuffer = new byte[1024 * 4];
     private readonly byte[] receiveBuffer = new byte[1024 * 4];
 
+    private Channel<string> messageChannel = Channel.CreateUnbounded<string>(
+        new UnboundedChannelOptions
+        {
+            AllowSynchronousContinuations = true,
+            SingleReader = true,
+            SingleWriter = true
+        });
+
     // Lifecycle
     private WebsocketMessageClientState state;
+    private CancellationTokenSource? cancellationTokenSource;
+    private Task messageHandlerTask = Task.CompletedTask;
 
-    protected WebsocketMessageClientState State => this.state;
-    
+    public WebsocketMessageClientState State => this.state;
+
     // Disposables
     private readonly ClientWebSocket websocket;
 
@@ -43,11 +53,16 @@ internal abstract class WebsocketMessageClient
         this.logger = logger;
     }
 
-    protected async IAsyncEnumerable<string> ListenForMessagesAsync([EnumeratorCancellation]CancellationToken cancellationToken)
+    protected IAsyncEnumerable<string> ReceiveMessagesAsync(CancellationToken cancellationToken)
+    {
+        return this.messageChannel.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    private async Task HandleMessagesAsync(CancellationToken cancellationToken)
     {
         if (this.state != WebsocketMessageClientState.Connected)
         {
-            throw new InvalidOperationException("Cannot listen for messages unless the client is connected.");
+            throw new InvalidOperationException("Cannot handle messages unless the client is connected.");
         }
 
         //this.idleKeepaliveTask = this.KeepAliveAsync();
@@ -74,19 +89,19 @@ internal abstract class WebsocketMessageClient
                         // this.MarkLastMessageTime();
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            await this.DisconnectAsync();
-                            yield break;
+                            await this.AbortAsync();
+                            break;
                         }
                     }
                     catch (OperationCanceledException)
                     {
-                        await this.DisconnectAsync($"{nameof(WebsocketMessageClient)} operation has been cancelled in {nameof(ListenForMessagesAsync)}.");
-                        yield break;
+                        await this.AbortAsync($"{nameof(WebsocketMessageClient)} operation has been cancelled in {nameof(HandleMessagesAsync)}.");
+                        break;
                     }
                     catch (Exception ex)
                     {
-                        await this.DisconnectAsync($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(ListenForMessagesAsync)}.  {ex}");
-                        yield break;
+                        await this.AbortAsync($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(HandleMessagesAsync)}.  {ex}");
+                        break;
                     }
 
                     totalStream.Write(rentedBuffer, 0, result.Count);
@@ -101,7 +116,7 @@ internal abstract class WebsocketMessageClient
                             this.logger.LogTrace($"RECV: {rawMessage}");
                         }
 
-                        yield return rawMessage;
+                        await this.messageChannel.Writer.WriteAsync(rawMessage, cancellationToken);
                     }
                 } while (!result.EndOfMessage && this.state == WebsocketMessageClientState.Connected && !cancellationToken.IsCancellationRequested);
             }
@@ -111,8 +126,6 @@ internal abstract class WebsocketMessageClient
                 ArrayPool<byte>.Shared.Return(rentedBuffer);
             }
         }
-
-        yield break;
     }
 
     private void SetError(string? errorMessage = default)
@@ -121,7 +134,8 @@ internal abstract class WebsocketMessageClient
         this.ErrorMessage = errorMessage;
     }
 
-    public async Task<bool> ConnectAsync()
+    // might be able to merge with Receive Messages, and get rid of the bool here.
+    public async Task<bool> ConnectAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -130,30 +144,38 @@ internal abstract class WebsocketMessageClient
                 throw new InvalidOperationException("Cannot connect client unless it was just created.");
             }
 
+            this.cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
             this.state = WebsocketMessageClientState.Connecting;
 
-            await this.ConnectClientWebSocket(this.websocket);
+            await this.ConfigureClientWebsocket(this.websocket);
 
             if (this.websocket.State != WebSocketState.Open)
             {
-                await this.DisconnectAsync();
+                await this.AbortAsync();
                 this.state = WebsocketMessageClientState.Disposed;
                 return false;
             }
 
             this.state = WebsocketMessageClientState.Connected;
+            this.messageHandlerTask = this.HandleMessagesAsync(cancellationToken);
+            this.OnConnected();
             return true;
         }
         catch (Exception ex)
         {
             this.logger.LogError($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(ConnectAsync)}.  {ex}");
             return false;
-        }       
+        }
     }
 
-    protected abstract Task ConnectClientWebSocket(ClientWebSocket clientWebSocket);
+    protected abstract Task ConfigureClientWebsocket(ClientWebSocket websocket);
 
-    protected async Task SendMessageAsync(string message)
+    protected abstract void OnConnected();
+
+    protected abstract Task OnDisconnectedAsync();
+
+    public async Task SendMessageAsync(string message)
     {
         if (!this.Ready)
         {
@@ -208,7 +230,6 @@ internal abstract class WebsocketMessageClient
                     }
                 }
             }).ConfigureAwait(false);
-
         }
     }
 
@@ -217,28 +238,39 @@ internal abstract class WebsocketMessageClient
         this.lastMessage = DateTimeOffset.UtcNow;
     }
 
-    internal bool Ready => 
+    public bool Ready =>
         this.state == WebsocketMessageClientState.Connected &&
-        this.websocket?.State == WebSocketState.Open;
+        this.websocket?.State == WebSocketState.Open &&
+        !(this.cancellationTokenSource?.IsCancellationRequested ?? false);
 
-    private async Task DisconnectAsync(string? errorMessage = default)
+    private async Task AbortAsync(string? errorMessage = default)
     {
         try
         {
+            this.logger.LogDebug($"Attempting to abort the websocket with error message '{errorMessage ?? ""}'");
+            this.logger.LogDebug("Triggering internal cancellation token source.");
+            this.cancellationTokenSource?.Cancel();
+
             if (this.state == WebsocketMessageClientState.Created)
             {
+                // We never made it around to creating the underlying websocket.
+                this.logger.LogDebug("We never made it around to creating the underlying websocket.");
                 this.state = WebsocketMessageClientState.Disposed;
                 return;
             }
 
             if (this.state == WebsocketMessageClientState.Disposed)
             {
+                // We are already disposed.
+                this.logger.LogDebug("We are already disposed.");
                 this.state = WebsocketMessageClientState.Disposed;
                 return;
             }
 
             if (this.state == WebsocketMessageClientState.Connecting)
             {
+                // We are still connecting, we can just dispose the websocket.
+                this.logger.LogDebug("We are still connecting, we can just dispose the websocket.");
                 this.SetError(errorMessage);
                 this.websocket.Dispose();
                 this.state = WebsocketMessageClientState.Disposed;
@@ -246,6 +278,8 @@ internal abstract class WebsocketMessageClient
 
             if (this.state == WebsocketMessageClientState.Connected)
             {
+                // We are connected, we need to close the websocket.
+                this.logger.LogDebug("We are connected, we need to close the websocket.");
                 if (this.websocket.State == WebSocketState.Open)
                 {
                     await this.websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by Townsharp client.", CancellationToken.None);
@@ -257,7 +291,16 @@ internal abstract class WebsocketMessageClient
         }
         catch (Exception ex)
         {
-            this.logger.LogError($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(DisconnectAsync)}.  {ex}");
+            this.logger.LogError($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(AbortAsync)}.  {ex}");
+        }
+        finally
+        {
+            if (!this.messageChannel.Reader.Completion.IsCompleted)
+            {
+                this.messageChannel.Writer.TryComplete();
+            }
+
+            await this.messageHandlerTask;
         }
     }
 }

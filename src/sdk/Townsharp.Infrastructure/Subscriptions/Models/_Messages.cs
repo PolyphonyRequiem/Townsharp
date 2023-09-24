@@ -12,9 +12,9 @@ public record SubscriptionResponseMessage(int id, string key, string content, in
     public static SubscriptionResponseMessage None = new(-1, string.Empty, string.Empty, -1);
 }
 
-public record SubscriptionEventMessage(string @event, string key, JsonElement content)
+public record SubscriptionEventMessage(string @event, string key, string content)
 {
-    public static SubscriptionEventMessage None = new(string.Empty, string.Empty, new JsonElement());
+    public static SubscriptionEventMessage None = new(string.Empty, string.Empty, string.Empty);
 }
 
 public record MigrationToken(string Token)

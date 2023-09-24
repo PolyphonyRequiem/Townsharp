@@ -12,9 +12,9 @@ public class SubscriptionMultiplexer
     private readonly int concurrentConnections;
 
     // Events
-    public event EventHandler<SubscriptionEventMessage>? OnSubscriptionEvent;
+    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
     
-    private void RaiseOnSubscriptionEvent(SubscriptionEventMessage subscriptionEvent)
+    private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
     {
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
     }
@@ -28,7 +28,7 @@ public class SubscriptionMultiplexer
 
         foreach (var subscriptionConnection in connections.Values)
         {
-            //subscriptionConnection.OnSubscriptionEvent += (sender, subscriptionEvent) => this.RaiseOnSubscriptionEvent(subscriptionEvent);
+            subscriptionConnection.ReadAllEventsAsync(CancellationToken.None).ForEachAsync(e => this.RaiseOnSubscriptionEvent(e));
         }
     }
 
@@ -40,8 +40,13 @@ public class SubscriptionMultiplexer
         // Otherwise, we should subsume responsibility for the subscriptions, and remap them.
         // This should only occur on scale-in.
         var connectionIds = Enumerable.Range(0, concurrentConnections).Select(_ => new ConnectionId());
-        var subscriptionConnections = connectionIds.Select(id => new SubscriptionConnection(id, subscriptionClientFactory, loggerFactory));
+        var subscriptionConnections = connectionIds.Select(id => new SubscriptionConnection(id, subscriptionClientFactory, loggerFactory)).ToArray();
         var subscriptionConnectionsMap = subscriptionConnections.ToDictionary(connection => connection.ConnectionId);
+        foreach (var connection in subscriptionConnections)
+        {
+            _ = connection.RunAsync(CancellationToken.None);  // THIS NEEDS A CANCELLATION TOKEN AND NEEDS TO BE CLOSED ON
+        }
+
         return new SubscriptionMultiplexer(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionMultiplexer>());
     }
 
@@ -53,7 +58,7 @@ public class SubscriptionMultiplexer
         {
             this.logger.LogInformation($"Registering {mapping.Value.Length} subscriptions to connection {mapping.Key}.");
             var connection = this.connections[mapping.Key];
-            //connection.Subscribe(mapping.Value);
+            connection.Subscribe(mapping.Value);
         }
     }
 
@@ -64,7 +69,7 @@ public class SubscriptionMultiplexer
         foreach (var mapping in newMappings)
         {
             var connection = this.connections[mapping.Key];
-            //connection.Unsubscribe(mapping.Value);
+            connection.Unsubscribe(mapping.Value);
         }
     }
 }

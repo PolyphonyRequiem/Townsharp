@@ -41,18 +41,17 @@ public class ConsoleClientManager
         {
             try
             {
-                var content = e.content.Deserialize<JsonObject>()!;
-                int id = content["id"]?.GetValue<int>() ?? 0;
+                //int id = ["id"]?.GetValue<int>() ?? 0;
 
-                bool isOnline = content["is_online"]?.GetValue<bool>() ?? false;
+                //bool isOnline = content["is_online"]?.GetValue<bool>() ?? false;
 
-                if (isOnline)
-                {
-                    if (this.managedConsoleClients.ContainsKey(id))
-                    {
-                        Task.Run(this.managedConsoleClients[id].TryConnectAsync);
-                    }
-                }
+                //if (isOnline)
+                //{
+                //    if (this.managedConsoleClients.ContainsKey(id))
+                //    {
+                //        Task.Run(this.managedConsoleClients[id].TryConnectAsync);
+                //    }
+                //}
             }
             catch (Exception ex)
             {

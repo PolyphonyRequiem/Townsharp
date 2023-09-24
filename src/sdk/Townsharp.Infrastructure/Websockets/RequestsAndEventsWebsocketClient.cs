@@ -18,11 +18,16 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
     // State
     private readonly ConcurrentDictionary<int, TaskCompletionSource<TResponseMessage>> pendingRequests = new();
     private readonly SemaphoreSlim sendSemaphore;
+    private readonly CancellationTokenSource cancellationTokenSource = new();
 
     // Dependencies
     private readonly MessageIdFactory messageIdFactory;
+    private Task messageHandlerTask = Task.CompletedTask;
 
-    internal RequestsAndEventsWebsocketClient(ILogger logger, int maxRequests) : base(logger)
+    internal RequestsAndEventsWebsocketClient(
+        ILogger logger, 
+        int maxRequests) 
+        : base(logger)
     {
         this.messageIdFactory = new MessageIdFactory();
         
@@ -34,17 +39,14 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
         this.sendSemaphore = new SemaphoreSlim((int)maxRequests);
     }
 
-    protected async IAsyncEnumerable<TEventMessage> ReceiveEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    protected override void OnConnected()
     {
-        CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        this.messageHandlerTask = this.HandleMessagesAsync();
+    }
 
-        // Mixing the concepts of events and messages here by deferring the call for receiveeventsasync to the calling class.
-        // Issuing requests such as migration will fail if we are not receiving events. 
-        // This could easily result in astonishing behavior.
-        // It probably makes sense to split these two concepts up and use channel or similar to communicate between the "on connected" message handler, and the event handler.
-        // Consider lifecycle implications of this.
-        // Most likely we should make event handling subordinate to the message handling.
-        await foreach (var message in base.ListenForMessagesAsync(cts.Token))
+    private async Task HandleMessagesAsync()
+    {
+        await foreach (var message in base.ReceiveMessagesAsync(this.cancellationTokenSource.Token))
         {
             ErrorInfo errorInfo = ErrorInfo.None;
             TEventMessage? eventMessage = default;
@@ -58,8 +60,8 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
                     {
                         if (errorInfo.ErrorType == ErrorType.FatalError)
                         {
-                            cts.Cancel();
-                            yield break;
+                            this.Abort();
+                            return;
                         }
                     }
 
@@ -75,8 +77,8 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
                             if (errorInfo.ErrorType == ErrorType.FatalError)
                             {
                                 base.logger.LogError($"A fatal error has occurred while processing the response. {errorInfo.ErrorMessage}");
-                                cts.Cancel();
-                                yield break;
+                                this.Abort();
+                                return;
                             }
                             else
                             {
@@ -118,8 +120,8 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
                 if (errorInfo.ErrorType == ErrorType.FatalError)
                 {
                     this.logger.LogError($"A fatal error occurred while processing message {message}. ErrorMessage: {errorInfo.ErrorMessage}");
-                    cts.Cancel();
-                    yield break;
+                    this.Abort();
+                    return;
                 }
                 else
                 {
@@ -129,10 +131,11 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
 
             if (eventMessage != default)
             {
-                yield return eventMessage;
+                this.HandleEvent(eventMessage);
             }
         }
     }
+
 
     protected async Task<Response<TResponseMessage>> SendRequestAsync(Func<int, string> requestMessageFactory, TimeSpan timeout)
     {
@@ -200,6 +203,16 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
         }
     }
 
+    private void Abort()
+    {
+        this.cancellationTokenSource.Cancel();
+    }
+
+    protected override async Task OnDisconnectedAsync()
+    {
+        await this.messageHandlerTask;
+    }
+
     protected abstract ErrorInfo CheckForError(string message);
 
     protected abstract ErrorInfo CheckForError(JsonDocument document);
@@ -209,6 +222,8 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
     protected abstract bool IsResponse(TMessage message);
 
     protected abstract bool IsEvent(TMessage message);
+
+    protected abstract void HandleEvent(TEventMessage eventMessage);
 
     protected abstract TMessage ToMessage(JsonDocument document);
 

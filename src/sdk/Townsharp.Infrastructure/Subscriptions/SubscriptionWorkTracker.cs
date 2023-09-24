@@ -54,10 +54,10 @@ public class SubscriptionWorkTracker
 
         var predicatePriorities = new Func<SubscriptionWorkLease, bool>[]
         {
-            lease => lease.Intent == SubscriptionIntent.Subscribed && lease.priorDisposition == SubscriptionDisposition.New,
-            lease => lease.Intent == SubscriptionIntent.Subscribed && lease.priorDisposition == SubscriptionDisposition.RetryNeeded,
-            lease => lease.Intent == SubscriptionIntent.Unsubscribed && lease.priorDisposition == SubscriptionDisposition.New,
-            lease => lease.Intent == SubscriptionIntent.Unsubscribed && lease.priorDisposition == SubscriptionDisposition.RetryNeeded
+            lease => lease.Intent == SubscriptionIntent.Subscribed && lease.PriorDisposition == SubscriptionDisposition.New,
+            lease => lease.Intent == SubscriptionIntent.Subscribed && lease.PriorDisposition == SubscriptionDisposition.RetryNeeded,
+            lease => lease.Intent == SubscriptionIntent.Unsubscribed && lease.PriorDisposition == SubscriptionDisposition.New,
+            lease => lease.Intent == SubscriptionIntent.Unsubscribed && lease.PriorDisposition == SubscriptionDisposition.RetryNeeded
         };
 
         foreach (var predicate in predicatePriorities)
@@ -84,7 +84,7 @@ public class SubscriptionWorkTracker
         // restore the prior states for the unclaimed leases.
         foreach (var lease in leaseCandidates.Except(leasesToReturn))
         {
-            this.subscriptionDispositions.TryUpdate(lease.SubscriptionDefinition, lease.priorDisposition, SubscriptionDisposition.Working);
+            this.subscriptionDispositions.TryUpdate(lease.SubscriptionDefinition, lease.PriorDisposition, SubscriptionDisposition.Working);
         }
 
         return leasesToReturn.ToArray();
@@ -334,4 +334,4 @@ public enum SubscriptionIntent
     Unsubscribed
 }
 
-public record SubscriptionWorkLease(SubscriptionDefinition SubscriptionDefinition, SubscriptionIntent Intent, SubscriptionDisposition priorDisposition);
+public record SubscriptionWorkLease(SubscriptionDefinition SubscriptionDefinition, SubscriptionIntent Intent, SubscriptionDisposition PriorDisposition);

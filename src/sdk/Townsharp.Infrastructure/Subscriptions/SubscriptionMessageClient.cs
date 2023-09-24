@@ -1,6 +1,7 @@
 ﻿using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
@@ -16,29 +17,16 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
     public static int MAX_CONCURRENT_REQUESTS = 20;
     private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
     private readonly IBotTokenProvider botTokenProvider;
+    private readonly ChannelWriter<SubscriptionEvent> eventChannelWriter;
 
-    public SubscriptionMessageClient(IBotTokenProvider botTokenProvider, ILogger<SubscriptionMessageClient> logger) 
+    public SubscriptionMessageClient(
+        IBotTokenProvider botTokenProvider,
+        ChannelWriter<SubscriptionEvent> eventChannel,
+        ILogger<SubscriptionMessageClient> logger)
         : base(logger, MAX_CONCURRENT_REQUESTS)
     {
         this.botTokenProvider = botTokenProvider;
-    }
-
-    public async IAsyncEnumerable<SubscriptionEvent> ReceiveSubscriptionEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-        await foreach (var @event in base.ReceiveEventsAsync(cts.Token))
-        {
-            yield return @event.@event switch
-            {
-                "group_server_heartbeat" => JsonSerializer.Deserialize<GroupServerHeartbeatContent>(@event.content.GetRawText()) switch
-                {
-                    { } heartbeat => new GroupServerHeartbeatEvent(heartbeat),
-                    _ => throw new InvalidOperationException("Unable to deserialize group server heartbeat content")
-                },
-                _ => throw new NotImplementedException(),
-            };
-        }
+        this.eventChannelWriter = eventChannel;
     }
 
     // I don't love these return types.
@@ -73,7 +61,7 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
         return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id, token), SubscriptionsSerializerContext.Default.RequestMessage), timeout);
     }
 
-    protected override async Task ConnectClientWebSocket(ClientWebSocket clientWebSocket)
+    protected override async Task ConfigureClientWebsocket(ClientWebSocket clientWebSocket)
     {
         clientWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync()}");
         await clientWebSocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
@@ -94,7 +82,7 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
 
     protected override ErrorInfo CheckResponseForError(SubscriptionResponseMessage response)
     {
-        if (response.responseCode <= 400 && response.responseCode > 0)
+        if (response.responseCode >= 400)
         {
             if (response.responseCode >= 400 && response.responseCode < 500)
             {
@@ -149,5 +137,26 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
 
         return eventMessage;
     }
+
     protected override int GetResponseId(SubscriptionResponseMessage responseMessage) => responseMessage.id;
+
+    protected override void HandleEvent(SubscriptionEventMessage eventMessage)
+    {
+        var @event = eventMessage.@event switch
+        {
+            "group-server-heartbeat" => JsonSerializer.Deserialize<GroupServerHeartbeatContent>(eventMessage.content, SubscriptionsSerializerContext.Default.GroupServerHeartbeatContent) switch
+            {
+                { } heartbeatContent => new GroupServerHeartbeatEvent(heartbeatContent),
+                _ => throw new InvalidOperationException("Unable to deserialize group server heartbeat content")
+            },
+            _ => throw new NotImplementedException(),
+        };
+
+        this.eventChannelWriter.TryWrite(@event);
+    }
+
+    protected override Task OnDisconnectedAsync()
+    {
+        return base.OnDisconnectedAsync();
+    }
 }
