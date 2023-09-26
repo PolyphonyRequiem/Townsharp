@@ -17,18 +17,20 @@ namespace Townsharp.Infrastructure.Subscriptions;
 // we have 50 refs (against 60 total ever created) from messageclient abortasync which is... odd.
 // we have 60 refs from messageclient handlemessagesasync which is also odd.
 
-internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
+internal class SubscriptionClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
 {
     // Constants
     public static int MAX_CONCURRENT_REQUESTS = 20;
     private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
+
+    // Dependencies
     private readonly IBotTokenProvider botTokenProvider;
     private readonly ChannelWriter<SubscriptionEvent> eventChannelWriter;
 
-    public SubscriptionMessageClient(
+    public SubscriptionClient(
         IBotTokenProvider botTokenProvider,
         ChannelWriter<SubscriptionEvent> eventChannel,
-        ILogger<SubscriptionMessageClient> logger)
+        ILogger<SubscriptionClient> logger)
         : base(logger, MAX_CONCURRENT_REQUESTS)
     {
         this.botTokenProvider = botTokenProvider;
@@ -61,16 +63,16 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
         return await this.RequestAsync((id, token) => RequestMessage.CreateSendMigrationTokenRequestMessage(id, token, migrationToken), timeout).ConfigureAwait(false);
     }
 
-    public async Task<Response<SubscriptionResponseMessage>> RequestAsync(Func<int, string, RequestMessage> requestMessageFactory, TimeSpan timeout)
+    private async Task<Response<SubscriptionResponseMessage>> RequestAsync(Func<int, string, RequestMessage> requestMessageFactory, TimeSpan timeout)
     {
         var token = await this.botTokenProvider.GetTokenAsync().ConfigureAwait(false);
         return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id, token), SubscriptionsSerializerContext.Default.RequestMessage), timeout).ConfigureAwait(false);
     }
 
-    protected override async Task ConfigureClientWebsocket(ClientWebSocket clientWebSocket)
+    protected override async Task ConfigureClientWebsocket(ClientWebSocket websocket)
     {
-        clientWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync().ConfigureAwait(false)}");
-        await clientWebSocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None).ConfigureAwait(false);
+        websocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync().ConfigureAwait(false)}");
+        await websocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None).ConfigureAwait(false);
     }
 
     protected override ErrorInfo CheckForError(string message) => new ErrorInfo(ErrorType.FatalError, message);

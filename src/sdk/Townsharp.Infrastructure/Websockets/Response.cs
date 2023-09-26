@@ -1,6 +1,6 @@
 ﻿namespace Townsharp.Infrastructure.Websockets;
 
-internal record Response<TMessage> where TMessage : class
+public record Response<TMessage> where TMessage : class
 {
     public TMessage? Message { get; init; }
 

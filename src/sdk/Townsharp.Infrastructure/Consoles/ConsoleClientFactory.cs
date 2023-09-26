@@ -1,4 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Threading.Channels;
+
+using Microsoft.Extensions.Logging;
+
+using Townsharp.Infrastructure.Consoles;
+using Townsharp.Infrastructure.Consoles.Models;
 
 namespace Townsharp.Infrastructure.GameConsoles;
 
@@ -11,11 +16,8 @@ public class ConsoleClientFactory
         this.loggerFactory = loggerFactory;
     }
 
-    public Task<ConsoleClient> CreateAndConnectAsync(Uri consoleWebsocketUri, string authToken)
+    public ConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, ChannelWriter<ConsoleEvent> eventChannel)
     {
-        return ConsoleClient.CreateAndConnectAsync(
-            consoleWebsocketUri,
-            authToken,
-            this.loggerFactory.CreateLogger<ConsoleClient>());
+        return new ConsoleClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleClient>());
     }
 }

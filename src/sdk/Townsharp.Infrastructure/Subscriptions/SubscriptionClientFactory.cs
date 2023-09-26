@@ -19,8 +19,8 @@ public class SubscriptionClientFactory
         this.loggerFactory = loggerFactory;
     }
 
-    internal SubscriptionMessageClient CreateClient(ChannelWriter<SubscriptionEvent> channelWriter)
+    internal SubscriptionClient CreateClient(ChannelWriter<SubscriptionEvent> channelWriter)
     {
-        return new SubscriptionMessageClient(this.botTokenProvider, channelWriter, loggerFactory.CreateLogger<SubscriptionMessageClient>());
+        return new SubscriptionClient(this.botTokenProvider, channelWriter, loggerFactory.CreateLogger<SubscriptionClient>());
     }
 }

@@ -27,3 +27,5 @@ public record MigrationToken(string Token)
         return new MigrationToken(document.RootElement.GetProperty("token").GetString() ?? string.Empty);
     }
 }
+
+public record InfrastructureError(string message, string connectionId, string requestId);

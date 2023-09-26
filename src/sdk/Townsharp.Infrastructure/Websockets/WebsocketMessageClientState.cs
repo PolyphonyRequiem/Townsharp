@@ -1,6 +1,6 @@
 ﻿namespace Townsharp.Infrastructure.Websockets;
 
-internal enum WebsocketMessageClientState
+public enum WebsocketMessageClientState
 {
     Created,
     Connecting,

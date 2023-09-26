@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Townsharp.Infrastructure.Websockets;
 
-internal abstract class WebsocketMessageClient
+public abstract class WebsocketMessageClient
 {
     // Constants
     private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);
@@ -159,7 +159,13 @@ internal abstract class WebsocketMessageClient
 
             this.state = WebsocketMessageClientState.Connected;
             this.messageHandlerTask = this.HandleMessagesAsync();
-            this.OnConnected();
+            bool success = await this.OnConnectedAsync();
+            if (!success)
+            {
+                await this.AbortAsync().ConfigureAwait(false);
+                this.state = WebsocketMessageClientState.Disposed;
+                return false;
+            }
             return true;
         }
         catch (Exception ex)
@@ -171,7 +177,7 @@ internal abstract class WebsocketMessageClient
 
     protected abstract Task ConfigureClientWebsocket(ClientWebSocket websocket);
 
-    protected abstract void OnConnected();
+    protected abstract Task<bool> OnConnectedAsync();
 
     protected abstract Task OnDisconnectedAsync();
 

@@ -1,7 +1,7 @@
 ﻿namespace Townsharp.Infrastructure.Utilities;
 public class MessageIdFactory
 {
-    int messageId = 0;
+    int messageId = -1;
 
     public int MessagesSent => messageId;
 

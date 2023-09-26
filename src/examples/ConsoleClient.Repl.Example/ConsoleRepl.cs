@@ -1,6 +1,10 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System.Threading.Channels;
+
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.Consoles;
+using Townsharp.Infrastructure.Consoles.Models;
 using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.WebApi;
 
@@ -32,6 +36,7 @@ public class ConsoleRepl : IHostedService
             bool retryNeeded = false;
             UriBuilder uriBuilder = new UriBuilder();
             string accessToken = "";
+            Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>();
             try
             {
                 var response = await this.webApiClient.RequestConsoleAccessAsync(int.Parse(serverId!));
@@ -63,25 +68,14 @@ public class ConsoleRepl : IHostedService
                         
             try
             {
-                ConsoleClient consoleClient = await this.consoleClientFactory.CreateAndConnectAsync(uriBuilder.Uri, accessToken);
+                ConsoleClient consoleClient = this.consoleClientFactory.CreateClient(uriBuilder.Uri, accessToken, eventChannel.Writer);
+                await consoleClient.ConnectAsync(cancellationTokenSource.Token);
                 Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
 
-                void handleGameConsoleEvent(object? sender, ConsoleEvent e)
+                await foreach (var consoleEvent in eventChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
                 {
-                    this.logger.LogInformation(e.ToString());
+                    Console.WriteLine(consoleEvent.ToString());
                 }
-
-                void handleDisconnected (object? sender,  EventArgs e)
-                {
-                    cancellationTokenSource.Cancel();
-                    this.logger.LogInformation("Disconnected from server {serverId}. Will attempt to reconnect.", serverId);
-                    consoleClient.Dispose();
-                    consoleClient.GameConsoleEventReceived -= handleGameConsoleEvent;
-                    consoleClient.Disconnected -= handleDisconnected;
-                }
-
-                consoleClient.GameConsoleEventReceived += handleGameConsoleEvent;
-                consoleClient.Disconnected += handleDisconnected;
 
                 await getCommandsTask;
             }
@@ -108,7 +102,7 @@ public class ConsoleRepl : IHostedService
 
             if (result.IsCompleted)
             {
-                Console.WriteLine(result.Result?.Root.ToJsonString(new System.Text.Json.JsonSerializerOptions {WriteIndented=true }) ?? "ERROR PARSING JSON");
+                Console.WriteLine(result?.Message?.data?.ToString());
             }
             else
             {

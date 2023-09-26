@@ -11,6 +11,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
+using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Hosting;
 using Townsharp.Infrastructure.Subscriptions;

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 
 using Townsharp.Groups;
+using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;

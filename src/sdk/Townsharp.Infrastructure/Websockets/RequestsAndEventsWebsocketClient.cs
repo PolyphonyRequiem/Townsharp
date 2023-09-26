@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
@@ -10,7 +9,7 @@ namespace Townsharp.Infrastructure.Websockets;
 
 // We should REALLY move this to composition for both testing and accessibility modifier reasons.
 
-internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessage, TEventMessage> : WebsocketMessageClient
+public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessage, TEventMessage> : WebsocketMessageClient
     where TMessage : class
     where TEventMessage : class
     where TResponseMessage : class
@@ -39,9 +38,10 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
         this.sendSemaphore = new SemaphoreSlim((int)maxRequests);
     }
 
-    protected override void OnConnected()
+    protected override Task<bool> OnConnectedAsync()
     {
         this.messageHandlerTask = this.HandleMessagesAsync();
+        return Task.FromResult(true);
     }
 
     private async Task HandleMessagesAsync()

@@ -33,7 +33,7 @@ internal class SubscriptionConnection
 
     // Policies
     private static int[] RETRY_DELAYS_IN_SECONDS = new int[] { 0, 1, 5, 15, 30, 60 };
-    private readonly ResiliencePipeline<SubscriptionMessageClient> SubscriptionClientCreationRetryPolicy;
+    private readonly ResiliencePipeline<SubscriptionClient> SubscriptionClientCreationRetryPolicy;
     private readonly SubscriptionWorkTracker workTracker;
 
     public ConnectionId ConnectionId { get; init; }
@@ -62,10 +62,10 @@ internal class SubscriptionConnection
 
         this.logger.LogInformation($"Created SubscriptionConnection with connectionId {connectionId}.");
 
-        this.SubscriptionClientCreationRetryPolicy = new ResiliencePipelineBuilder<SubscriptionMessageClient>()
-            .AddRetry(new RetryStrategyOptions<SubscriptionMessageClient>
+        this.SubscriptionClientCreationRetryPolicy = new ResiliencePipelineBuilder<SubscriptionClient>()
+            .AddRetry(new RetryStrategyOptions<SubscriptionClient>
             {
-                ShouldHandle = new PredicateBuilder<SubscriptionMessageClient>().Handle<Exception>(),
+                ShouldHandle = new PredicateBuilder<SubscriptionClient>().Handle<Exception>(),
                 DelayGenerator = generatorArgs =>
                 {
                     int delayInSeconds = generatorArgs.AttemptNumber < RETRY_DELAYS_IN_SECONDS.Length
@@ -74,7 +74,7 @@ internal class SubscriptionConnection
 
                     if (generatorArgs.AttemptNumber != 1)
                     {
-                        this.logger.LogWarning($"An error occurred in {nameof(SubscriptionConnection)} while attempting to create a {nameof(SubscriptionMessageClient)}.  Retrying in {delayInSeconds}s");
+                        this.logger.LogWarning($"An error occurred in {nameof(SubscriptionConnection)} while attempting to create a {nameof(SubscriptionClient)}.  Retrying in {delayInSeconds}s");
                     }
 
                     TimeSpan? delay = TimeSpan.FromSeconds(delayInSeconds);
@@ -105,14 +105,14 @@ internal class SubscriptionConnection
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         this.logger.LogInformation($"Starting subscription connection {this.ConnectionId}.");
-        SubscriptionMessageClient? currentClient = default;
+        SubscriptionClient? currentClient = default;
         CancellationTokenSource currentClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         MigrationToken migrationToken = MigrationToken.None;
 
         do
         {
             CancellationTokenSource newClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            SubscriptionMessageClient? newClient = await this.CreateAndConnectNewClientAsync(newClientCancellationTokenSource.Token);
+            SubscriptionClient? newClient = await this.CreateAndConnectNewClientAsync(newClientCancellationTokenSource.Token);
 
             if (newClient == null)
             {
@@ -227,13 +227,13 @@ internal class SubscriptionConnection
         while (!cancellationToken.IsCancellationRequested);
     }
 
-    private async Task ProcessLeasesAsync(SubscriptionMessageClient client, SubscriptionWorkLease[] leases)
+    private async Task ProcessLeasesAsync(SubscriptionClient client, SubscriptionWorkLease[] leases)
     {
         await ProcessLeasesForIntentAsync(client, leases, SubscriptionIntent.Subscribed);
         await ProcessLeasesForIntentAsync(client, leases, SubscriptionIntent.Unsubscribed);
     }
 
-    private async Task ProcessLeasesForIntentAsync(SubscriptionMessageClient client, SubscriptionWorkLease[] leases, SubscriptionIntent intent)
+    private async Task ProcessLeasesForIntentAsync(SubscriptionClient client, SubscriptionWorkLease[] leases, SubscriptionIntent intent)
     {
         var workTasks = new List<Task>();
 
@@ -276,7 +276,7 @@ internal class SubscriptionConnection
         }
     }
 
-    private async Task<SubscriptionMessageClient?> CreateAndConnectNewClientAsync(CancellationToken cancellationToken)
+    private async Task<SubscriptionClient?> CreateAndConnectNewClientAsync(CancellationToken cancellationToken)
     {
         var result = await SubscriptionClientCreationRetryPolicy.ExecuteAsync(
             async _ =>

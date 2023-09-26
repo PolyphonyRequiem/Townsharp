@@ -1,6 +1,7 @@
 ﻿using InventoryTrack.WebApi.Example;
 
 using Townsharp.Groups;
+using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.WebApi;
 using Townsharp.Servers;
 
@@ -64,7 +65,7 @@ internal class InventoryTrackWorker : IHostedService
         this.logger.LogTrace($"Server {serverId} disconnected.");
     }
 
-    private void OnGameConsoleEvent(ServerId serverId, Townsharp.Infrastructure.GameConsoles.ConsoleEvent gameConsoleEvent)
+    private void OnGameConsoleEvent(ServerId serverId, ConsoleEvent gameConsoleEvent)
     {
         //var eventType = gameConsoleEvent.Result["eventType"]?.GetValue<string>();
         //if (eventType == "InventoryChanged")
