@@ -24,6 +24,6 @@ public record MigrationToken(string Token)
     public static MigrationToken FromContent(string content) 
     {
         using var document = JsonDocument.Parse(content);
-        return new MigrationToken(document.RootElement[0].GetString() ?? string.Empty);
+        return new MigrationToken(document.RootElement.GetProperty("token").GetString() ?? string.Empty);
     }
 }

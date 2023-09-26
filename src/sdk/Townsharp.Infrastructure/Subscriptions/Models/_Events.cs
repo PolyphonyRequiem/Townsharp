@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-using Townsharp.Infrastructure.CommonModels;
+﻿using Townsharp.Infrastructure.CommonModels;
 
 namespace Townsharp.Infrastructure.Subscriptions.Models;
 

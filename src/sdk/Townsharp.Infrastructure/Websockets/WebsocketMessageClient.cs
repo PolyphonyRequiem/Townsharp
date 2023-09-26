@@ -58,7 +58,7 @@ internal abstract class WebsocketMessageClient
         return this.messageChannel.Reader.ReadAllAsync(cancellationToken);
     }
 
-    private async Task HandleMessagesAsync(CancellationToken cancellationToken)
+    private async Task HandleMessagesAsync()
     {
         if (this.state != WebsocketMessageClientState.Connected)
         {
@@ -83,24 +83,24 @@ internal abstract class WebsocketMessageClient
                     try
                     {
                         // Use the rented buffer for receiving data
-                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), cancellationToken);
+                        result = await this.websocket.ReceiveAsync(new ArraySegment<byte>(rentedBuffer), this.cancellationTokenSource!.Token).ConfigureAwait(false);
 
                         // Message received, reset the idle timer
                         // this.MarkLastMessageTime();
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            await this.AbortAsync();
+                            await this.AbortAsync().ConfigureAwait(false);
                             break;
                         }
                     }
                     catch (OperationCanceledException)
                     {
-                        await this.AbortAsync($"{nameof(WebsocketMessageClient)} operation has been cancelled in {nameof(HandleMessagesAsync)}.");
+                        await this.AbortAsync($"{nameof(WebsocketMessageClient)} operation has been cancelled in {nameof(HandleMessagesAsync)}.").ConfigureAwait(false);
                         break;
                     }
                     catch (Exception ex)
                     {
-                        await this.AbortAsync($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(HandleMessagesAsync)}.  {ex}");
+                        await this.AbortAsync($"{nameof(WebsocketMessageClient)} Error has occurred in {nameof(HandleMessagesAsync)}.  {ex}").ConfigureAwait(false);
                         break;
                     }
 
@@ -116,9 +116,9 @@ internal abstract class WebsocketMessageClient
                             this.logger.LogTrace($"RECV: {rawMessage}");
                         }
 
-                        await this.messageChannel.Writer.WriteAsync(rawMessage, cancellationToken);
+                        await this.messageChannel.Writer.WriteAsync(rawMessage, this.cancellationTokenSource!.Token).ConfigureAwait(false);
                     }
-                } while (!result.EndOfMessage && this.state == WebsocketMessageClientState.Connected && !cancellationToken.IsCancellationRequested);
+                } while (!result.EndOfMessage && this.state == WebsocketMessageClientState.Connected && !this.cancellationTokenSource!.Token.IsCancellationRequested);
             }
             finally
             {
@@ -148,17 +148,17 @@ internal abstract class WebsocketMessageClient
 
             this.state = WebsocketMessageClientState.Connecting;
 
-            await this.ConfigureClientWebsocket(this.websocket);
+            await this.ConfigureClientWebsocket(this.websocket).ConfigureAwait(false);
 
             if (this.websocket.State != WebSocketState.Open)
             {
-                await this.AbortAsync();
+                await this.AbortAsync().ConfigureAwait(false);
                 this.state = WebsocketMessageClientState.Disposed;
                 return false;
             }
 
             this.state = WebsocketMessageClientState.Connected;
-            this.messageHandlerTask = this.HandleMessagesAsync(cancellationToken);
+            this.messageHandlerTask = this.HandleMessagesAsync();
             this.OnConnected();
             return true;
         }
@@ -194,7 +194,7 @@ internal abstract class WebsocketMessageClient
             Buffer.BlockCopy(messageBytes, 0, buffer, 0, messageBytes.Length);
             var arraySegment = new ArraySegment<byte>(buffer, 0, messageBytes.Length);
 
-            await this.websocket.SendAsync(arraySegment, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
+            await this.websocket.SendAsync(arraySegment, WebSocketMessageType.Text, true, this.cancellationTokenSource?.Token ?? CancellationToken.None).ConfigureAwait(false);
             this.MarkLastMessageTime();
         }
         finally
@@ -300,7 +300,7 @@ internal abstract class WebsocketMessageClient
                 this.messageChannel.Writer.TryComplete();
             }
 
-            await this.messageHandlerTask;
+            this.messageHandlerTask = Task.CompletedTask;
         }
     }
 }

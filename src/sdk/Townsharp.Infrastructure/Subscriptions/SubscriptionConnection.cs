@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
@@ -142,6 +140,13 @@ internal class SubscriptionConnection
 
                 var sendMigrationTokenResponse = await newClient!.SendMigrationTokenAsync(migrationToken.Token, MigrationTimeout, cancellationToken);
 
+                // clean up current client
+                if (!currentClientCancellationTokenSource.IsCancellationRequested)
+                {
+                    currentClientCancellationTokenSource.Cancel();
+                }
+                currentClient = null;
+
                 if (!sendMigrationTokenResponse.IsCompleted)
                 {
                     this.logger.LogError($"{this.ConnectionId} Send migration token operation did not complete in time. Error provided is '{sendMigrationTokenResponse.ErrorMessage}'.  Transitioning to Faulted.");
@@ -149,13 +154,6 @@ internal class SubscriptionConnection
 
                     // clean up new client
                     newClientCancellationTokenSource.Cancel();
-
-                    // clean up current client
-                    if (!currentClientCancellationTokenSource.IsCancellationRequested)
-                    {
-                        currentClientCancellationTokenSource.Cancel();
-                    }
-                    currentClient = null;
                     continue;
                 }
                 else
@@ -260,7 +258,7 @@ internal class SubscriptionConnection
 
     private async Task RequestResolutionForIntentAsync(SubscriptionWorkLease lease, Func<string, int, TimeSpan, Task<Response<SubscriptionResponseMessage>>> sendClientRequestAsync)
     {
-        var response = await sendClientRequestAsync(lease.SubscriptionDefinition.EventId, lease.SubscriptionDefinition.KeyId, TimeSpan.FromSeconds(5));
+        var response = await sendClientRequestAsync(lease.SubscriptionDefinition.EventId, lease.SubscriptionDefinition.KeyId, TimeSpan.FromSeconds(15));
 
         if (response.IsCompleted)
         {

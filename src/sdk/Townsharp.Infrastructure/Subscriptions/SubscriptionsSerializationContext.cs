@@ -10,6 +10,8 @@ namespace Townsharp.Infrastructure.Subscriptions;
 [JsonSerializable(typeof(SubscriptionResponseMessage))]
 [JsonSerializable(typeof(SubscriptionEventMessage))]
 [JsonSerializable(typeof(RequestMessage))]
+[JsonSerializable(typeof(MigrationTokenRequestContent))]
+[JsonSerializable(typeof(BatchSubscriptionRequestContent))]
 public partial class SubscriptionsSerializerContext : JsonSerializerContext
 {
 

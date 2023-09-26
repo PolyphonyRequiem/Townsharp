@@ -28,20 +28,23 @@ public record RequestMessage
         => new(id, $"subscription/{eventId}/{eventKey}", "DELETE", token);
 
     public static RequestMessage CreateBatchSubscriptionRequestMessage(int id, string token, string eventId, int[] eventKeys)
-        => new(id, $"subscription/batch", "POST", token, new BatchSubscriptionContentElement[] { new (eventId, eventKeys)}); // single element cuz of noted bugs
+        => new(id, $"subscription/batch", "POST", token, new BatchSubscriptionRequestContent[] { new (eventId, eventKeys)}); // single element cuz of noted bugs
 
     public static RequestMessage CreateGetMigrationTokenRequestMessage(int id, string token)
         => new(id, $"migrate", "GET", token);
 
     public static RequestMessage CreateSendMigrationTokenRequestMessage(int id, string token, string migrationToken)
-        => new(id, $"migrate", "POST", token, new {token=migrationToken});
+        => new(id, $"migrate", "POST", token, new MigrationTokenRequestContent(migrationToken));
 }
 
-file record struct BatchSubscriptionContentElement(string @event, string[] keys)
+public record MigrationTokenRequestContent(string token);
+
+public record BatchSubscriptionRequestContent(string @event, string[] keys)
 {
-    public BatchSubscriptionContentElement(string @event, int[] keys)
+    public BatchSubscriptionRequestContent(string @event, int[] keys)
         : this(@event, keys.Select(k => k.ToString()).ToArray())
     {
 
     }
 }
+

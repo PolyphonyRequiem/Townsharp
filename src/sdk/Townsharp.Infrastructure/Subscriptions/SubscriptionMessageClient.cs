@@ -11,6 +11,12 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
+// We need a review, this type is living longer than it should be a fairly large margin
+// Looks like we hold a copy after migration, so we aren't cleaning -something- up properly.
+// we have double refs from subscriptionconnection runasync which makes sense
+// we have 50 refs (against 60 total ever created) from messageclient abortasync which is... odd.
+// we have 60 refs from messageclient handlemessagesasync which is also odd.
+
 internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
 {
     // Constants
@@ -32,39 +38,39 @@ internal class SubscriptionMessageClient : RequestsAndEventsWebsocketClient<Subs
     // I don't love these return types.
     public async Task<Response<SubscriptionResponseMessage>> SubscribeAsync(string eventId, int key, TimeSpan timeout)
     {
-        return await this.RequestAsync((id, token) => RequestMessage.CreateSubscriptionRequestMessage(id, token, eventId, key), timeout);
+        return await this.RequestAsync((id, token) => RequestMessage.CreateSubscriptionRequestMessage(id, token, eventId, key), timeout).ConfigureAwait(false);
     }
 
     public async Task<Response<SubscriptionResponseMessage>> UnsubscribeAsync(string eventId, int key, TimeSpan timeout)
     {
-        return await this.RequestAsync((id, token) => RequestMessage.CreateUnsubscriptionRequestMessage(id, token, eventId, key), timeout);
+        return await this.RequestAsync((id, token) => RequestMessage.CreateUnsubscriptionRequestMessage(id, token, eventId, key), timeout).ConfigureAwait(false);
     }
 
     public async Task<Response<SubscriptionResponseMessage>> BatchSubscribeAsync(string eventId, int[] keys, TimeSpan timeout)
     {
-        return await this.RequestAsync((id, token) => RequestMessage.CreateBatchSubscriptionRequestMessage(id, token, eventId, keys), timeout);
+        return await this.RequestAsync((id, token) => RequestMessage.CreateBatchSubscriptionRequestMessage(id, token, eventId, keys), timeout).ConfigureAwait(false);
     }
 
     public async Task<Response<SubscriptionResponseMessage>> GetMigrationTokenAsync(TimeSpan timeout)
     {
-        return await this.RequestAsync(RequestMessage.CreateGetMigrationTokenRequestMessage, timeout);
+        return await this.RequestAsync(RequestMessage.CreateGetMigrationTokenRequestMessage, timeout).ConfigureAwait(false);
     }
 
     public async Task<Response<SubscriptionResponseMessage>> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        return await this.RequestAsync((id, token) => RequestMessage.CreateSendMigrationTokenRequestMessage(id, token, migrationToken), timeout);
+        return await this.RequestAsync((id, token) => RequestMessage.CreateSendMigrationTokenRequestMessage(id, token, migrationToken), timeout).ConfigureAwait(false);
     }
 
     public async Task<Response<SubscriptionResponseMessage>> RequestAsync(Func<int, string, RequestMessage> requestMessageFactory, TimeSpan timeout)
     {
-        var token = await this.botTokenProvider.GetTokenAsync();
-        return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id, token), SubscriptionsSerializerContext.Default.RequestMessage), timeout);
+        var token = await this.botTokenProvider.GetTokenAsync().ConfigureAwait(false);
+        return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id, token), SubscriptionsSerializerContext.Default.RequestMessage), timeout).ConfigureAwait(false);
     }
 
     protected override async Task ConfigureClientWebsocket(ClientWebSocket clientWebSocket)
     {
-        clientWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync()}");
-        await clientWebSocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None);
+        clientWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {await this.botTokenProvider.GetTokenAsync().ConfigureAwait(false)}");
+        await clientWebSocket.ConnectAsync(SubscriptionWebsocketUri, CancellationToken.None).ConfigureAwait(false);
     }
 
     protected override ErrorInfo CheckForError(string message) => new ErrorInfo(ErrorType.FatalError, message);

@@ -143,7 +143,7 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
         var requestMessage = requestMessageFactory(id);
 
         TaskCompletionSource<TResponseMessage> tcs = new TaskCompletionSource<TResponseMessage>();
-        await this.sendSemaphore.WaitAsync();
+        await this.sendSemaphore.WaitAsync().ConfigureAwait(false);
 
         Task sendTask = base.SendMessageAsync(requestMessage)
              .ContinueWith(task =>
@@ -188,7 +188,7 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
 
         try
         {
-            await sendTask; // just to close the loop.
+            await sendTask.ConfigureAwait(false); // just to close the loop.
             var response = await result.ConfigureAwait(false);
             return response;
         }
@@ -210,7 +210,7 @@ internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMess
 
     protected override async Task OnDisconnectedAsync()
     {
-        await this.messageHandlerTask;
+        await this.messageHandlerTask.ConfigureAwait(false);
     }
 
     protected abstract ErrorInfo CheckForError(string message);
