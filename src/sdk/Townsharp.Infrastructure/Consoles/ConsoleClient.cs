@@ -139,6 +139,8 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         ConsoleEvent @event = eventMessage.eventType switch
         {
             "PlayerMovedChunk" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerMovedChunkEvent)!,
+            "PlayerJoined" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerJoinedEvent)!,
+            "PlayerLeft" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerLeftEvent)!,
             _ => throw new InvalidOperationException($"Unknown event type {eventMessage.eventType}")
         };
 

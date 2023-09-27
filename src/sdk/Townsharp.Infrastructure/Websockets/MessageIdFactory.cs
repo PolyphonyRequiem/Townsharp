@@ -1,4 +1,5 @@
-﻿namespace Townsharp.Infrastructure.Utilities;
+﻿namespace Townsharp.Infrastructure.Websockets;
+
 public class MessageIdFactory
 {
     int messageId = -1;

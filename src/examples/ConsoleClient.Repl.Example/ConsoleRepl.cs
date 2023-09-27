@@ -76,7 +76,7 @@ public class ConsoleRepl : IHostedService
                 {
                     var message = consoleEvent switch
                     {
-                        PlayerMovedChunkEvent e => $"PlayerMovedChunk - {e.player} - {e.oldChunk} -> {e.newChunk}",
+                        ConsoleEvent e => e.ToString(),
                         _ => "Not Implemented"
                     };
 

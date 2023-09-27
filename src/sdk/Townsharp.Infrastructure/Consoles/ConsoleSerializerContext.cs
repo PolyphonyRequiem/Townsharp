@@ -4,11 +4,20 @@ using Townsharp.Infrastructure.Consoles.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
+// Console Events
+[JsonSerializable(typeof(PlayerMovedChunkEvent))]
+[JsonSerializable(typeof(PlayerJoinedEvent))]
+[JsonSerializable(typeof(PlayerLeftEvent))]
+
+// Wire Messages
 [JsonSerializable(typeof(ConsoleMessage))]
 [JsonSerializable(typeof(CommandResponseMessage))]
 [JsonSerializable(typeof(ConsoleSubscriptionEventMessage))]
+
+// Request Message
 [JsonSerializable(typeof(CommandRequestMessage))]
-[JsonSerializable(typeof(PlayerMovedChunkEvent))]
+
+// Content
 [JsonSerializable(typeof(PlayerInfo))]
 public partial class ConsoleSerializerContext : JsonSerializerContext
 {

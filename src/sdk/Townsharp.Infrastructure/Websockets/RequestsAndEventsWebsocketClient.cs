@@ -3,11 +3,7 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Utilities;
-
 namespace Townsharp.Infrastructure.Websockets;
-
-// We should REALLY move this to composition for both testing and accessibility modifier reasons.
 
 public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessage, TEventMessage> : WebsocketMessageClient
     where TMessage : class

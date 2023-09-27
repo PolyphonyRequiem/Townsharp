@@ -11,12 +11,6 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
-// We need a review, this type is living longer than it should be a fairly large margin
-// Looks like we hold a copy after migration, so we aren't cleaning -something- up properly.
-// we have double refs from subscriptionconnection runasync which makes sense
-// we have 50 refs (against 60 total ever created) from messageclient abortasync which is... odd.
-// we have 60 refs from messageclient handlemessagesasync which is also odd.
-
 internal class SubscriptionClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
 {
     // Constants

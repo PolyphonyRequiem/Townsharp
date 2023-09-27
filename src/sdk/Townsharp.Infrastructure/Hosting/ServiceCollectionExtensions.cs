@@ -10,6 +10,7 @@ namespace Townsharp.Infrastructure.Hosting;
 
 public static class ServiceCollectionExtensions
 {
+    // This needs to die off, either we expose standalone clients via a dedicated library, via this library, or we just support it via townsharp.
     public static IServiceCollection AddTownsharpInfra(this IServiceCollection services)
     {
         services.AddHttpClient();
