@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Townsharp;
-using Townsharp.Consoles.Commands;
 
 internal class CaveAnnouncerHostedService : IHostedService
 {
@@ -33,40 +32,40 @@ internal class CaveAnnouncerHostedService : IHostedService
         List<Task> tasks = new List<Task>();
         int available = 0;
         int unavailable = 0;
-        foreach (var c in this.session.Consoles)
-        {
-            var t = Task.Run(async () =>
-            {
-                var id = c.Key;
+        //foreach (var c in this.session.Consoles)
+        //{
+        //    var t = Task.Run(async () =>
+        //    {
+        //        var id = c.Key;
 
-                try
-                {
-                    var commandResult = await c.Value.RunConsoleCommandAsync(new PlayerListCommand());
+        //        try
+        //        {
+        //            var commandResult = await c.Value.RunConsoleCommandAsync(new PlayerListCommand());
 
-                    if (commandResult.ConsoleNotAvailable)
-                    {
-                        this.logger.LogTrace($"Attempted to send command to {id} but the console was not available. {commandResult.ErrorMessage}");
-                        Interlocked.Increment(ref unavailable);
-                        return;
-                    }
+        //            if (commandResult.ConsoleNotAvailable)
+        //            {
+        //                this.logger.LogTrace($"Attempted to send command to {id} but the console was not available. {commandResult.ErrorMessage}");
+        //                Interlocked.Increment(ref unavailable);
+        //                return;
+        //            }
 
-                    var playerListString = string.Join(
-                            Environment.NewLine,
-                            commandResult.Value.Select(
-                                p => $"{p.Name} ({p.Id})"));
+        //            var playerListString = string.Join(
+        //                    Environment.NewLine,
+        //                    commandResult.Value.Select(
+        //                        p => $"{p.Name} ({p.Id})"));
 
-                    this.logger.LogInformation($"{id}:{Environment.NewLine}{playerListString}");
+        //            this.logger.LogInformation($"{id}:{Environment.NewLine}{playerListString}");
 
-                    Interlocked.Increment(ref available);
-                }
-                catch (Exception ex)
-                {
-                    this.logger.LogWarning($"Unable to get players for {id} - {ex.Message}");
-                }
-            });
+        //            Interlocked.Increment(ref available);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            this.logger.LogWarning($"Unable to get players for {id} - {ex.Message}");
+        //        }
+        //    });
 
-            tasks.Add(t);
-        }
+        //    tasks.Add(t);
+        //}
         await Task.WhenAll(tasks);
 
         this.logger.LogInformation($"All consoles pinged {sw.Elapsed} - available: {available} - unavailable: {unavailable}");

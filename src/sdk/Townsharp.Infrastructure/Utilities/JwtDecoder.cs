@@ -13,10 +13,8 @@ internal static class JwtDecoder
             throw new InvalidOperationException("JWT does not have 3 parts!");
         }
 
-        var header = parts[0];
         var payload = parts[1];
 
-        var headerJson = Encoding.UTF8.GetString(Base64UrlDecode(header));
         var payloadJson = Encoding.UTF8.GetString(Base64UrlDecode(payload));
 
         return JsonNode.Parse(payloadJson)!;

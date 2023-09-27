@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.WebApi;
+using Townsharp.Servers;
 
 namespace Townsharp.Internals.Consoles;
 
@@ -23,7 +24,7 @@ internal class ConsoleAccessProvider
         this.logger = logger;
     }
 
-    public async Task<ConsoleAccess> GetConsoleAccessAsync(GameServerId serverId)
+    public async Task<ConsoleAccess> GetConsoleAccessAsync(ServerId serverId)
     {
         try
         {
@@ -44,11 +45,11 @@ internal class ConsoleAccessProvider
         }
     }
 
-    private async Task<bool> VerifyAccessIsExpectedAsync(GameServerId serverId)
+    private async Task<bool> VerifyAccessIsExpectedAsync(ServerId serverId)
     {
         var serverResponse = await this.webApiClient.GetServerAsync(serverId);
 
-        ulong groupId = serverResponse["group_id"]?.GetValue<ulong>() ?? throw new InvalidOperationException("Unable to get group_id from the server response.");
+        int groupId = serverResponse["group_id"]?.GetValue<int>() ?? throw new InvalidOperationException("Unable to get group_id from the server response.");
         bool isOnline = serverResponse["is_online"]?.GetValue<bool>() ?? throw new InvalidOperationException("Unable to get is_online from the server response.");
 
         if (!isOnline)
@@ -58,7 +59,7 @@ internal class ConsoleAccessProvider
         else
         {
             var botUserId = await this.botTokenProvider.GetBotUserIdAsync();
-            var groupMemberResponse = await webApiClient.GetGroupMemberAsync(groupId, (long)botUserId);
+            var groupMemberResponse = await webApiClient.GetGroupMemberAsync(groupId, (int)botUserId);
 
             var permissions = groupMemberResponse["permissions"]?.GetValue<string>() ?? throw new InvalidOperationException($"Unable to get permissions for user {botUserId} from group {groupId}.");
 
@@ -68,7 +69,7 @@ internal class ConsoleAccessProvider
     }
 
 
-    private async Task<ConsoleAccess> RequestAndBuildGetConsoleAccessAsync(GameServerId serverId)
+    private async Task<ConsoleAccess> RequestAndBuildGetConsoleAccessAsync(ServerId serverId)
     {
         var response = await webApiClient.RequestConsoleAccessAsync(serverId);
         if (!response["allowed"]?.GetValue<bool>() ?? false)
@@ -80,7 +81,7 @@ internal class ConsoleAccessProvider
         return BuildConsoleAccessFromResponseJsonObject(serverId, response);
     }
 
-    private ConsoleAccess BuildConsoleAccessFromResponseJsonObject(GameServerId serverId, JsonObject response)
+    private ConsoleAccess BuildConsoleAccessFromResponseJsonObject(ServerId serverId, JsonObject response)
     {
         UriBuilder uriBuilder = new UriBuilder();
 

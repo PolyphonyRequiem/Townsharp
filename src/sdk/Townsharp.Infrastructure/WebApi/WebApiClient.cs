@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Net.Mime;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -97,7 +96,7 @@ public class WebApiClient
         return httpClient;
     }
 
-    public async Task<JsonObject> GetGroupAsync(ulong groupId)
+    public async Task<JsonObject> GetGroupAsync(int groupId)
     {
         var client = await GetClientAsync();
         var response = await client.GetFromJsonAsync<JsonObject>($"api/groups/{groupId}");
@@ -178,14 +177,14 @@ public class WebApiClient
     }
 
     // throws 400 if the invite has already been accepted
-    public async Task<bool> AcceptGroupInviteAsync(ulong groupId)
+    public async Task<bool> AcceptGroupInviteAsync(int groupId)
     {
         var client = await GetClientAsync();
         var response = await client.PostAsync($"api/groups/invites/{groupId}", new StringContent(groupId.ToString()));
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<JsonObject> GetGroupMemberAsync(ulong groupId, long userId)
+    public async Task<JsonObject> GetGroupMemberAsync(int groupId, int userId)
     {
         var client = await GetClientAsync();
         var response = await client.GetAsync($"api/groups/{groupId}/members/{userId}");
@@ -233,7 +232,7 @@ public class WebApiClient
         while (response.Headers.Contains("paginationToken"));
     }
 
-    public async Task<JsonObject> GetServerAsync(ulong serverId)
+    public async Task<JsonObject> GetServerAsync(int serverId)
     {
         var client = await GetClientAsync();
         var response = await client.GetAsync($"api/servers/{serverId}");
@@ -249,7 +248,7 @@ public class WebApiClient
         return serverInfo!;
     }
 
-    public async Task<JsonObject> RequestConsoleAccessAsync(ulong serverId)
+    public async Task<JsonObject> RequestConsoleAccessAsync(int serverId)
     {
         var client = await GetClientAsync();
         

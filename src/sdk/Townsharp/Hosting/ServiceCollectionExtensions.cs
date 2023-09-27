@@ -5,14 +5,13 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Configuration;
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.GameConsole;
+using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.Identity;
-using Townsharp.Infrastructure.Identity.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 using Townsharp.Internals.Consoles;
-using Townsharp.Internals.GameServers;
-using Townsharp.Internals.ServerGroups;
+using Townsharp.Internals.Groups;
+using Townsharp.Internals.Servers;
 
 namespace Townsharp.Hosting;
 
@@ -22,12 +21,11 @@ public static class ServiceCollectionExtensions
     {
         var internalProvider = BuildInternalServiceProvider();
 
-        Session sessionInstance = new Session(
+        Session sessionInstance = new(
                 internalProvider.GetRequiredService<IMediator>(),
                 new SessionConfiguration(),
-                internalProvider.GetRequiredService<GameServerManager>(),
-                internalProvider.GetRequiredService<ServerGroupManager>(),
-                internalProvider.GetRequiredService<GameServerConsoleManager>(),
+                internalProvider.GetRequiredService<ServerManager>(),
+                internalProvider.GetRequiredService<GroupManager>(),
                 internalProvider.GetRequiredService<ILogger<Session>>());
 
         services.AddSingleton(sessionInstance);
@@ -72,8 +70,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionMultiplexerFactory>();
         services.AddSingleton<ConsoleClientFactory>();
-        services.AddSingleton<GameServerManager>();
-        services.AddSingleton<ServerGroupManager>();
+        services.AddSingleton<ServerManager>();
+        services.AddSingleton<GroupManager>();
         services.AddSingleton<GameServerConsoleManager>();
         services.AddSingleton<ConsoleAccessProvider>();
 

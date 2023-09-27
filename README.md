@@ -31,8 +31,8 @@ Roadmap
 
 I'm starting with the Infrastructure implementations and documentation.  I expect this part will go relatively fast as I've already implemented the bulk of it, but I've decided to change a few things, so it won't just be copy paste.
 
-- [ ] Townsharp.Infrastructure
-  - [ ] Subscriptions
+- [X] Townsharp.Infrastructure
+  - [X] Subscriptions
     - [X] Subscription Client - Used to handle request/response correllation
     - [X] Subscription Connection - Used to manage lifecycle of migrations and tracks subscriptions it is responsible for
     - [X] Subscription Manager - Used to assign subscriptions to subscription connections, and manage multiplexing of connections for scale.
@@ -40,10 +40,15 @@ I'm starting with the Infrastructure implementations and documentation.  I expec
     - [X] Web Api Client - Exposes REST Api operations against Alta's WebApi endpoint, and handles transient faults, and request pagination.
   - [X] Server Console
     - [X] Server Console Client - Used to handle request/response correllation for the console, and expose Server Event Subscription
-  - [ ] Identity
+  - [X] Identity
     - [X] Bot Token Provider - Provides access tokens for a bot given Bot Credentials.  Handles refresh automatically.
-    - [ ] User Token Provider - Provides access tokens for a user given User Credentials.  Handles refresh automatically.
-- [ ] Townsharp.Model
+    - [X] User Token Provider - Provides access tokens for a user given User Credentials.  Handles refresh automatically.
+
+- [ ] Townsharp.Common
+
+- [ ] Townsharp.Core
+
+- [ ] Townsharp.Model - ? Might merge into Townsharp.
   - [ ] Groups
     - [ ] Roles
   - [ ] Servers
@@ -54,17 +59,16 @@ I'm starting with the Infrastructure implementations and documentation.  I expec
   - [ ] Monitoring
     - [ ] Metrics Hooks
     - [ ] Logging Hooks
+
 - [ ] Townsharp
   - [ ] Session
   - [ ] Server Manager
   - [ ] Group Manager
   - [ ] User Manager
+
 - [ ] Alta Documentation
   - [X] Subscriptions
   - [ ] Web API
-  - [ ] Server Console
+  - [?] Server Console
   - [ ] Identity
 - [X] OpenTelemetry Integration
-
-Current TODO:
-- [ ] Introduce a solution for logging that exists at a library scope.  Maybe an ambient context pattern, maybe a logging binding pattern, who knows.

@@ -1,10 +1,12 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Text.Json;
+using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
+using Polly;
+using Polly.Retry;
+
 using Townsharp.Infrastructure.Subscriptions.Models;
+using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
@@ -15,507 +17,297 @@ namespace Townsharp.Infrastructure.Subscriptions;
 /// Used to manage lifecycle of <see cref="SubscriptionClient"/> objects, including migrations and fault recovery.
 /// Tracks subscriptions it is responsible for, used in recovery.
 /// </remarks>
-public class SubscriptionConnection : IDisposable, IAsyncDisposable
+internal class SubscriptionConnection
 {
     // Constants
-    private const uint MAX_SUBSCRIPTION_RETRIES = 5;
-    private const uint MAX_SUBSCRIPTIONS_AT_ONCE = 50;
+    private const int MAX_SUBSCRIPTIONS_AT_ONCE = 50;
 
     private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(105);
     // private static TimeSpan MigrationFrequency = TimeSpan.FromMinutes(2); // Testing only, James will hate you.
     private static TimeSpan MigrationTimeout = TimeSpan.FromSeconds(30);
-
-    // State
-    private readonly ConcurrentDictionary<SubscriptionDefinition, uint> ownedSubscriptions = new ConcurrentDictionary<SubscriptionDefinition, uint>();
-    private readonly ConcurrentQueue<SubscriptionDefinition> pendingSubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
-    private readonly ConcurrentQueue<SubscriptionDefinition> pendingUnsubscriptions = new ConcurrentQueue<SubscriptionDefinition>();
-
-    private bool disposed;
-    private bool isMigrating;
-    private bool isRecovering;
-    private bool isHandlingWork;
-
-    private bool Ready => !this.disposed && this.SubscriptionClient.Ready && !this.isMigrating && !this.isRecovering && this.isHandlingWork;
-
-    // Disposables
-    private SubscriptionClient? subscriptionClient;
-
-    // Background Tasks
-    private Task? workerTask;
-    private Task? periodicMigrationTask;
-
-    // State Transition Tasks
-    private Task migratingTask = Task.CompletedTask;
-    private Task recoveryTask = Task.CompletedTask;
 
     // Dependencies
     private readonly SubscriptionClientFactory subscriptionClientFactory;
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<SubscriptionConnection> logger;
 
-    // Properties
-    protected SubscriptionClient SubscriptionClient { get => this.subscriptionClient ?? throw new InvalidOperationException("SubscriptionClient may not be accessed before CreateAsync is called."); set => this.subscriptionClient = value; }
-    
-    public ConnectionId ConnectionId { get; }
+    // Policies
+    private static int[] RETRY_DELAYS_IN_SECONDS = new int[] { 0, 1, 5, 15, 30, 60 };
+    private readonly ResiliencePipeline<SubscriptionClient> SubscriptionClientCreationRetryPolicy;
+    private readonly SubscriptionWorkTracker workTracker;
 
-    // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
+    public ConnectionId ConnectionId { get; init; }
 
-    private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
-    {
-        this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
-    }
+    private SubscriptionConnectionState connectionState;
 
-    protected SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    private Task workerTask = Task.CompletedTask;
+    private Task migrationDueTask = Task.CompletedTask;
+
+    private Channel<SubscriptionEvent> eventChannel = Channel.CreateUnbounded<SubscriptionEvent>(
+        new UnboundedChannelOptions
+        {
+            AllowSynchronousContinuations = true,
+            SingleReader = true,
+            SingleWriter = true
+        });
+
+    internal SubscriptionConnection(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
     {
         this.ConnectionId = connectionId;
         this.subscriptionClientFactory = subscriptionClientFactory;
         this.loggerFactory = loggerFactory;
         this.logger = loggerFactory.CreateLogger<SubscriptionConnection>();
+        this.connectionState = SubscriptionConnectionState.NotConnected;
+        this.workTracker = new SubscriptionWorkTracker(loggerFactory.CreateLogger<SubscriptionWorkTracker>());
+
+        this.logger.LogInformation($"Created SubscriptionConnection with connectionId {connectionId}.");
+
+        this.SubscriptionClientCreationRetryPolicy = new ResiliencePipelineBuilder<SubscriptionClient>()
+            .AddRetry(new RetryStrategyOptions<SubscriptionClient>
+            {
+                ShouldHandle = new PredicateBuilder<SubscriptionClient>().Handle<Exception>(),
+                DelayGenerator = generatorArgs =>
+                {
+                    int delayInSeconds = generatorArgs.AttemptNumber < RETRY_DELAYS_IN_SECONDS.Length
+                        ? RETRY_DELAYS_IN_SECONDS[generatorArgs.AttemptNumber - 1]
+                        : RETRY_DELAYS_IN_SECONDS[^1];
+
+                    if (generatorArgs.AttemptNumber != 1)
+                    {
+                        this.logger.LogWarning($"An error occurred in {nameof(SubscriptionConnection)} while attempting to create a {nameof(SubscriptionClient)}.  Retrying in {delayInSeconds}s");
+                    }
+
+                    TimeSpan? delay = TimeSpan.FromSeconds(delayInSeconds);
+
+                    return ValueTask.FromResult(delay);
+                },
+                MaxRetryAttempts = int.MaxValue,
+                BackoffType = DelayBackoffType.Exponential
+            })
+            .Build();
     }
 
-    public static async Task<SubscriptionConnection> CreateAsync(ConnectionId connectionId, SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory)
+    //create client
+    //        send token if present ?
+    //            close old client | initiate and wait for recovery-> throw recovered event.
+    //	      get events
+    //        send pending requests
+    //        ---
+    //        Time to Migrate | Cancel -> cleanup.
+    //        Get Token?
+    //        |   success -> set token for next iteration
+    //        |   fail -> cleanup old client
+    //loop  <-/
+
+    public IAsyncEnumerable<SubscriptionEvent> ReadAllEventsAsync(CancellationToken cancellationToken)
+        => this.eventChannel.Reader.ReadAllAsync(cancellationToken);
+
+    public async Task RunAsync(CancellationToken cancellationToken)
     {
-        var connection = new SubscriptionConnection(connectionId, subscriptionClientFactory, loggerFactory);
-        await connection.InitializeAsync();
-        return connection;
-    }
+        this.logger.LogInformation($"Starting subscription connection {this.ConnectionId}.");
+        SubscriptionClient? currentClient = default;
+        CancellationTokenSource currentClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        MigrationToken migrationToken = MigrationToken.None;
 
-    private async Task InitializeAsync()
-    {
-        this.SubscriptionClient = await this.CreateNewSubscriptionClientAsync();
-        this.isHandlingWork = true;
-        this.workerTask = this.HandleSubscriptionWorkAsync();
-        this.periodicMigrationTask = this.MigratePeriodically();
-    }
-
-    private async Task<SubscriptionClient> CreateNewSubscriptionClientAsync()
-    {
-        var subscriptionClient = await this.subscriptionClientFactory.CreateAndConnectAsync();
-        subscriptionClient.SubscriptionEventReceived += this.HandleSubscriptionEvent;
-        subscriptionClient.Disconnected += this.HandleOnWebsocketFaulted;
-
-        return subscriptionClient;
-    }
-
-    private async Task CleanupSubscriptionClientAsync(SubscriptionClient subscriptionClient)
-    {
-        subscriptionClient.SubscriptionEventReceived -= this.HandleSubscriptionEvent;
-        subscriptionClient.Disconnected -= this.HandleOnWebsocketFaulted;
-        await subscriptionClient.DisposeAsync();
-    }
-
-    private void HandleSubscriptionEvent(object? sender, SubscriptionEvent e) => this.RaiseOnSubscriptionEvent(e);
-
-    private void HandleOnWebsocketFaulted(object? sender, EventArgs e) => this.InitiateRecovery();
-
-    private async Task MigratePeriodically()
-    {
-        while (this.isHandlingWork)
-        {
-            await Task.Delay(MigrationFrequency);
-            this.InitiateMigration();
-            await this.migratingTask;
-        }
-    }
-
-    private void InitiateMigration()
-    {
-        if (this.disposed || !this.isHandlingWork || this.isMigrating || this.isRecovering)
-        {
-            return;
-        }
-
-        this.logger.LogTrace($"{this.ConnectionId} Initiating migration.");
-        this.isMigrating = true;
-        this.migratingTask = this.TryMigrateAsync()
-                                 .ContinueWith(async t =>
-                                 {
-                                     if (!t.IsCompletedSuccessfully || t.Result == false)
-                                     {
-                                         this.InitiateRecovery();
-                                     }
-
-                                     this.isMigrating = false;
-                                     await this.recoveryTask; // in case we fell into recovery.
-                                 });
-    }
-
-    private async Task<bool> TryMigrateAsync()
-    {
-        SubscriptionClient oldClient = this.SubscriptionClient;
-
-        // GET TOKEN
-        this.logger.LogTrace("Getting Migration Token.");
-        Response getMigrationTokenResponse = await oldClient.GetMigrationTokenAsync(TimeSpan.FromSeconds(15));
-        if (!getMigrationTokenResponse.IsCompleted)
-        {
-            this.logger.LogError($"{this.ConnectionId} Failed to get migration token.");
-            return false;
-        }
-        var contentElement = JsonSerializer.Deserialize<JsonElement>(getMigrationTokenResponse.Message.content);
-
-        if (!contentElement.TryGetProperty("token", out var tokenElement))
-        {
-            this.logger.LogError($"{this.ConnectionId} Get migration token response message did not contain token element.");
-            return false;
-        }
-        this.logger.LogTrace("Got migration token.");
-
-        // NEW CLIENT
-        this.logger.LogTrace("Connecting new client.");
-        SubscriptionClient newClient = await this.CreateNewSubscriptionClientAsync();
-
-        // SENT TOKEN
-        this.logger.LogTrace("Sending Migration Token.");
-        var sendMigrationTokenResponse = await newClient.SendMigrationTokenAsync(tokenElement.GetString()!, MigrationTimeout);
-        if (!sendMigrationTokenResponse.IsCompleted)
-        {
-            this.logger.LogError($"{this.ConnectionId} Send migration token operation did not complete.");
-            return false;
-        }
-        
-        // CLEANUP
-        this.logger.LogTrace("Finalizing Migration.");
-        this.SubscriptionClient = newClient;
-        await this.CleanupSubscriptionClientAsync(oldClient);
-        return true;
-    }
-
-    private void InitiateRecovery()
-    {
-        this.recoveryTask = Task.Run(this.RecoverConnectionAsync);
-    }
-
-    private async Task RecoverConnectionAsync()
-    {
-        this.isRecovering = true;
-        bool isRecovered = false;
         do
         {
-            try
+            CancellationTokenSource newClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            SubscriptionClient? newClient = await this.CreateAndConnectNewClientAsync(newClientCancellationTokenSource.Token);
+
+            if (newClient == null)
             {
-                this.logger.LogWarning($"{this.ConnectionId} Recovering connection due to error.");
-                // cleanup the old client
-                var cleanupTask = this.CleanupSubscriptionClientAsync(this.SubscriptionClient);
-
-                // connect the new one.
-                this.SubscriptionClient = await this.CreateNewSubscriptionClientAsync();
-
-                // all subscriptions were dropped, prepare for resubscription.
-                this.pendingSubscriptions.Clear();
-                this.pendingUnsubscriptions.Clear();
-
-                foreach (var subscription in this.ownedSubscriptions.Keys)
+                if (!cancellationToken.IsCancellationRequested)
                 {
-                    this.pendingSubscriptions.Enqueue(subscription);
-                }
-
-                await cleanupTask;
-                
-                isRecovered = true;
-                this.logger.LogWarning($"{this.ConnectionId} Recovered with {this.pendingSubscriptions.Count} subscriptions to recover.");
-                this.isRecovering = false;
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, $"{this.ConnectionId} Failed to recover connection.");
-                await Task.Delay(TimeSpan.FromSeconds(1));
-            }
-        } while (!this.disposed && isRecovered == false);
-
-        this.isRecovering = false;
-    }
-
-    public void Subscribe(SubscriptionDefinition[] subscriptionDefinitions)
-    {
-        // Remove duplicates from the subscription definitions.
-        var distinctSubscriptions = subscriptionDefinitions.Distinct().ToArray();
-
-        // Update the subscriptions and the work queue.
-        foreach (var subscription in distinctSubscriptions)
-        {
-            if (this.ownedSubscriptions.TryAdd(subscription, 0))
-            {
-                this.pendingSubscriptions.Enqueue(subscription);
-            }
-            else
-            {
-                this.logger.LogWarning($"{this.ConnectionId} Ignoring duplicate subscription: {subscription}");
-            }
-        }
-    }
-
-    public void Unsubscribe(SubscriptionDefinition[] subscriptionDefinitions)
-    {
-        // Remove duplicates from the subscription definitions.
-        var distinctSubscriptions = subscriptionDefinitions.Distinct().ToArray();
-
-        // Update the queue to include the new items.
-        foreach (var subscription in distinctSubscriptions)
-        {
-            if (this.ownedSubscriptions.TryRemove(subscription, out _))
-            {
-                this.pendingUnsubscriptions.Enqueue(subscription);
-            }
-            else
-            {
-                this.logger.LogWarning($"{this.ConnectionId} Ignoring un-owned subscription: {subscription}");
-            }
-        }
-    }
-
-    private async Task HandleSubscriptionWorkAsync()
-    {
-        bool idle = false;
-        do
-        {
-            if (this.pendingSubscriptions.IsEmpty || !this.Ready)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(1));
-            }
-
-            List<SubscriptionDefinition> subscriptionsTaken = new List<SubscriptionDefinition>();
-            List<SubscriptionDefinition> unsubscriptionsTaken = new List<SubscriptionDefinition>();
-
-            var subscriptionCount = this.pendingSubscriptions.Count;
-            var unsubscriptionCount = this.pendingUnsubscriptions.Count;
-            if (subscriptionCount != 0)
-            {
-                idle = false;
-                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has {subscriptionCount} pending subscriptions.  Handling up to {Math.Min(MAX_SUBSCRIPTIONS_AT_ONCE, subscriptionCount)} of them.");
-
-                uint limit = MAX_SUBSCRIPTIONS_AT_ONCE;
-                while (limit-- > 0 && !this.pendingSubscriptions.IsEmpty)
-                {
-                    if (this.pendingSubscriptions.TryDequeue(out var subscription))
-                    {
-                        subscriptionsTaken.Add(subscription);
-                    }
-                    else
-                    {
-                        limit++;
-                    }
+                    this.logger.LogCritical("We failed to create a new client, but the cancellation token was not requested.  This should never happen.");
+                    throw new InvalidOperationException("Fatal error occurred while creating a new subscription client.");
                 }
             }
-            else if (unsubscriptionCount != 0)
-            {
-                idle = false;
-                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has {subscriptionCount} pending unsubscriptions.  Handling up to {Math.Min(MAX_SUBSCRIPTIONS_AT_ONCE, subscriptionCount)} of them.");
 
-                uint limit = MAX_SUBSCRIPTIONS_AT_ONCE;
-                while (limit-- > 0 && !this.pendingUnsubscriptions.IsEmpty)
-                {
-                    if (this.pendingUnsubscriptions.TryDequeue(out var subscription))
-                    {
-                        unsubscriptionsTaken.Add(subscription);
-                    }
-                    else
-                    {
-                        limit++;
-                    }
-                }
-            }
-            else if (!idle)
+            if (this.connectionState == SubscriptionConnectionState.NotConnected)
             {
-                idle = true;
-                this.logger.LogInformation($"ConnectionId {this.ConnectionId} has resolved all pending subscriptions and the worker is Idle.");
+                this.connectionState = SubscriptionConnectionState.ConnectedReady;
+                currentClient = newClient;
+                currentClientCancellationTokenSource = newClientCancellationTokenSource;
             }
 
-            Task[] subscriptionTasks = subscriptionsTaken.Select(this.SendSubscriptionRequestAsync).ToArray();
-
-            if (subscriptionTasks.Any())
+            if (this.connectionState == SubscriptionConnectionState.MigrationTokenAcquired)
             {
-                Task.WaitAll(subscriptionTasks);
-            }
-
-            Task[] unsubscriptionTasks = unsubscriptionsTaken.Select(this.SendUnsubscriptionRequestAsync).ToArray();
-
-            if (unsubscriptionTasks.Any())
-            {
-                Task.WaitAll(unsubscriptionTasks);
-            }
-        }
-        while (this.isHandlingWork);
-    }
-
-    private Task SendSubscriptionRequestAsync(SubscriptionDefinition definition)
-    {
-        if (!this.ownedSubscriptions.ContainsKey(definition))
-        {
-            this.logger.LogWarning($"{this.ConnectionId} Ignoring subscription request for unowned subscription: {definition}");
-            return Task.CompletedTask;
-        }
-
-        // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
-        var response = this.SubscriptionClient.SubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
-            .ContinueWith(task =>
-            {
-                // handle result.
-                if (task.IsFaulted)
+                if (migrationToken == MigrationToken.None)
                 {
-                    // handle error.
-                    this.logger.LogError($"{this.ConnectionId} Subscription request task faulted.");
-                    TryRequeueSubscriptionRequest(definition);
+                    this.logger.LogCritical("We are supposed to send a migration token, but the migration token is not available.  This should never happen.");
+                    throw new InvalidOperationException("Fatal error occurred while migrating.  Migration token was not acquired but internal state indicates otherwise.");
                 }
 
-                if (task.IsCanceled)
+                var sendMigrationTokenResponse = await newClient!.SendMigrationTokenAsync(migrationToken.Token, MigrationTimeout, cancellationToken);
+
+                // clean up current client
+                if (!currentClientCancellationTokenSource.IsCancellationRequested)
                 {
-                    // handle cancel.
-                    Debugger.Break();
+                    currentClientCancellationTokenSource.Cancel();
                 }
+                currentClient = null;
 
-                if (task.IsCompleted)
+                if (!sendMigrationTokenResponse.IsCompleted)
                 {
-                    var result = task.Result;
-                    if (result.TimedOut)
-                    {
-                        // handle failure.
-                        this.logger.LogWarning($"{this.ConnectionId} Subscription request timed out.");
-                        TryRequeueSubscriptionRequest(definition);
-                    }
+                    this.logger.LogError($"{this.ConnectionId} Send migration token operation did not complete in time. Error provided is '{sendMigrationTokenResponse.ErrorMessage}'.  Transitioning to Faulted.");
+                    this.connectionState = SubscriptionConnectionState.Faulted;
 
-                    if (!string.IsNullOrEmpty(result.ErrorMessage))
-                    {
-                        // handle error.
-                        this.logger.LogError($"{this.ConnectionId} Subscription request failed {result.ErrorMessage}");
-                        TryRequeueSubscriptionRequest(definition);
-                    }
-
-                    if (result.IsCompleted)
-                    {
-                        // handle success.
-                    }
-                }
-
-                return task.Result;
-            });
-
-        return response;
-    }
-
-    private Task SendUnsubscriptionRequestAsync(SubscriptionDefinition definition)
-    {
-        if (this.ownedSubscriptions.ContainsKey(definition))
-        {
-            this.logger.LogWarning($"{this.ConnectionId} Ignoring unsubscription request for owned subscription: {definition}");
-            return Task.CompletedTask;
-        }
-
-        // Note, we no longer have the notion of an error response etc.  We will need to handle the message ourselves.
-        var response = this.SubscriptionClient.UnsubscribeAsync(definition.EventId, definition.KeyId, TimeSpan.FromSeconds(15), CancellationToken.None)
-            .ContinueWith(task =>
-            {
-                // handle result.
-                if (task.IsFaulted)
-                {
-                    // handle error.
-                    this.logger.LogError($"{this.ConnectionId} Unsubscription request task faulted.");
-                }
-
-                if (task.IsCanceled)
-                {
-                    // handle cancel.
-                    Debugger.Break();
-                }
-
-                if (task.IsCompleted)
-                {
-                    var result = task.Result;
-                    if (result.TimedOut)
-                    {
-                        // handle failure.
-                        this.logger.LogWarning($"{this.ConnectionId} Unsubscription request timed out.");
-                    }
-
-                    if (!string.IsNullOrEmpty(result.ErrorMessage))
-                    {
-                        // handle error.
-                        this.logger.LogError($"{this.ConnectionId} Unsubscription request failed {result.ErrorMessage}");
-                    }
-
-                    if (result.IsCompleted)
-                    {
-                        // handle success.
-                    }
-                }
-
-                return task.Result;
-            });
-
-        return response;
-    }
-
-    private void TryRequeueSubscriptionRequest(SubscriptionDefinition definition)
-    {
-        do
-        {
-            if (this.ownedSubscriptions.TryGetValue(definition, out var retryCount))
-            {
-                if (retryCount < MAX_SUBSCRIPTION_RETRIES)
-                {
-                    if (this.ownedSubscriptions.TryUpdate(definition, 0, retryCount))
-                    {
-                        this.pendingSubscriptions.Enqueue(definition);
-                        break;
-                    }
+                    // clean up new client
+                    newClientCancellationTokenSource.Cancel();
+                    continue;
                 }
                 else
                 {
-                    this.logger.LogWarning($"{this.ConnectionId} Subscription request for {definition} failed too many times.  Removing subscription.");
+                    this.connectionState = SubscriptionConnectionState.ConnectedReady;
+                    currentClient = newClient;
+                    currentClientCancellationTokenSource = newClientCancellationTokenSource;
                 }
             }
-            else
+
+            migrationToken = MigrationToken.None; // We have attempted to consume it, so we should reset it.
+
+            if (this.connectionState == SubscriptionConnectionState.Faulted)
             {
-                break;
+                // initiate recovery
+                this.workTracker.ResetDispositionsForRecovery();
+                this.connectionState = SubscriptionConnectionState.NotConnected;
+                continue;
             }
-        } while (true);
+
+            // The lifetime of newClient should be ended by this comment, so I probably need to refactor a bit.
+
+            // Okay, if we faulted, we are now clear to recover
+            // Let's handle work, and emit events.
+
+            // should only be connected ready, otherwise something went weird.
+            if (this.connectionState == SubscriptionConnectionState.ConnectedReady)
+            {
+                if (currentClient == null)
+                {
+                    throw new InvalidOperationException("currentClient should not be able to be null here");
+                }
+
+                // set the migration due time.
+                this.migrationDueTask = Task.Delay(MigrationFrequency);
+
+                // handle work until it's time to migrate.
+                do
+                {
+                    var leases = this.workTracker.TakeWorkLeases(MAX_SUBSCRIPTIONS_AT_ONCE);
+                    
+                    if (leases.Length == 0)
+                    {
+                        this.logger.LogInformation($"{ConnectionId} has no lease work. Sleeping.");
+                        this.workerTask = Task.Delay(TimeSpan.FromSeconds(5)); // time to snooze
+                    }
+                    else
+                    {
+                        this.logger.LogInformation($"{ConnectionId} has leases for {leases.Length} subscriptions.");
+                        this.workerTask = this.ProcessLeasesAsync(currentClient, leases);
+                    }
+
+                    await Task.WhenAny(this.workerTask, this.migrationDueTask);
+                }
+                while (!currentClientCancellationTokenSource.Token.IsCancellationRequested && !this.migrationDueTask.IsCompleted);
+
+                var getMigrationTokenResult = await currentClient!.GetMigrationTokenAsync(MigrationTimeout);
+                if (getMigrationTokenResult.IsCompleted)
+                {
+                    migrationToken = MigrationToken.FromContent(getMigrationTokenResult!.Message!.content);
+                    this.connectionState = SubscriptionConnectionState.MigrationTokenAcquired;
+                }
+                else
+                {
+                    migrationToken = MigrationToken.None;
+                    this.connectionState = SubscriptionConnectionState.Faulted;
+                }
+            }
+            // this particular client is done handling work, but we should be moving on to the next one if we haven't cancelled.
+        }
+        while (!cancellationToken.IsCancellationRequested);
     }
 
-    ////////////////////
-    // Disposal
-    ////////////////////
-    protected virtual void Dispose(bool disposing)
+    private async Task ProcessLeasesAsync(SubscriptionClient client, SubscriptionWorkLease[] leases)
     {
-        if (!this.disposed)
-        {
-            if (disposing)
-            {
-                // TODO: dispose managed state (managed objects)
-            }
+        await ProcessLeasesForIntentAsync(client, leases, SubscriptionIntent.Subscribed);
+        await ProcessLeasesForIntentAsync(client, leases, SubscriptionIntent.Unsubscribed);
+    }
 
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            this.disposed = true;
+    private async Task ProcessLeasesForIntentAsync(SubscriptionClient client, SubscriptionWorkLease[] leases, SubscriptionIntent intent)
+    {
+        var workTasks = new List<Task>();
+
+        foreach (var lease in leases)
+        {
+            if (lease.Intent == intent)
+            {
+                if (lease.PriorDisposition == SubscriptionDisposition.RetryNeeded)
+                {
+                    this.logger.LogDebug($"Retrying attempt to reconcile lease for intent {intent} - {lease.SubscriptionDefinition.EventId}/{lease.SubscriptionDefinition.KeyId}.");
+                }
+                else
+                {
+                    this.logger.LogDebug($"Attempting to reconcile lease for intent {intent} - {lease.SubscriptionDefinition.EventId}/{lease.SubscriptionDefinition.KeyId}.");
+                }
+                workTasks.Add(this.RequestResolutionForIntentAsync(lease, intent == SubscriptionIntent.Subscribed ? client.SubscribeAsync : client.UnsubscribeAsync));
+            }
+        }
+
+        await Task.WhenAll(workTasks.ToArray());
+    }
+
+    private async Task RequestResolutionForIntentAsync(SubscriptionWorkLease lease, Func<string, int, TimeSpan, Task<Response<SubscriptionResponseMessage>>> sendClientRequestAsync)
+    {
+        var response = await sendClientRequestAsync(lease.SubscriptionDefinition.EventId, lease.SubscriptionDefinition.KeyId, TimeSpan.FromSeconds(15));
+
+        if (response.IsCompleted)
+        {
+            this.logger.LogDebug($"Subscription {lease.SubscriptionDefinition.EventId}/{lease.SubscriptionDefinition.KeyId} succeeded.");
+            this.workTracker.ReportLeaseResolved(lease);
+        }
+        else if (response.TimedOut)
+        {
+            this.logger.LogDebug($"Subscription {lease.SubscriptionDefinition.EventId}/{lease.SubscriptionDefinition.KeyId} timed out.");
+            this.workTracker.ReportLeaseRetryNeeded(lease);
+        }
+        else
+        {
+            this.logger.LogDebug($"Subscription {lease.SubscriptionDefinition.EventId}/{lease.SubscriptionDefinition.KeyId} failed with error {response.ErrorMessage}.");
         }
     }
 
-    public void Dispose()
+    private async Task<SubscriptionClient?> CreateAndConnectNewClientAsync(CancellationToken cancellationToken)
     {
-        this.Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        var result = await SubscriptionClientCreationRetryPolicy.ExecuteAsync(
+            async _ =>
+            {
+
+                var client = this.subscriptionClientFactory.CreateClient(this.eventChannel.Writer);
+                await client.ConnectAsync(cancellationToken);
+                return client;
+            },
+        cancellationToken);
+
+        return result;
     }
 
-    public async ValueTask DisposeAsync()
+    internal void Subscribe(SubscriptionDefinition[] subscriptions)
     {
-        await this.DisposeAsyncCore().ConfigureAwait(false);
-        this.Dispose(disposing: false);
-        GC.SuppressFinalize(this);
+        this.workTracker.AddSubscriptions(subscriptions);
+        this.logger.LogInformation($"{ConnectionId} has updated {subscriptions.Length} subscriptions.");
     }
 
-    protected virtual async ValueTask DisposeAsyncCore()
+    internal void Unsubscribe(SubscriptionDefinition[] unsubscriptions)
     {
-        this.isHandlingWork = false;
-
-        await Task.WhenAll(
-            this.workerTask ?? Task.CompletedTask,
-            this.periodicMigrationTask ?? Task.CompletedTask);
-
-        if (this.subscriptionClient != null)
-        {
-            this.subscriptionClient.SubscriptionEventReceived -= this.HandleSubscriptionEvent;
-            this.subscriptionClient.Disconnected -= this.HandleOnWebsocketFaulted;
-            await this.subscriptionClient.DisposeAsync();
-        }
+        this.workTracker.AddUnsubscriptions(unsubscriptions);
+        this.logger.LogInformation($"{ConnectionId} has updated {unsubscriptions.Length} unsubscriptions.");
     }
+}
+
+internal enum SubscriptionConnectionState
+{
+    NotConnected,
+    MigrationTokenAcquired,
+    Faulted,
+    ConnectedReady
 }

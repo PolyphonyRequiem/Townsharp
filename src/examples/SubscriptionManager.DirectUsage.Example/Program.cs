@@ -103,22 +103,28 @@ internal class SubscriptionManagerTest : IHostedService
                 logger.LogInformation($"Received {this.totalCount} events.");
             }
 
-            logger.LogTrace($"Received Event - {subscriptionEvent.EventId}/{subscriptionEvent.KeyId} - {subscriptionEvent.Content.GetRawText()}");
+            logger.LogInformation($"Received Event - {subscriptionEvent}");
         };
 
         var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
 
-        var subscriptions = new[] { "group-server-heartbeat", "group-server-status", "group-update", "group-member-update" }
+        var subscriptions = new[] 
+        { 
+            "group-server-heartbeat",
+            "group-server-status",
+            "group-update",
+            "group-member-update" 
+        }
             .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
             .ToArray();
 
         this.subscriptionManager.RegisterSubscriptions(subscriptions);
     }
 
-    private async Task<long[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
+    private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
     {
         return await webApiClient.GetJoinedGroupsAsync()
-            .Select(g => g!["group"]!["id"]!.GetValue<long>())
+            .Select(g => g!["group"]!["id"]!.GetValue<int>())
             .ToArrayAsync(cancellationToken);
     }
 
