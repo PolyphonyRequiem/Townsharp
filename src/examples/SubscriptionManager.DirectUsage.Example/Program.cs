@@ -111,9 +111,9 @@ internal class SubscriptionManagerTest : IHostedService
         var subscriptions = new[] 
         { 
             "group-server-heartbeat",
-            //"group-server-status",
-            //"group-update",
-            //"group-member-update" 
+            "group-server-status",
+            "group-update",
+            "group-member-update" 
         }
             .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
             .ToArray();

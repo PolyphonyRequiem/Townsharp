@@ -74,7 +74,13 @@ public class ConsoleRepl : IHostedService
 
                 await foreach (var consoleEvent in eventChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
                 {
-                    Console.WriteLine(consoleEvent.ToString());
+                    var message = consoleEvent switch
+                    {
+                        PlayerMovedChunkEvent e => $"PlayerMovedChunk - {e.player} - {e.oldChunk} -> {e.newChunk}",
+                        _ => "Not Implemented"
+                    };
+
+                    Console.WriteLine(message);
                 }
 
                 await getCommandsTask;

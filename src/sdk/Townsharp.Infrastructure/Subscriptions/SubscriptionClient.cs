@@ -150,17 +150,8 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
 
     protected override void HandleEvent(SubscriptionEventMessage eventMessage)
     {
-        var @event = eventMessage.@event switch
-        {
-            "group-server-heartbeat" => JsonSerializer.Deserialize<GroupServerHeartbeatContent>(eventMessage.content, SubscriptionsSerializerContext.Default.GroupServerHeartbeatContent) switch
-            {
-                { } heartbeatContent => new GroupServerHeartbeatEvent(heartbeatContent),
-                _ => throw new InvalidOperationException("Unable to deserialize group server heartbeat content")
-            },
-            _ => throw new NotImplementedException(),
-        };
-
-        this.eventChannelWriter.TryWrite(@event);
+        var subscriptionEvent =  SubscriptionEvent.FromEventMessage(eventMessage);
+        this.eventChannelWriter.TryWrite(subscriptionEvent);
     }
 
     protected override Task OnDisconnectedAsync()
