@@ -1,10 +1,15 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading.Channels;
+
+using FluentResults;
 
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Consoles.Commands;
+using Townsharp.Infrastructure.Consoles;
+using Townsharp.Infrastructure.Consoles.Models;
 using Townsharp.Infrastructure.GameConsoles;
-using Townsharp.Infrastructure.ServerConsole;
 using Townsharp.Internals.Consoles;
 using Townsharp.Servers;
 
@@ -56,11 +61,12 @@ public class GameServerConsole
         return await this.TryWithConsole(
             clientAction: async (consoleClient) =>
             {
-                CommandResult commandResult = await consoleClient.RunCommand(command.BuildCommandString(), TimeSpan.FromSeconds(30));
+                var commandResult = await consoleClient.RunCommand(command.BuildCommandString(), TimeSpan.FromSeconds(30));
 
                 if (commandResult.IsCompleted)
                 {
-                    return new ConsoleCommandResult<TResult>(command.FromResponseJson(commandResult.Result!));
+                    var data = commandResult?.Message?.data ?? new JsonElement();
+                    return new ConsoleCommandResult<TResult>(command.FromResponseJson(data));
                 }
 
                 throw new NotImplementedException("Poly needs to fix me.");
@@ -142,18 +148,18 @@ public class GameServerConsole
         {
             try
             {
-                return await consoleClientFactory.CreateAndConnectAsync(access.Uri, access.AccessToken);
+                var eventChannel = Channel.CreateUnbounded<Townsharp.Infrastructure.Consoles.Models.ConsoleEvent>();
+                var client = consoleClientFactory.CreateClient(access.Uri, access.AccessToken, eventChannel.Writer);
+
+                await client.ConnectAsync(default).ConfigureAwait(false);
+
+                return client;
             }
             catch
             {
                 return default;
             }
         }
-    }
-
-    private async Task DisposeConsoleClientAsync(ConsoleClient consoleClient)
-    {
-        await consoleClient.DisposeAsync();
     }
 }
 
@@ -178,8 +184,8 @@ internal class UntypedLiteralConsoleCommand : ICommand<string>
         return commandString;
     }
 
-    public string FromResponseJson(JsonNode responseJson)
+    public string FromResponseJson(JsonElement responseJson)
     {
-        return responseJson.ToJsonString();
+        return JsonObject.Create(responseJson)!.ToJsonString();
     }
 }

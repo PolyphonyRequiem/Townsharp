@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Townsharp.Consoles.Commands;
 
@@ -6,10 +7,11 @@ public class PlayerListCommand : ICommand<UserInfo[]>
 {
     public string BuildCommandString() => "player list";
 
-    public UserInfo[] FromResponseJson(JsonNode responseJson)
+    public UserInfo[] FromResponseJson(JsonElement responseJson)
     {
-        var playerList = responseJson["data"]?["Result"]?.AsArray();
+        var playerList = responseJson.GetProperty("data").GetProperty("Result").EnumerateArray()
+            .Select(p => new UserInfo(p.GetProperty("id").GetInt32(), p.GetProperty("username").GetString() ??"")).ToArray() ?? new UserInfo[0];
 
-        return playerList?.Select(p => new UserInfo(p?["id"]?.GetValue<int>() ?? 0, p?["username"]?.GetValue<string>()!)).ToArray() ?? new UserInfo[0];
+        return playerList;
     }    
 }

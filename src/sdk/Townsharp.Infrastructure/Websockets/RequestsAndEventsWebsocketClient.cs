@@ -47,6 +47,17 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
             ErrorInfo errorInfo = ErrorInfo.None;
             TEventMessage? eventMessage = default;
 
+            if (!this.IsAuthenticated)
+            {
+                this.HandleAuthenticationMessage(message);
+                if (!this.IsAuthenticated)
+                {
+                    throw new InvalidOperationException("Authentication failed.");
+                }
+
+                continue;
+            }
+
             try
             {
                 using (var document = JsonDocument.Parse(message))
@@ -207,6 +218,13 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
     protected override async Task OnDisconnectedAsync()
     {
         await this.messageHandlerTask.ConfigureAwait(false);
+    }
+
+    protected virtual bool IsAuthenticated => true;
+
+    protected virtual void HandleAuthenticationMessage(string message)
+    {
+        // no op by default
     }
 
     protected abstract ErrorInfo CheckForError(string message);

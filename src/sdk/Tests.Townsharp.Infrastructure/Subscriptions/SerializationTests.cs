@@ -115,7 +115,7 @@ public class SerializationTests
         }
         """;
 
-        var message = JsonSerializer.Deserialize<ServerStatusContent>(messageJson, AltaSerializerContext.Default.GroupServerHeartbeatContent);
+        var message = JsonSerializer.Deserialize<ServerStatusContent>(messageJson, AltaSerializerContext.Default.ServerStatusContent);
 
         Assert.NotNull(message);
         Assert.Equal(1053784199, message!.id);
@@ -150,7 +150,7 @@ public class SerializationTests
 
         var element = JsonDocument.Parse(insanity).RootElement;
 
-        var message = JsonSerializer.Deserialize<ServerStatusContent>(element, AltaSerializerContext.Default.GroupServerHeartbeatContent);
+        var message = JsonSerializer.Deserialize<ServerStatusContent>(element, AltaSerializerContext.Default.ServerStatusContent);
 
         Assert.NotNull(message);
     }
@@ -160,6 +160,7 @@ public class SerializationTests
 [JsonSerializable(typeof(ServerStatusContent))]
 [JsonSerializable(typeof(SubscriptionEventMessage))]
 [JsonSerializable(typeof(SubscriptionMessage))]
+[JsonSerializable(typeof(ServerStatusContent))]
 public partial class AltaSerializerContext : JsonSerializerContext
 {
 

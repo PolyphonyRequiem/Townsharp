@@ -1,5 +1,4 @@
 ﻿using System.Net.WebSockets;
-using System.Reflection.Metadata.Ecma335;
 using System.Text.Json;
 using System.Threading.Channels;
 
@@ -19,6 +18,10 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
     private readonly string authToken;
     private readonly ChannelWriter<ConsoleEvent> eventChannelWriter;
 
+    private bool isAuthenticated = false;
+
+    protected override bool IsAuthenticated => this.isAuthenticated;
+    private readonly SemaphoreSlim authSemaphore = new SemaphoreSlim(0);
     public ConsoleClient(
         Uri consoleEndpoint,
         string authToken,
@@ -48,29 +51,20 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         }
 
         // THIS IS NOT HOW WE AUTH!
-
         await base.SendMessageAsync(this.authToken);
-        var response = await this.RequestAsync(_ => new AuthenticationRequest(this.authToken), TimeSpan.FromSeconds(30));
-        
-        if (!response.IsCompleted)
-        {
-            this.logger.LogError($"Failed to authenticate with console: {response.ErrorMessage}");
-            return false;
-        }
-
-        var message = response.Message;
-
-        if (message == null)
-        {
-            return false;
-        }
-
-        if (!(message?.data.Value.GetString() ?? "").StartsWith("Connection Succeeded, Authenticated as:"))
-        {
-            return false;
-        }
+        await authSemaphore.WaitAsync();
 
         return true;
+    }
+
+    protected override void HandleAuthenticationMessage(string message)
+    {
+        if (message.Contains("Connection Succeeded, Authenticated as:"))
+        {
+            this.isAuthenticated = true;
+        }
+
+        this.authSemaphore.Release();
     }
 
     public async Task<Response<CommandResponseMessage>> RunCommand(string commandString, TimeSpan timeout, CancellationToken cancellationToken = default)
