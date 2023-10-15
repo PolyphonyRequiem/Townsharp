@@ -15,8 +15,8 @@ public class SubscriptionMultiplexerFactory
         this.loggerFactory = loggerFactory;
     }
 
-    public async Task<SubscriptionMultiplexer> CreateAsync(int concurrentConnections = DEFAULT_MAX_CONNECTIONS)
+    public SubscriptionMultiplexer Create(int concurrentConnections = DEFAULT_MAX_CONNECTIONS)
     {
-        return await SubscriptionMultiplexer.CreateAsync(this.subscriptionClientFactory, this.loggerFactory, concurrentConnections);
+        return SubscriptionMultiplexer.Create(this.subscriptionClientFactory, this.loggerFactory, concurrentConnections);
     }
 }

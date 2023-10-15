@@ -17,7 +17,7 @@ public class BotTokenProvider : IBotTokenProvider
 
     public bool IsEnabled => true;
 
-    public BotTokenProvider(BotCredential botCredential, HttpClient httpClient)
+    public BotTokenProvider(BotCredential botCredential, IHttpClientFactory httpClientFactory)
     {
         var request = new Dictionary<string, string>
         {
@@ -26,11 +26,6 @@ public class BotTokenProvider : IBotTokenProvider
             {"client_id", botCredential.ClientId},
             {"client_secret", botCredential.ClientSecret}
         };
-
-        if (!botCredential.IsConfigured)
-        {
-            throw new InvalidOperationException("Unable to use an unconfigured bot credential. Make sure both ClientId and ClientSecret are set.");
-        }
 
         FormUrlEncodedContent content = new FormUrlEncodedContent(request);
 
@@ -41,6 +36,7 @@ public class BotTokenProvider : IBotTokenProvider
                 var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 return await retryPolicy.ExecuteAsync<CacheState<string>>(
                     async (CancellationToken cancellationToken) => {
+                        using var httpClient = httpClientFactory.CreateClient();
                         var result = await httpClient.PostAsync(BaseUri, content);
 
                         if (!result.IsSuccessStatusCode)

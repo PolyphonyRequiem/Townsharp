@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
                    new BotCredential(
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
                        Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
-                   services.GetRequiredService<HttpClient>()));
+                   services.GetRequiredService<IHttpClientFactory>()));
 
         var userCredential = new UserCredential(
             Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",

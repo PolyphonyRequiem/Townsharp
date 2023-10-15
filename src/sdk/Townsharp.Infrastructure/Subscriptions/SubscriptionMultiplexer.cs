@@ -9,7 +9,7 @@ public class SubscriptionMultiplexer
     private readonly SubscriptionMap subscriptionMap;
     private readonly Dictionary<ConnectionId, SubscriptionConnection> connections;
     private readonly ILogger<SubscriptionMultiplexer> logger;
-    private readonly int concurrentConnections;
+    private readonly int maxConcurrentConnections;
 
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
@@ -21,7 +21,7 @@ public class SubscriptionMultiplexer
 
     internal SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
     {
-        this.concurrentConnections = connections.Count;
+        this.maxConcurrentConnections = connections.Count;
         this.connections = connections;
         this.logger = logger;
         this.subscriptionMap = new SubscriptionMap(this.connections.Keys.ToArray());
@@ -32,22 +32,29 @@ public class SubscriptionMultiplexer
         }
     }
 
-    internal static async Task<SubscriptionMultiplexer> CreateAsync(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory, int concurrentConnections)
+    internal static SubscriptionMultiplexer Create(SubscriptionClientFactory subscriptionClientFactory, ILoggerFactory loggerFactory, int concurrentConnections)
     {
         // TODO: Switch to something that auto-scales if at all possible.
         // That means that upon a fault that might lead to recovery, we should defer to the manager to determine if we should recover.
         // If we do want to recover, we simply notify the connection to proceed with recovery
         // Otherwise, we should subsume responsibility for the subscriptions, and remap them.
         // This should only occur on scale-in.
+
         var connectionIds = Enumerable.Range(0, concurrentConnections).Select(_ => new ConnectionId());
         var subscriptionConnections = connectionIds.Select(id => new SubscriptionConnection(id, subscriptionClientFactory, loggerFactory)).ToArray();
         var subscriptionConnectionsMap = subscriptionConnections.ToDictionary(connection => connection.ConnectionId);
-        foreach (var connection in subscriptionConnections)
+        return new SubscriptionMultiplexer(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionMultiplexer>());
+    }
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        foreach (var connection in this.connections.Values)
         {
-            _ = connection.RunAsync(CancellationToken.None);  // THIS NEEDS A CANCELLATION TOKEN AND NEEDS TO BE CLOSED ON
+            _ = connection.RunAsync(cancellationToken);
         }
 
-        return new SubscriptionMultiplexer(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionMultiplexer>());
+        var tasks = this.connections.Values.Select(connection => connection.RunAsync(cancellationToken));
+        await Task.WhenAll(tasks);
     }
 
     public void RegisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
