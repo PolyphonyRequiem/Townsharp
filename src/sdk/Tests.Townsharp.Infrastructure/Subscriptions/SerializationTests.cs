@@ -161,7 +161,7 @@ public class SerializationTests
 [JsonSerializable(typeof(SubscriptionEventMessage))]
 [JsonSerializable(typeof(SubscriptionMessage))]
 [JsonSerializable(typeof(ServerStatusContent))]
-public partial class AltaSerializerContext : JsonSerializerContext
+internal partial class AltaSerializerContext : JsonSerializerContext
 {
 
 }

@@ -19,7 +19,7 @@ namespace Townsharp.Infrastructure.Subscriptions;
 
 // Content
 [JsonSerializable(typeof(PlayerInfo))]
-public partial class ConsoleSerializerContext : JsonSerializerContext
+internal partial class ConsoleSerializerContext : JsonSerializerContext
 {
 
 }

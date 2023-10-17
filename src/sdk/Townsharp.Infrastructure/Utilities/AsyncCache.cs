@@ -1,8 +1,8 @@
 ﻿namespace Townsharp.Infrastructure.Utilities;
 
-public record CacheState<T>(T Value, DateTimeOffset ExpirationTime);
+internal record CacheState<T>(T Value, DateTimeOffset ExpirationTime);
 
-public class AsyncCache<T>
+internal class AsyncCache<T>
 {
     private readonly TimeSpan marginOfRefresh;
     private readonly Func<CancellationToken, ValueTask<CacheState<T>>> fetchDataAsync;
@@ -11,7 +11,7 @@ public class AsyncCache<T>
     private DateTimeOffset expirationTime;
     private T cachedValue;
 
-    public AsyncCache(TimeSpan marginOfRefresh, Func<CancellationToken, ValueTask<CacheState<T>>> fetchDataAsync, CacheState<T> initialCacheState)
+    internal AsyncCache(TimeSpan marginOfRefresh, Func<CancellationToken, ValueTask<CacheState<T>>> fetchDataAsync, CacheState<T> initialCacheState)
     {
         this.marginOfRefresh = marginOfRefresh;
         this.fetchDataAsync = fetchDataAsync;
@@ -20,7 +20,7 @@ public class AsyncCache<T>
         this.cachedValue = initialCacheState.Value;
     }
 
-    public async ValueTask<T> GetAsync(CancellationToken cancellationToken = default)
+    internal async ValueTask<T> GetAsync(CancellationToken cancellationToken = default)
     {
         // Fast path: if the cache is not nearly expired, return the value immediately.
         if (DateTimeOffset.UtcNow + this.marginOfRefresh < this.expirationTime)

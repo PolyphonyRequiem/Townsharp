@@ -1,6 +1,6 @@
 ﻿namespace Townsharp.Infrastructure.Subscriptions;
 
-public struct ConnectionId
+internal struct ConnectionId
 {
     private readonly Guid id;
 

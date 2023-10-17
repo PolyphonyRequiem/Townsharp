@@ -1,11 +1,11 @@
-﻿namespace Townsharp.Infrastructure.Identity;
+﻿//namespace Townsharp.Infrastructure.Identity;
 
-public class DisabledUserTokenProvider : IUserTokenProvider
-{
-    public bool IsEnabled => false;
+//internal class DisabledUserTokenProvider : IUserTokenProvider
+//{
+//    internal bool IsEnabled => false;
 
-    public ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-}
+//    internal ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default)
+//    {
+//        throw new NotImplementedException();
+//    }
+//}

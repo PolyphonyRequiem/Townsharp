@@ -259,8 +259,8 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
 
     protected record ErrorInfo(ErrorType ErrorType, string? ErrorMessage)
     {
-        public bool IsError => this.ErrorType != ErrorType.NoError;
+        internal bool IsError => this.ErrorType != ErrorType.NoError;
 
-        public static ErrorInfo None => new(ErrorType.NoError, null);
+        internal static ErrorInfo None => new(ErrorType.NoError, null);
     }
 }

@@ -14,30 +14,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTownsharpInfra(this IServiceCollection services)
     {
         services.AddHttpClient();
-        services.AddSingleton<IBotTokenProvider>(
+        services.AddSingleton<BotTokenProvider>(
             services => new BotTokenProvider(
-                   new BotCredential(
-                       Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
-                       Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
-                   services.GetRequiredService<IHttpClientFactory>()));
-
-        var userCredential = new UserCredential(
-            Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",
-            Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH") ?? "");
-
-        if (userCredential.IsConfigured)
-        {
-            services.AddSingleton<IUserTokenProvider>(
-            services => new UserTokenProvider(
-                userCredential,
-                services.GetRequiredService<HttpClient>()));
-        }
-        else
-        {
-            services.AddSingleton<IUserTokenProvider>(new DisabledUserTokenProvider());
-        }
-
-        services.AddSingleton<WebApiClient>();
+                BotCredential.FromEnvironmentVariables(),
+                services.GetRequiredService<IHttpClientFactory>()));
+              
+        services.AddSingleton<WebApiBotClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionMultiplexerFactory>();
         services.AddSingleton<ConsoleClientFactory>();

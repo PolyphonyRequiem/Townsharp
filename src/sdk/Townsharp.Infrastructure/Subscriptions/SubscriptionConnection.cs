@@ -36,7 +36,7 @@ internal class SubscriptionConnection
     private readonly ResiliencePipeline<SubscriptionClient> SubscriptionClientCreationRetryPolicy;
     private readonly SubscriptionWorkTracker workTracker;
 
-    public ConnectionId ConnectionId { get; init; }
+    internal ConnectionId ConnectionId { get; init; }
 
     private SubscriptionConnectionState connectionState;
 
@@ -99,10 +99,10 @@ internal class SubscriptionConnection
     //        |   fail -> cleanup old client
     //loop  <-/
 
-    public IAsyncEnumerable<SubscriptionEvent> ReadAllEventsAsync(CancellationToken cancellationToken)
+    internal IAsyncEnumerable<SubscriptionEvent> ReadAllEventsAsync(CancellationToken cancellationToken)
         => this.eventChannel.Reader.ReadAllAsync(cancellationToken);
 
-    public async Task RunAsync(CancellationToken cancellationToken)
+    internal async Task RunAsync(CancellationToken cancellationToken)
     {
         this.logger.LogInformation($"Starting subscription connection {this.ConnectionId}.");
         SubscriptionClient? currentClient = default;

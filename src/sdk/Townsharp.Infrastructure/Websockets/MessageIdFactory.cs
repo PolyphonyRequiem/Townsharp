@@ -1,12 +1,12 @@
 ﻿namespace Townsharp.Infrastructure.Websockets;
 
-public class MessageIdFactory
+internal class MessageIdFactory
 {
     int messageId = -1;
 
-    public int MessagesSent => messageId;
+    internal int MessagesSent => messageId;
 
-    public int GetNextId()
+    internal int GetNextId()
     {
         return Interlocked.Increment(ref messageId);
     }

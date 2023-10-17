@@ -1,10 +1,10 @@
 ﻿namespace Townsharp.Infrastructure.Consoles.Models;
 
-public record CommandRequestMessage (int id, string content);
+internal record CommandRequestMessage (int id, string content);
 
-public record AuthenticationRequest: CommandRequestMessage
+internal record AuthenticationRequest: CommandRequestMessage
 {
-    public AuthenticationRequest(string authToken) : base(0, authToken)
+    internal AuthenticationRequest(string authToken) : base(0, authToken)
     {
     }
 }

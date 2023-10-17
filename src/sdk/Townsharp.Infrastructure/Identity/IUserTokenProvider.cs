@@ -1,8 +1,8 @@
-﻿namespace Townsharp.Infrastructure.Identity;
+﻿//namespace Townsharp.Infrastructure.Identity;
 
-public interface IUserTokenProvider
-{
-    public ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default);
+//internal interface IUserTokenProvider
+//{
+//    internal ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default);
 
-    public bool IsEnabled { get; }
-}
+//    internal bool IsEnabled { get; }
+//}

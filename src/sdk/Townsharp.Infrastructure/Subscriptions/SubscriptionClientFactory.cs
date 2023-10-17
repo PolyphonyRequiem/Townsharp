@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
@@ -8,12 +7,12 @@ using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
-public class SubscriptionClientFactory
+internal class SubscriptionClientFactory
 {
-    private readonly IBotTokenProvider botTokenProvider;
+    private readonly BotTokenProvider botTokenProvider;
     private readonly ILoggerFactory loggerFactory;
 
-    public SubscriptionClientFactory(IBotTokenProvider botTokenProvider, ILoggerFactory loggerFactory)
+    internal SubscriptionClientFactory(BotTokenProvider botTokenProvider, ILoggerFactory loggerFactory)
     {
         this.botTokenProvider = botTokenProvider;
         this.loggerFactory = loggerFactory;

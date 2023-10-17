@@ -17,12 +17,11 @@ public record Response<TMessage> where TMessage : class
         this.TimedOut = timedOut;
     }
 
-    public static Response<TMessage> Completed(TMessage message) => new(message, string.Empty, false);
+    internal static Response<TMessage> Completed(TMessage message) => new(message, string.Empty, false);
 
-    public static Response<TMessage> Error(string error) => new(null, error, false);
+    internal static Response<TMessage> Error(string error) => new(null, error, false);
 
-    public static Response<TMessage> Cancelled() => new(null, "Task Cancelled", false);
+    internal static Response<TMessage> Cancelled() => new(null, "Task Cancelled", false);
 
-    public static Response<TMessage> Timeout() => new(null, string.Empty, true);
-
+    internal static Response<TMessage> Timeout() => new(null, string.Empty, true);
 }

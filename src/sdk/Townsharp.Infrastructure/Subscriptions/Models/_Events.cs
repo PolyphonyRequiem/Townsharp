@@ -14,7 +14,7 @@ public enum SubscriptionEventType
 
 public abstract record SubscriptionEvent (SubscriptionEventType SubscriptionEventType)
 {
-    public static SubscriptionEvent FromEventMessage(SubscriptionEventMessage message)
+    internal static SubscriptionEvent FromEventMessage(SubscriptionEventMessage message)
     {
         return message.@event switch
         {

@@ -18,7 +18,7 @@ namespace Townsharp.Infrastructure.Subscriptions;
 // Wire Message Content
 [JsonSerializable(typeof(MigrationTokenRequestContent))]
 [JsonSerializable(typeof(BatchSubscriptionRequestContent))]
-public partial class SubscriptionsSerializerContext : JsonSerializerContext
+internal partial class SubscriptionsSerializerContext : JsonSerializerContext
 {
 
 }

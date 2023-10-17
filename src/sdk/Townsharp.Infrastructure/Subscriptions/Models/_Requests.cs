@@ -1,16 +1,16 @@
 ﻿namespace Townsharp.Infrastructure.Subscriptions.Models;
 
-public record RequestMessage
+internal record RequestMessage
 {
-    public int id { get; init; }
+    internal int id { get; init; }
 
-    public string path { get; init; }
+    internal string path { get; init; }
     
-    public string method { get; init; }
+    internal string method { get; init; }
     
-    public string authorization { get; init; }
+    internal string authorization { get; init; }
     
-    public object? content { get; init; }
+    internal object? content { get; init; }
 
     private RequestMessage(int id, string path, string method, string token, object? content = default )        
     { 
@@ -21,27 +21,27 @@ public record RequestMessage
         this.content = content;
     }
 
-    public static RequestMessage CreateSubscriptionRequestMessage(int id, string token, string eventId, int eventKey)
+    internal static RequestMessage CreateSubscriptionRequestMessage(int id, string token, string eventId, int eventKey)
         => new(id, $"subscription/{eventId}/{eventKey}", "POST", token);
 
-    public static RequestMessage CreateUnsubscriptionRequestMessage(int id, string token, string eventId, int eventKey)
+    internal static RequestMessage CreateUnsubscriptionRequestMessage(int id, string token, string eventId, int eventKey)
         => new(id, $"subscription/{eventId}/{eventKey}", "DELETE", token);
 
-    public static RequestMessage CreateBatchSubscriptionRequestMessage(int id, string token, string eventId, int[] eventKeys)
+    internal static RequestMessage CreateBatchSubscriptionRequestMessage(int id, string token, string eventId, int[] eventKeys)
         => new(id, $"subscription/batch", "POST", token, new BatchSubscriptionRequestContent[] { new (eventId, eventKeys)}); // single element cuz of noted bugs
 
-    public static RequestMessage CreateGetMigrationTokenRequestMessage(int id, string token)
+    internal static RequestMessage CreateGetMigrationTokenRequestMessage(int id, string token)
         => new(id, $"migrate", "GET", token);
 
-    public static RequestMessage CreateSendMigrationTokenRequestMessage(int id, string token, string migrationToken)
+    internal static RequestMessage CreateSendMigrationTokenRequestMessage(int id, string token, string migrationToken)
         => new(id, $"migrate", "POST", token, new MigrationTokenRequestContent(migrationToken));
 }
 
-public record MigrationTokenRequestContent(string token);
+internal record MigrationTokenRequestContent(string token);
 
-public record BatchSubscriptionRequestContent(string @event, string[] keys)
+internal record BatchSubscriptionRequestContent(string @event, string[] keys)
 {
-    public BatchSubscriptionRequestContent(string @event, int[] keys)
+    internal BatchSubscriptionRequestContent(string @event, int[] keys)
         : this(@event, keys.Select(k => k.ToString()).ToArray())
     {
 

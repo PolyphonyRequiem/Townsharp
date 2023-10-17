@@ -9,8 +9,7 @@ public class SubscriptionMultiplexer
     private readonly SubscriptionMap subscriptionMap;
     private readonly Dictionary<ConnectionId, SubscriptionConnection> connections;
     private readonly ILogger<SubscriptionMultiplexer> logger;
-    private readonly int maxConcurrentConnections;
-
+    
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
     
@@ -21,7 +20,6 @@ public class SubscriptionMultiplexer
 
     internal SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
     {
-        this.maxConcurrentConnections = connections.Count;
         this.connections = connections;
         this.logger = logger;
         this.subscriptionMap = new SubscriptionMap(this.connections.Keys.ToArray());

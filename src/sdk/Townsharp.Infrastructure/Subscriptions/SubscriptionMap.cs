@@ -1,6 +1,6 @@
 ﻿namespace Townsharp.Infrastructure.Subscriptions;
 
-public class SubscriptionMap
+internal class SubscriptionMap
 {
     private const int SuggestedSubscriptionsPerConnectionLimit = 1000;
     private readonly Dictionary<ConnectionId, HashSet<SubscriptionDefinition>> connectionMappings;
@@ -8,7 +8,7 @@ public class SubscriptionMap
     // Without resorting to immutable collections and other weirdness, we need to lock the connection mappings when we are updating them.
     private readonly object mappingLock = new object();
 
-    public SubscriptionMap(ConnectionId[] connectionIds)
+    internal SubscriptionMap(ConnectionId[] connectionIds)
     {
         this.connectionMappings = new Dictionary<ConnectionId, HashSet<SubscriptionDefinition>>(
             connectionIds.ToDictionary(
@@ -16,11 +16,11 @@ public class SubscriptionMap
                 _ => new HashSet<SubscriptionDefinition>(SuggestedSubscriptionsPerConnectionLimit)));
     }
 
-    public IReadOnlyDictionary<ConnectionId, HashSet<SubscriptionDefinition>> ConnectionMappings => this.connectionMappings.AsReadOnly();
+    internal IReadOnlyDictionary<ConnectionId, HashSet<SubscriptionDefinition>> ConnectionMappings => this.connectionMappings.AsReadOnly();
 
     
     // Make this a custom type.  Doesn't really need to be a dictionary and in fact that obscures the intent
-    public Dictionary<ConnectionId, SubscriptionDefinition[]> CreateSubscriptionMappingFor(SubscriptionDefinition[] definitions)
+    internal Dictionary<ConnectionId, SubscriptionDefinition[]> CreateSubscriptionMappingFor(SubscriptionDefinition[] definitions)
     {
         lock (mappingLock)
         {
@@ -67,7 +67,7 @@ public class SubscriptionMap
         }
     }
 
-    public Dictionary<ConnectionId, SubscriptionDefinition[]> CreateUnsubscriptionMappingFor(SubscriptionDefinition[] definitions)
+    internal Dictionary<ConnectionId, SubscriptionDefinition[]> CreateUnsubscriptionMappingFor(SubscriptionDefinition[] definitions)
     {
         lock (mappingLock)
         {

@@ -10,11 +10,11 @@ using Townsharp.Infrastructure.WebApi;
 
 public class ConsoleRepl : IHostedService
 {
-    private readonly WebApiClient webApiClient;
+    private readonly WebApiBotClient webApiClient;
     private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ILogger<ConsoleRepl> logger;
 
-    public ConsoleRepl(WebApiClient webApiClient, ConsoleClientFactory consoleClientFactory, ILogger<ConsoleRepl> logger)
+    public ConsoleRepl(WebApiBotClient webApiClient, ConsoleClientFactory consoleClientFactory, ILogger<ConsoleRepl> logger)
     {
         this.webApiClient = webApiClient;
         this.consoleClientFactory = consoleClientFactory;

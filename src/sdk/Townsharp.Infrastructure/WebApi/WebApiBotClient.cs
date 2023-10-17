@@ -6,19 +6,32 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.Composition;
+using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity;
 
 namespace Townsharp.Infrastructure.WebApi;
 
 public class WebApiBotClient
 {
-    public const int PaginationLimit = 500;
-    public const string BaseAddress = "https://webapi.townshiptale.com/";
-    private readonly IBotTokenProvider botTokenProvider;
+    internal const int PaginationLimit = 500;
+    internal const string BaseAddress = "https://webapi.townshiptale.com/";
+    private readonly BotTokenProvider botTokenProvider;
     private readonly IHttpClientFactory httpClientFactory;
     private readonly ILogger<WebApiBotClient> logger;
 
-    public WebApiBotClient(IBotTokenProvider botTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiBotClient> logger)
+    public WebApiBotClient(BotCredential credential)
+        : this(new BotTokenProvider(credential, InternalHttpClientFactory.Default), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiBotClient>())
+    {
+    }
+
+    public WebApiBotClient()
+        : this(InternalBotTokenProvider.Default, InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiBotClient>())
+    {
+    }
+
+
+    internal WebApiBotClient(BotTokenProvider botTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiBotClient> logger)
     {
         this.botTokenProvider = botTokenProvider;
         this.httpClientFactory = httpClientFactory;
@@ -33,7 +46,7 @@ public class WebApiBotClient
     private async Task<HttpClient> GetClientAsync()
     {
         var httpClient = this.httpClientFactory.CreateClient();
-        httpClient.BaseAddress = new Uri(WebApiClient.BaseAddress);
+        httpClient.BaseAddress = new Uri(WebApiBotClient.BaseAddress);
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await this.GetTokenAsync());
         return httpClient;
     }

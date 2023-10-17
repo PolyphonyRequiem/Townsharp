@@ -2,12 +2,14 @@
 
 using Polly;
 using Polly.Retry;
+
+using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Utilities;
 
 namespace Townsharp.Infrastructure.Identity;
 
-public class BotTokenProvider : IBotTokenProvider
+internal class BotTokenProvider
 {
     private record struct TokenResponse(string access_token, string token_type, int expires_in, string scope);
     private const string BaseUri = "https://accounts.townshiptale.com/connect/token";
@@ -15,9 +17,15 @@ public class BotTokenProvider : IBotTokenProvider
     private readonly AsyncCache<string> tokenCache;
     private readonly AsyncRetryPolicy retryPolicy = Policy.Handle<Exception>().WaitAndRetryForeverAsync(x => TimeSpan.FromSeconds(5));
 
-    public bool IsEnabled => true;
+    internal bool IsEnabled => true;
 
-    public BotTokenProvider(BotCredential botCredential, IHttpClientFactory httpClientFactory)
+    internal BotTokenProvider(BotCredential botCredential)
+        : this(botCredential, InternalHttpClientFactory.Default)
+    {
+
+    }
+
+    internal BotTokenProvider(BotCredential botCredential, IHttpClientFactory httpClientFactory)
     {
         var request = new Dictionary<string, string>
         {
@@ -52,12 +60,12 @@ public class BotTokenProvider : IBotTokenProvider
             new CacheState<string>("", DateTimeOffset.MinValue));
     }
 
-    public ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default)
+    internal ValueTask<string> GetTokenAsync(CancellationToken cancellationToken = default)
     {
         return this.tokenCache.GetAsync(cancellationToken);
     }
 
-    public async ValueTask<int> GetBotUserIdAsync(CancellationToken cancellationToken = default)
+    internal async ValueTask<int> GetBotUserIdAsync(CancellationToken cancellationToken = default)
     {
         var token = await this.GetTokenAsync(cancellationToken).ConfigureAwait(false);
         var claims = JwtDecoder.DecodeJwtClaims(token);
@@ -66,7 +74,7 @@ public class BotTokenProvider : IBotTokenProvider
         return int.Parse(userIdString);
     }
 
-    public async ValueTask<string> GetBotUserNameAsync(CancellationToken cancellationToken = default)
+    internal async ValueTask<string> GetBotUserNameAsync(CancellationToken cancellationToken = default)
     {
         var token = await this.GetTokenAsync(cancellationToken).ConfigureAwait(false);
         var claims = JwtDecoder.DecodeJwtClaims(token);

@@ -1,6 +1,6 @@
-﻿namespace Townsharp.Infrastructure.Configuration;
+﻿//namespace Townsharp.Infrastructure.Configuration;
 
-public record UserCredential(string Username, string PasswordHash)
-{
-    public bool IsConfigured => !(string.IsNullOrEmpty(this.Username) || string.IsNullOrEmpty(this.PasswordHash));
-}
+//internal record UserCredential(string Username, string PasswordHash)
+//{
+//    internal bool IsConfigured => !(string.IsNullOrEmpty(this.Username) || string.IsNullOrEmpty(this.PasswordHash));
+//}

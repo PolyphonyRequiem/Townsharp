@@ -14,15 +14,15 @@ namespace Townsharp.Infrastructure.Subscriptions;
 internal class SubscriptionClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
 {
     // Constants
-    public static int MAX_CONCURRENT_REQUESTS = 20;
+    internal static int MAX_CONCURRENT_REQUESTS = 20;
     private static readonly Uri SubscriptionWebsocketUri = new Uri("wss://websocket.townshiptale.com");
 
     // Dependencies
-    private readonly IBotTokenProvider botTokenProvider;
+    private readonly BotTokenProvider botTokenProvider;
     private readonly ChannelWriter<SubscriptionEvent> eventChannelWriter;
 
-    public SubscriptionClient(
-        IBotTokenProvider botTokenProvider,
+    internal SubscriptionClient(
+        BotTokenProvider botTokenProvider,
         ChannelWriter<SubscriptionEvent> eventChannel,
         ILogger<SubscriptionClient> logger)
         : base(logger, MAX_CONCURRENT_REQUESTS)
@@ -32,27 +32,27 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
     }
 
     // I don't love these return types.
-    public async Task<Response<SubscriptionResponseMessage>> SubscribeAsync(string eventId, int key, TimeSpan timeout)
+    internal async Task<Response<SubscriptionResponseMessage>> SubscribeAsync(string eventId, int key, TimeSpan timeout)
     {
         return await this.RequestAsync((id, token) => RequestMessage.CreateSubscriptionRequestMessage(id, token, eventId, key), timeout).ConfigureAwait(false);
     }
 
-    public async Task<Response<SubscriptionResponseMessage>> UnsubscribeAsync(string eventId, int key, TimeSpan timeout)
+    internal async Task<Response<SubscriptionResponseMessage>> UnsubscribeAsync(string eventId, int key, TimeSpan timeout)
     {
         return await this.RequestAsync((id, token) => RequestMessage.CreateUnsubscriptionRequestMessage(id, token, eventId, key), timeout).ConfigureAwait(false);
     }
 
-    public async Task<Response<SubscriptionResponseMessage>> BatchSubscribeAsync(string eventId, int[] keys, TimeSpan timeout)
+    internal async Task<Response<SubscriptionResponseMessage>> BatchSubscribeAsync(string eventId, int[] keys, TimeSpan timeout)
     {
         return await this.RequestAsync((id, token) => RequestMessage.CreateBatchSubscriptionRequestMessage(id, token, eventId, keys), timeout).ConfigureAwait(false);
     }
 
-    public async Task<Response<SubscriptionResponseMessage>> GetMigrationTokenAsync(TimeSpan timeout)
+    internal async Task<Response<SubscriptionResponseMessage>> GetMigrationTokenAsync(TimeSpan timeout)
     {
         return await this.RequestAsync(RequestMessage.CreateGetMigrationTokenRequestMessage, timeout).ConfigureAwait(false);
     }
 
-    public async Task<Response<SubscriptionResponseMessage>> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
+    internal async Task<Response<SubscriptionResponseMessage>> SendMigrationTokenAsync(string migrationToken, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         return await this.RequestAsync((id, token) => RequestMessage.CreateSendMigrationTokenRequestMessage(id, token, migrationToken), timeout).ConfigureAwait(false);
     }

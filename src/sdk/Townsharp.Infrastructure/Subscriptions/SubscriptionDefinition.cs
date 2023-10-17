@@ -2,7 +2,7 @@
 
 public record SubscriptionDefinition(string EventId, int KeyId)
 {
-    public static SubscriptionDefinition Parse(string eventPath)
+    internal static SubscriptionDefinition Parse(string eventPath)
     {
         var parts = eventPath.Split('/');
         if (parts.Length != 2)
@@ -13,5 +13,5 @@ public record SubscriptionDefinition(string EventId, int KeyId)
         return new SubscriptionDefinition(parts[0], int.Parse(parts[1]));
     }
 
-    override public string ToString() => $"{EventId}/{KeyId}";
+    public override string ToString() => $"{EventId}/{KeyId}";
 }
