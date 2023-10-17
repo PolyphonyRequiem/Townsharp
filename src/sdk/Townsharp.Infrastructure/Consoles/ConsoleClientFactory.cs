@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Consoles.Models;
 
@@ -10,6 +11,11 @@ namespace Townsharp.Infrastructure.GameConsoles;
 public class ConsoleClientFactory
 {
     private readonly ILoggerFactory loggerFactory;
+
+    public ConsoleClientFactory()
+        : this(InternalLoggerFactory.Default)
+    {
+    }
 
     public ConsoleClientFactory(ILoggerFactory loggerFactory)
     {

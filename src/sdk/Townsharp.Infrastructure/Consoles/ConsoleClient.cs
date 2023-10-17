@@ -67,9 +67,14 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         this.authSemaphore.Release();
     }
 
-    public async Task<Response<CommandResponseMessage>> RunCommand(string commandString, TimeSpan timeout, CancellationToken cancellationToken = default)
+    public Task<Response<CommandResponseMessage>> RunCommandAsync(string commandString)
     {
-        return await this.RequestAsync(id => new CommandRequestMessage(id, commandString), TimeSpan.FromSeconds(15));
+        return this.RequestAsync(id => new CommandRequestMessage(id, commandString), TimeSpan.FromSeconds(15));
+    }
+
+    public async Task<Response<CommandResponseMessage>> RunCommand(string commandString, TimeSpan timeout)
+    {
+        return await this.RequestAsync(id => new CommandRequestMessage(id, commandString), timeout);
     }
 
     protected override ErrorInfo CheckForError(string message) => new ErrorInfo(ErrorType.FatalError, message);

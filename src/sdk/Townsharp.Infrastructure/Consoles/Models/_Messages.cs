@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace Townsharp.Infrastructure.Consoles.Models;
 
@@ -10,7 +9,17 @@ public record ConsoleMessage(string type)
 
 public record CommandResponseMessage(int commandId, JsonElement? data)
 {
+    private static JsonSerializerOptions options = new()
+    {
+        WriteIndented = true
+    };
+
     internal static CommandResponseMessage None = new(-1, default);
+
+    public override string ToString()
+    {
+        return JsonSerializer.Serialize(data, options);
+    }
 }
 
 public record ConsoleSubscriptionEventMessage(string eventType, JsonElement? data)

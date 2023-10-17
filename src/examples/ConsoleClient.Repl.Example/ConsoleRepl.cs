@@ -104,7 +104,7 @@ public class ConsoleRepl : IHostedService
                 break;
             }
 
-            var result = await consoleClient.RunCommand(command!, TimeSpan.FromSeconds(30), token);
+            var result = await consoleClient.RunCommandAsync(command!);
 
             if (result.IsCompleted)
             {
