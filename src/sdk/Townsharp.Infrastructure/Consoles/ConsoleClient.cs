@@ -4,7 +4,6 @@ using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Consoles.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Websockets;
 

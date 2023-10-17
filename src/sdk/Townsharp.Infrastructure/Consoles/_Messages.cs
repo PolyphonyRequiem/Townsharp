@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace Townsharp.Infrastructure.Consoles.Models;
+namespace Townsharp.Infrastructure.Consoles;
 
 public record ConsoleMessage(string type)
 {

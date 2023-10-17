@@ -1,6 +1,4 @@
-﻿using Townsharp.Infrastructure.Consoles.Models;
-
-namespace Townsharp.Client;
+﻿namespace Townsharp.Client;
 
 public class ManagedServer
 {

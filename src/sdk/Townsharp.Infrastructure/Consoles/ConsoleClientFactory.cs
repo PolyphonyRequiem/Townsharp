@@ -3,7 +3,6 @@
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Composition;
-using Townsharp.Infrastructure.Consoles.Models;
 
 namespace Townsharp.Infrastructure.Consoles;
 

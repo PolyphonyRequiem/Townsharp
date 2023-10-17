@@ -204,21 +204,21 @@ public class WebApiBotClient
         return serverInfo!;
     }
 
-    public async Task<JsonObject> RequestConsoleAccessAsync(int serverId)
+    public async Task<WebApiResult<ConsoleAccess>> RequestConsoleAccessAsync(int serverId)
     {
         var client = await GetClientAsync();
         
         client.DefaultRequestHeaders.Host = "webapi.townshiptale.com";
         var response = await client.PostAsync($"api/servers/{serverId}/console", JsonContent.Create(new { should_launch=true, ignore_offline=true}));
-        
+
+        var rawContent = await response.Content.ReadAsStringAsync();
+
         if (!response.IsSuccessStatusCode)
         {
-            JsonElement errorResponse = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
-            throw new InvalidOperationException(errorResponse.GetRawText());
+            WebApiResult<ConsoleAccess>.Failure(rawContent, $"The response status did not indicated success. {response.StatusCode}");
         }
 
-        var consoleAccess = await response.Content.ReadFromJsonAsync<JsonObject>();
-        return consoleAccess!;
+        return WebApiResult<ConsoleAccess>.Success(rawContent);
     }
 
     public async Task<UserInfo> GetBotUserInfoAsync()

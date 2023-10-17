@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Consoles;
-using Townsharp.Infrastructure.Consoles.Models;
 using Townsharp.Infrastructure.WebApi;
 
 public class ConsoleRepl : IHostedService
@@ -33,23 +32,21 @@ public class ConsoleRepl : IHostedService
         while (!cancellationToken.IsCancellationRequested) 
         {
             bool retryNeeded = false;
-            UriBuilder uriBuilder = new UriBuilder();
+            Uri? endpointUri = default;
             string accessToken = "";
             Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>();
             try
             {
                 var response = await this.webApiClient.RequestConsoleAccessAsync(int.Parse(serverId!));
 
-                if (!response["allowed"]?.GetValue<bool>() ?? false)
+                if (!response.IsSuccess)
                 {
-                    throw new InvalidOperationException("Server is not online.");
+                    logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
+                    throw new InvalidOperationException(); // not good flow control, I'll fix this.  It happened because of changes.
                 }
 
-                uriBuilder.Scheme = "ws";
-                uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");
-                uriBuilder.Port = response["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response."); ;
-
-                accessToken = response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response.");
+                accessToken = response.Content.token!;
+                endpointUri = response.Content.BuildConsoleUri();
             }
             catch (Exception) 
             {
@@ -67,7 +64,7 @@ public class ConsoleRepl : IHostedService
                         
             try
             {
-                ConsoleClient consoleClient = this.consoleClientFactory.CreateClient(uriBuilder.Uri, accessToken, eventChannel.Writer);
+                ConsoleClient consoleClient = this.consoleClientFactory.CreateClient(endpointUri!, accessToken, eventChannel.Writer);
                 await consoleClient.ConnectAsync(cancellationTokenSource.Token);
                 Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
 

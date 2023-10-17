@@ -67,37 +67,13 @@ internal class ConsoleAccessProvider
     private async Task<ConsoleAccess> RequestAndBuildGetConsoleAccessAsync(ServerId serverId)
     {
         var response = await webApiClient.RequestConsoleAccessAsync(serverId);
-        if (!response["allowed"]?.GetValue<bool>() ?? false)
-        {
+
+        if (!response.IsSuccess)
+        { 
             logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
             return ConsoleAccess.None;
         }
 
-        return BuildConsoleAccessFromResponseJsonObject(serverId, response);
-    }
-
-    private ConsoleAccess BuildConsoleAccessFromResponseJsonObject(ServerId serverId, JsonObject response)
-    {
-        UriBuilder uriBuilder = new UriBuilder();
-
-        uriBuilder.Scheme = "ws";
-
-        string? hostAddress = response["connection"]?["address"]?.GetValue<string>();
-        if (hostAddress == default)
-        {
-            logger.LogTrace($"Failed to get connection.address from response. Access not currently available for {serverId}");
-            return ConsoleAccess.None;
-        }
-        uriBuilder.Host = hostAddress!;
-
-        int? post = response["connection"]?["websocket_port"]?.GetValue<int>();
-        if (post == default)
-        {
-            logger.LogTrace($"Failed to get connection.host from response. Access not currently available for {serverId}");
-            return ConsoleAccess.None;
-        }
-        uriBuilder.Port = post.GetValueOrDefault();
-
-        return new ConsoleAccess(uriBuilder.Uri, response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response."));
+        return new ConsoleAccess(response.Content.BuildConsoleUri(), response.Content.token!);
     }
 }

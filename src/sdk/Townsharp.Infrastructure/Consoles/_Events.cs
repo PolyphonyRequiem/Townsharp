@@ -1,4 +1,4 @@
-﻿namespace Townsharp.Infrastructure.Consoles.Models;
+﻿namespace Townsharp.Infrastructure.Consoles;
 
 public enum ConsoleEventType
 {

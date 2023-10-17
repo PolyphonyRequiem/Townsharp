@@ -3,7 +3,6 @@ using System.Threading.Channels;
 
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Consoles;
-using Townsharp.Infrastructure.Consoles.Models;
 using Townsharp.Infrastructure.WebApi;
 
 Console.WriteLine("Connecting to the bot server.");
@@ -20,29 +19,21 @@ Console.WriteLine("Enter the server id to connect to:");
 string serverIdInput = Console.ReadLine() ?? "";
 int serverId = int.Parse(serverIdInput);
 
-// Boilerplate code to get the console access token and connect to the console.
-// This will get cleaned up in the future.
 var accessRequestResult = await webApiClient.RequestConsoleAccessAsync(serverId);
 
-if (!accessRequestResult["allowed"]?.GetValue<bool>() ?? false)
+if (!accessRequestResult.IsSuccess)
 {
-    throw new InvalidOperationException("Server is not online.");
+    throw new InvalidOperationException("Unable to connect to the server.  It is either offline or access was denied.");
 }
 
-var consoleUriBuilder = new UriBuilder()
-{
-    Scheme = "ws",
-    Host = accessRequestResult["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response."),
-    Port = accessRequestResult["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response.")
-};
-
-string accessToken = accessRequestResult["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response.");
+var accessToken = accessRequestResult.Content.token!;
+var endpointUri = accessRequestResult.Content.BuildConsoleUri();
 
 Console.WriteLine("Connecting to the console.");
 
 Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>(); // not used in this example, but used for handling console events.
 
-var consoleClient = consoleClientFactory.CreateClient(consoleUriBuilder.Uri, accessToken, eventChannel.Writer);
+var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, eventChannel.Writer);
 
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); // used to end the session.
 

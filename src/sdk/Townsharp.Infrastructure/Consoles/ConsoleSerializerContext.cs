@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-using Townsharp.Infrastructure.Consoles.Models;
+using Townsharp.Infrastructure.Consoles;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
