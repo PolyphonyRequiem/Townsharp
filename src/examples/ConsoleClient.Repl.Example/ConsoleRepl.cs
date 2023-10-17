@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Consoles.Models;
-using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.WebApi;
 
 public class ConsoleRepl : IHostedService

@@ -1,6 +1,5 @@
 ﻿using MediatR;
 
-using Townsharp.Infrastructure.WebApi;
 using Townsharp.Internals.Sessions.Requests;
 
 namespace Townsharp.Internals.Servers.Handlers;

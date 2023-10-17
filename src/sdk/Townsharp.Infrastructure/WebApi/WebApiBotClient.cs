@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure.CommonModels;
 using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity;
@@ -218,5 +219,10 @@ public class WebApiBotClient
 
         var consoleAccess = await response.Content.ReadFromJsonAsync<JsonObject>();
         return consoleAccess!;
+    }
+
+    public async Task<UserInfo> GetBotUserInfoAsync()
+    {
+        return await this.botTokenProvider.GetBotUserInfoAsync();
     }
 }

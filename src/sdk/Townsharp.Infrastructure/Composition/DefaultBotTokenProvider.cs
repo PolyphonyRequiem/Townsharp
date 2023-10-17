@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-
-using Townsharp.Infrastructure.Configuration;
+﻿using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity;
 
 namespace Townsharp.Infrastructure.Composition;

@@ -3,10 +3,9 @@
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Composition;
-using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Consoles.Models;
 
-namespace Townsharp.Infrastructure.GameConsoles;
+namespace Townsharp.Infrastructure.Consoles;
 
 public class ConsoleClientFactory
 {

@@ -3,6 +3,7 @@
 using Polly;
 using Polly.Retry;
 
+using Townsharp.Infrastructure.CommonModels;
 using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Utilities;
@@ -80,5 +81,10 @@ internal class BotTokenProvider
         var claims = JwtDecoder.DecodeJwtClaims(token);
 
         return claims["client_username"]?.GetValue<string>() ?? throw new InvalidOperationException("Unable to find client_username claim on JWT, so not bot user id could be determined.");
+    }
+
+    internal async ValueTask<UserInfo> GetBotUserInfoAsync(CancellationToken cancellationToken = default)
+    {
+        return new UserInfo(await GetBotUserIdAsync(cancellationToken), await GetBotUserNameAsync(cancellationToken));
     }
 }

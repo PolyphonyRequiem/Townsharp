@@ -1,10 +1,9 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Consoles.Models;
-using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.WebApi;
 
 Console.WriteLine("Connecting to the bot server.");

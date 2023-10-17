@@ -1,5 +1,4 @@
-﻿using Townsharp.Infrastructure.Consoles;
-using Townsharp.Infrastructure.Consoles.Models;
+﻿using Townsharp.Infrastructure.Consoles.Models;
 
 namespace Townsharp.Client;
 

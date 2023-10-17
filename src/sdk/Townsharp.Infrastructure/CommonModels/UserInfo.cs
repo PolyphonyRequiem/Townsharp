@@ -2,6 +2,16 @@
 
 public record UserInfo
 {
+    internal UserInfo(int id, string username)
+    {
+        this.id = id;
+        this.username = username;
+    }
+
+    internal UserInfo()
+    {
+    }
+
     public int id { get; set; } = -1;
 
     public string username { get; set; } = string.Empty;

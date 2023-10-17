@@ -2,7 +2,6 @@
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.WebApi;
 using Townsharp.Servers;
 
@@ -10,17 +9,14 @@ namespace Townsharp.Internals.Consoles;
 
 internal class ConsoleAccessProvider
 {
-    private readonly WebApiClient webApiClient;
-    private readonly IBotTokenProvider botTokenProvider;
+    private readonly WebApiBotClient webApiClient;
     private readonly ILogger<ConsoleAccessProvider> logger;
 
     public ConsoleAccessProvider(
-        WebApiClient webApiClient, 
-        IBotTokenProvider botTokenProvider, // don't like this, but it is what it is.  Probably need to bind identity throughout the system.
+        WebApiBotClient webApiClient, 
         ILogger<ConsoleAccessProvider> logger)
     {
         this.webApiClient = webApiClient;
-        this.botTokenProvider = botTokenProvider;
         this.logger = logger;
     }
 
@@ -58,16 +54,15 @@ internal class ConsoleAccessProvider
         }
         else
         {
-            var botUserId = await this.botTokenProvider.GetBotUserIdAsync();
-            var groupMemberResponse = await webApiClient.GetGroupMemberAsync(groupId, (int)botUserId);
+            var botUserInfo = await this.webApiClient.GetBotUserInfoAsync();
+            var groupMemberResponse = await webApiClient.GetGroupMemberAsync(groupId, botUserInfo.id);
 
-            var permissions = groupMemberResponse["permissions"]?.GetValue<string>() ?? throw new InvalidOperationException($"Unable to get permissions for user {botUserId} from group {groupId}.");
+            var permissions = groupMemberResponse["permissions"]?.GetValue<string>() ?? throw new InvalidOperationException($"Unable to get permissions for user {botUserInfo.id} from group {groupId}.");
 
             return permissions.Contains("Owner") || permissions.Contains("Moderator");
         }
 
     }
-
 
     private async Task<ConsoleAccess> RequestAndBuildGetConsoleAccessAsync(ServerId serverId)
     {

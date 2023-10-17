@@ -1,8 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.GameConsoles;
-using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
