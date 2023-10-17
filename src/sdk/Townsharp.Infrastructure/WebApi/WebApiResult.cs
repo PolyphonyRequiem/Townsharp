@@ -27,7 +27,7 @@ public class WebApiResult<TResult>
     private WebApiResult(string rawResponse, string? errorMessage = default)
     {
         this.rawResponse = rawResponse;
-        this.IsSuccess = errorMessage != default;
+        this.IsSuccess = errorMessage == default;
         this.ErrorMessage = errorMessage ?? String.Empty;
 
         if (this.IsSuccess)

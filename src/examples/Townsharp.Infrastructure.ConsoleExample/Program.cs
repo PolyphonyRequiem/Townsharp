@@ -29,7 +29,6 @@ if (!accessRequestResult.IsSuccess)
 var accessToken = accessRequestResult.Content.token!;
 var endpointUri = accessRequestResult.Content.BuildConsoleUri();
 
-Console.WriteLine("Connecting to the console.");
 
 Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>(); // not used in this example, but used for handling console events.
 
@@ -43,8 +42,11 @@ Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
     cancellationTokenSource.Cancel();
 };
 
+Console.WriteLine("Connecting to the console.");
 await consoleClient.ConnectAsync(cancellationTokenSource.Token); // Connect the client to the console endpoint.
+Console.WriteLine("Connected!");
 
+Console.WriteLine("Running command 'player list'");
 var result = await consoleClient.RunCommandAsync("player list");
 
 if (result.IsCompleted)
