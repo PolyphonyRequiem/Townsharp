@@ -61,7 +61,7 @@ public class GameServerConsole
 
                 if (commandResult.IsCompleted)
                 {
-                    var data = commandResult?.Message?.data ?? new JsonElement();
+                    var data = commandResult?.Message?.data ?? new JsonObject();
                     return new ConsoleCommandResult<TResult>(command.FromResponseJson(data));
                 }
 
@@ -144,7 +144,7 @@ public class GameServerConsole
         {
             try
             {
-                var eventChannel = Channel.CreateUnbounded<Townsharp.Infrastructure.Consoles.Models.ConsoleEvent>();
+                var eventChannel = Channel.CreateUnbounded<Townsharp.Infrastructure.Consoles.ConsoleEvent>();
                 var client = consoleClientFactory.CreateClient(access.Uri, access.AccessToken, eventChannel.Writer);
 
                 await client.ConnectAsync(default).ConfigureAwait(false);
@@ -180,8 +180,8 @@ internal class UntypedLiteralConsoleCommand : ICommand<string>
         return commandString;
     }
 
-    public string FromResponseJson(JsonElement responseJson)
+    public string FromResponseJson(JsonNode responseJson)
     {
-        return JsonObject.Create(responseJson)!.ToJsonString();
+        return responseJson.ToJsonString();
     }
 }

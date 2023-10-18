@@ -1,5 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
@@ -133,7 +134,7 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
 
     protected override void HandleEvent(ConsoleSubscriptionEventMessage eventMessage)
     {
-        JsonElement data = eventMessage.data.GetValueOrDefault();
+        JsonNode data = eventMessage.data ?? new JsonObject();
         ConsoleEvent @event = eventMessage.eventType switch
         {
             "PlayerMovedChunk" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerMovedChunkEvent)!,

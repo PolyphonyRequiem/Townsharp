@@ -1,15 +1,16 @@
 ﻿using MediatR;
 
+using Townsharp.Infrastructure.WebApi;
 using Townsharp.Internals.Sessions.Requests;
 
 namespace Townsharp.Internals.Servers.Handlers;
 
 internal class AutoManageServersRequestHandler : IRequestHandler<AutoManageServersRequest>
 {
-    private readonly WebApiClient webApiClient;
+    private readonly WebApiBotClient webApiClient;
     private readonly ServerManager gameServerManager;
 
-    public AutoManageServersRequestHandler(WebApiClient webApiClient, ServerManager gameServerManager)
+    public AutoManageServersRequestHandler(WebApiBotClient webApiClient, ServerManager gameServerManager)
     {
         this.webApiClient = webApiClient;
         this.gameServerManager = gameServerManager;

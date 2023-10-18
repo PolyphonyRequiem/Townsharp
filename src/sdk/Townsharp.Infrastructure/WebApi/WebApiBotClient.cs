@@ -52,22 +52,23 @@ public class WebApiBotClient
         return httpClient;
     }
 
-    public async Task<JsonObject> GetGroupAsync(int groupId)
+    public async Task<WebApiResult<JsonObject>> GetGroupAsync(int groupId)
     {
         var client = await GetClientAsync();
-        var response = await client.GetFromJsonAsync<JsonObject>($"api/groups/{groupId}");
+        
+        var response = await client.GetAsync($"api/groups/{groupId}");
 
-        if (response == null)
+        var rawContent = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"Failed to get group {groupId}.");
+            WebApiResult<JsonObject>.Failure(rawContent, $"The response status did not indicated success. {response.StatusCode}");
         }
-        else
-        {
-            return response;
-        }
+
+        return WebApiResult<JsonObject>.Success(rawContent);
     }
 
-    public async IAsyncEnumerable<JsonObject> GetJoinedGroupsAsync()
+    public async IAsyncEnumerable<JsonNode> GetJoinedGroupsAsync()
     {
         var client = await GetClientAsync();
         HttpResponseMessage response;
@@ -83,8 +84,8 @@ public class WebApiBotClient
 
             if (!response.IsSuccessStatusCode)
             {
-                JsonElement errorResponse = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
-                throw new InvalidOperationException(errorResponse.GetRawText());
+                JsonNode errorResponse = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
+                throw new InvalidOperationException(errorResponse.ToJsonString());
             }
 
             lastPaginationToken = response.Headers.Contains("paginationToken") ?
@@ -99,7 +100,7 @@ public class WebApiBotClient
         while (response.Headers.Contains("paginationToken"));
     }
 
-    public async IAsyncEnumerable<JsonObject> GetPendingGroupInvitationsAsync()
+    public async IAsyncEnumerable<JsonNode> GetPendingGroupInvitationsAsync()
     {
         var client = await GetClientAsync();
         HttpResponseMessage response;
@@ -115,8 +116,8 @@ public class WebApiBotClient
 
             if (!response.IsSuccessStatusCode)
             {
-                JsonElement errorResponse = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
-                throw new InvalidOperationException(errorResponse.GetRawText());
+                JsonNode errorResponse = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
+                throw new InvalidOperationException(errorResponse.ToJsonString());
             }
 
             if (response.Headers.Contains("paginationToken"))
@@ -133,27 +134,34 @@ public class WebApiBotClient
     }
 
     // throws 400 if the invite has already been accepted
-    public async Task<bool> AcceptGroupInviteAsync(int groupId)
+    public async Task<WebApiResult<JsonObject>> AcceptGroupInviteAsync(int groupId)
     {
         var client = await GetClientAsync();
         var response = await client.PostAsync($"api/groups/invites/{groupId}", new StringContent(groupId.ToString()));
-        return response.IsSuccessStatusCode;
+
+        var rawContent = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            WebApiResult<JsonObject>.Failure(rawContent, $"The response status did not indicated success. {response.StatusCode}");
+        }
+
+        return WebApiResult<JsonObject>.Success(rawContent);
     }
 
-    public async Task<JsonObject> GetGroupMemberAsync(int groupId, int userId)
+    public async Task<WebApiResult<JsonObject>> GetGroupMemberAsync(int groupId, int userId)
     {
         var client = await GetClientAsync();
         var response = await client.GetAsync($"api/groups/{groupId}/members/{userId}");
 
+        var rawContent = await response.Content.ReadAsStringAsync();
+
         if (!response.IsSuccessStatusCode)
         {
-            JsonElement errorResponse = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
-            throw new InvalidOperationException(errorResponse.GetRawText());
+            WebApiResult<JsonObject>.Failure(rawContent, $"The response status did not indicated success. {response.StatusCode}");
         }
 
-        var groupMember = await response.Content.ReadFromJsonAsync<JsonObject>();
-
-        return groupMember!;
+        return WebApiResult<JsonObject>.Success(rawContent);
     }
 
     public async IAsyncEnumerable<JsonObject> GetJoinedServersAsync()
@@ -172,8 +180,8 @@ public class WebApiBotClient
 
             if (!response.IsSuccessStatusCode)
             {
-                JsonElement errorResponse = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
-                throw new InvalidOperationException(errorResponse.GetRawText());
+                JsonNode errorResponse = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
+                throw new InvalidOperationException(errorResponse.ToJsonString());
             }
 
             lastPaginationToken = response.Headers.Contains("paginationToken") ?
@@ -188,20 +196,19 @@ public class WebApiBotClient
         while (response.Headers.Contains("paginationToken"));
     }
 
-    public async Task<JsonObject> GetServerAsync(int serverId)
+    public async Task<WebApiResult<JsonObject>> GetServerAsync(int serverId)
     {
         var client = await GetClientAsync();
         var response = await client.GetAsync($"api/servers/{serverId}");
 
+        var rawContent = await response.Content.ReadAsStringAsync();
+
         if (!response.IsSuccessStatusCode)
         {
-            JsonElement errorResponse = (await response.Content.ReadFromJsonAsync<JsonElement>())!;
-            throw new InvalidOperationException(errorResponse.GetRawText());
+            WebApiResult<JsonObject>.Failure(rawContent, $"The response status did not indicated success. {response.StatusCode}");
         }
 
-        var serverInfo = await response.Content.ReadFromJsonAsync<JsonObject>();
-
-        return serverInfo!;
+        return WebApiResult<JsonObject>.Success(rawContent);
     }
 
     public async Task<WebApiResult<ConsoleAccess>> RequestConsoleAccessAsync(int serverId)

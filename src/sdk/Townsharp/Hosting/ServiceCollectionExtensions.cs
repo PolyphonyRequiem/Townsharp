@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 
 using Townsharp.Configuration;
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Hosting;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Internals.Consoles;
 using Townsharp.Internals.Groups;
@@ -39,34 +40,8 @@ public static class ServiceCollectionExtensions
             config.RegisterServicesFromAssembly(typeof(ServiceCollectionExtensions).Assembly);
         });
 
-        services.AddHttpClient();
-        services.AddSingleton<IBotTokenProvider>(
-            services => new BotTokenProvider(
-                   new BotCredential(
-                       Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
-                       Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
-                   services.GetRequiredService<HttpClient>()));
+        services.AddTownsharpInfra();
 
-        var userCredential = new UserCredential(
-            Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",
-            Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH") ?? "");
-
-        if (userCredential.IsConfigured)
-        {
-            services.AddSingleton<IUserTokenProvider>(
-            services => new UserTokenProvider(
-                userCredential,
-                services.GetRequiredService<HttpClient>()));
-        }
-        else
-        {
-            services.AddSingleton<IUserTokenProvider>(new DisabledUserTokenProvider());
-        }
-
-        services.AddSingleton<WebApiClient>();
-        services.AddSingleton<SubscriptionClientFactory>();
-        services.AddSingleton<SubscriptionMultiplexerFactory>();
-        services.AddSingleton<ConsoleClientFactory>();
         services.AddSingleton<ServerManager>();
         services.AddSingleton<GroupManager>();
         services.AddSingleton<GameServerConsoleManager>();

@@ -45,8 +45,13 @@ internal class ConsoleAccessProvider
     {
         var serverResponse = await this.webApiClient.GetServerAsync(serverId);
 
-        int groupId = serverResponse["group_id"]?.GetValue<int>() ?? throw new InvalidOperationException("Unable to get group_id from the server response.");
-        bool isOnline = serverResponse["is_online"]?.GetValue<bool>() ?? throw new InvalidOperationException("Unable to get is_online from the server response.");
+        if (!serverResponse.IsSuccess)
+        {
+            return false;
+        }
+
+        int groupId = serverResponse.Content["group_id"]?.GetValue<int>() ?? throw new InvalidOperationException("Unable to get group_id from the server response.");
+        bool isOnline = serverResponse.Content["is_online"]?.GetValue<bool>() ?? throw new InvalidOperationException("Unable to get is_online from the server response.");      
 
         if (!isOnline)
         {
@@ -57,7 +62,12 @@ internal class ConsoleAccessProvider
             var botUserInfo = await this.webApiClient.GetBotUserInfoAsync();
             var groupMemberResponse = await webApiClient.GetGroupMemberAsync(groupId, botUserInfo.id);
 
-            var permissions = groupMemberResponse["permissions"]?.GetValue<string>() ?? throw new InvalidOperationException($"Unable to get permissions for user {botUserInfo.id} from group {groupId}.");
+            if (!groupMemberResponse.IsSuccess)
+            {
+                return false;
+            }
+
+            var permissions = groupMemberResponse.Content["permissions"]?.GetValue<string>() ?? throw new InvalidOperationException($"Unable to get permissions for user {botUserInfo.id} from group {groupId}.");
 
             return permissions.Contains("Owner") || permissions.Contains("Moderator");
         }

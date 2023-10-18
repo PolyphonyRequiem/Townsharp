@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
@@ -46,12 +47,9 @@ public class BotSession
         this.httpClientFactory = httpClientFactory;
         this.loggerFactory = loggerFactory;
 
-        var botTokenProvider = new BotTokenProvider(credential, httpClientFactory);
-        var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(
-            new SubscriptionClientFactory(botTokenProvider, loggerFactory),
-            loggerFactory);
+        var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(credential); // nope, we should use builder extensions here, and this is why we kept those!
 
-        this.webApiClient = new WebApiBotClient(botTokenProvider, httpClientFactory, loggerFactory.CreateLogger<WebApiBotClient>());      
+        this.webApiClient = new WebApiBotClient(credential);      
         this.subscriptionMultiplexer = subscriptionMultiplexerFactory.Create(this.configuration.MaxSubscriptionWebsockets);
         this.consoleClientFactory = new ConsoleClientFactory(loggerFactory);
     }

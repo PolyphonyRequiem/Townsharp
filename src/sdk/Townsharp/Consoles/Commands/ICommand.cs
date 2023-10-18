@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Townsharp.Consoles.Commands;
 
@@ -6,7 +7,7 @@ public interface ICommand<TResult>
 {
     string BuildCommandString();
 
-    TResult FromResponseJson(JsonElement responseJson);
+    TResult FromResponseJson(JsonNode responseJson);
 
     public static ICommand<string> FromString(string commandString)
     {

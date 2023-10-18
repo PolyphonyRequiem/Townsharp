@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Townsharp.Infrastructure.Consoles;
 
@@ -7,7 +8,7 @@ public record ConsoleMessage(string type)
     internal static ConsoleMessage None = new(string.Empty);
 }
 
-public record CommandResponseMessage(int commandId, JsonElement? data)
+public record CommandResponseMessage(int commandId, JsonNode? data)
 {
     private static JsonSerializerOptions options = new()
     {
@@ -22,7 +23,7 @@ public record CommandResponseMessage(int commandId, JsonElement? data)
     }
 }
 
-public record ConsoleSubscriptionEventMessage(string eventType, JsonElement? data)
+public record ConsoleSubscriptionEventMessage(string eventType, JsonNode? data)
 {
     internal static ConsoleSubscriptionEventMessage None = new(string.Empty, default);
 }
