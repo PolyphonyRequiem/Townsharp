@@ -3,6 +3,7 @@ using System.Threading.Channels;
 
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Consoles;
+// using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
 
 Console.WriteLine("Connecting to the bot server.");
@@ -14,6 +15,9 @@ var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP
 
 var webApiClient = new WebApiBotClient(botCreds);
 var consoleClientFactory = new ConsoleClientFactory();
+
+//var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(botCreds);
+//var subscriptionMultiplexer = subscriptionMultiplexerFactory.Create(10);
 
 await foreach (var server in webApiClient.GetJoinedServersAsync())
 {
@@ -44,6 +48,8 @@ var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, 
 
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); // used to end the session.
 
+var messageListenerTask = Task.Run(HandleConsoleEvents);
+
 Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
 {
     e.Cancel = true;
@@ -66,4 +72,29 @@ else
 {
     Console.Error.WriteLine("Something went wrong.");
     Console.Error.WriteLine(result.ErrorMessage);
+}
+
+cancellationTokenSource.Cancel();
+await messageListenerTask;
+
+async Task HandleConsoleEvents()
+{
+    try
+    {
+        await foreach (var consoleEvent in eventChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
+        {
+            if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+            {
+                Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+            }
+            else
+            {
+                Console.WriteLine(consoleEvent.ToString());
+            }
+        }
+    }
+    catch (Exception)
+    {
+        // no op for now
+    }
 }
