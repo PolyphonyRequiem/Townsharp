@@ -52,26 +52,26 @@ public class GameServerConsole
         }
     }
 
-    public async Task<ConsoleCommandResult<TResult>> RunConsoleCommandAsync<TResult>(ICommand<TResult> command)
+    public async Task<CommandResult<TResult>> RunConsoleCommandAsync<TArguments, TResult>(ICommandHandler<TArguments, TResult> commandHandler, TArguments arguments)
+        where TResult : class
     {
-        return await this.TryWithConsole(
-            clientAction: async (consoleClient) =>
-            {
-                var commandResult = await consoleClient.RunCommand(command.BuildCommandString(), TimeSpan.FromSeconds(30));
+        throw new NotImplementedException();
+        //return await this.TryWithConsole<TResult>(
+        //    clientAction: async (consoleClient) =>
+        //    {
+        //        var response = await consoleClient.RunCommandWithHandlerAsync<TArguments, TResult>(commandHandler, arguments);
 
-                if (commandResult.IsCompleted)
-                {
-                    var data = commandResult?.Message?.data ?? new JsonObject();
-                    return new ConsoleCommandResult<TResult>(command.FromResponseJson(data));
-                }
+        //        if (response.IsCompleted)
+        //        {
+        //            return response.Result!;
+        //        }
 
-                throw new NotImplementedException("Poly needs to fix me.");
-            },
-            consoleNotAvailable: () =>
-            {
-                return Task.FromResult(ConsoleCommandResult<TResult>.AsConsoleNotAvailable());
-                
-            });
+        //        throw new NotImplementedException("Poly needs to fix me.");
+        //    },
+        //    consoleNotAvailable: () =>
+        //    {
+        //        throw new NotImplementedException("Poly needs to fix me.");
+        //    });
     }
 
     private async Task<TResult> TryWithConsole<TResult>(Func<ConsoleClient, Task<TResult>> clientAction, Func<Task<TResult>> consoleNotAvailable)
@@ -164,24 +164,4 @@ public enum ConsoleState
     Disconnected,
     Connecting,
     Connected
-}
-
-internal class UntypedLiteralConsoleCommand : ICommand<string>
-{
-    private string commandString;
-
-    public UntypedLiteralConsoleCommand(string commandString)
-    {
-        this.commandString = commandString;
-    }
-
-    string ICommand<string>.BuildCommandString()
-    {
-        return commandString;
-    }
-
-    public string FromResponseJson(JsonNode responseJson)
-    {
-        return responseJson.ToJsonString();
-    }
 }

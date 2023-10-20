@@ -100,15 +100,15 @@ public class ConsoleRepl : IHostedService
                 break;
             }
 
-            var result = await consoleClient.RunCommandAsync(command!);
+            var response = await consoleClient.RunCommandAsync(command!);
 
-            if (result.IsCompleted)
+            if (response.IsCompleted)
             {
-                Console.WriteLine(result?.Message?.data?.ToString());
+                Console.WriteLine(response?.Result);
             }
             else
             {
-                Console.WriteLine(result.ToString());
+                Console.WriteLine(response.ToString());
             }
         }
     }

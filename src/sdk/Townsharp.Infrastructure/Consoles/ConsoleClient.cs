@@ -67,14 +67,43 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         this.authSemaphore.Release();
     }
 
-    public Task<Response<CommandResponseMessage>> RunCommandAsync(string commandString)
+    public Task<CommandResult<string>> RunCommandAsync(string commandString)
     {
-        return this.RequestAsync(id => new CommandRequestMessage(id, commandString), TimeSpan.FromSeconds(15));
+        return this.RunCommandAsync(commandString, TimeSpan.FromSeconds(15));
     }
 
-    public async Task<Response<CommandResponseMessage>> RunCommand(string commandString, TimeSpan timeout)
+    public async Task<CommandResult<string>> RunCommandAsync(string commandString, TimeSpan timeout)
     {
-        return await this.RequestAsync(id => new CommandRequestMessage(id, commandString), timeout);
+        var handler = CommandHandler.ForCommand(commandString);
+
+        return await RunCommandWithHandlerAsync(handler, Unit.Value, timeout);
+    }
+
+    public Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TResult>(ICommandHandler<Unit, TResult> commandHandler)
+        where TResult : class
+    {
+        return this.RunCommandWithHandlerAsync(commandHandler, Unit.Value, TimeSpan.FromSeconds(15));
+    }
+
+    public Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TResult>(ICommandHandler<Unit, TResult> commandHandler, TimeSpan timeout)
+        where TResult : class
+    {
+        return this.RunCommandWithHandlerAsync(commandHandler, Unit.Value, timeout);
+    }
+
+    public Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TArguments, TResult>(ICommandHandler<TArguments, TResult> commandHandler, TArguments arguments)
+        where TResult : class
+    {
+        return this.RunCommandWithHandlerAsync(commandHandler, arguments, TimeSpan.FromSeconds(15));
+    }
+
+    public async Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TArguments, TResult>(ICommandHandler<TArguments, TResult> commandHandler, TArguments arguments, TimeSpan timeout)
+        where TResult : class
+    {
+        var commandString = commandHandler.BuildCommandString(arguments);
+        var commandResult = await this.RequestAsync(id => new CommandRequestMessage(id, commandString), timeout);
+
+        return commandHandler.GetResultFromCommandResponse(commandResult);
     }
 
     protected override ErrorInfo CheckForError(string message) => new ErrorInfo(ErrorType.FatalError, message);

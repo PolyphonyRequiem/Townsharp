@@ -31,7 +31,6 @@ public class WebApiBotClient
     {
     }
 
-
     internal WebApiBotClient(BotTokenProvider botTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiBotClient> logger)
     {
         this.botTokenProvider = botTokenProvider;

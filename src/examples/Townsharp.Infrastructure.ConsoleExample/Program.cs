@@ -51,13 +51,8 @@ var result = await consoleClient.RunCommandAsync("player list");
 
 if (result.IsCompleted)
 {
-    Console.WriteLine("The command completed successfully.");
-    Console.WriteLine(result.Message);
-}
-else if (result.TimedOut)
-{
-    Console.Error.WriteLine("The command took too long.");
-    Console.Error.WriteLine(result.ErrorMessage);
+    Console.WriteLine("The command completed.");
+    Console.WriteLine(result.Result!);
 }
 else
 {
