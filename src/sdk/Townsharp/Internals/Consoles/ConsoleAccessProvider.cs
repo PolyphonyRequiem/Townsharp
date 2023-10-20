@@ -50,8 +50,8 @@ internal class ConsoleAccessProvider
             return false;
         }
 
-        int groupId = serverResponse.Content["group_id"]?.GetValue<int>() ?? throw new InvalidOperationException("Unable to get group_id from the server response.");
-        bool isOnline = serverResponse.Content["is_online"]?.GetValue<bool>() ?? throw new InvalidOperationException("Unable to get is_online from the server response.");      
+        int groupId = serverResponse.Content.group_id;
+        bool isOnline = serverResponse.Content.is_online;      
 
         if (!isOnline)
         {
@@ -67,7 +67,7 @@ internal class ConsoleAccessProvider
                 return false;
             }
 
-            var permissions = groupMemberResponse.Content["permissions"]?.GetValue<string>() ?? throw new InvalidOperationException($"Unable to get permissions for user {botUserInfo.id} from group {groupId}.");
+            var permissions = groupMemberResponse.Content.permissions;
 
             return permissions.Contains("Owner") || permissions.Contains("Moderator");
         }

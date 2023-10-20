@@ -1,7 +1,10 @@
-﻿namespace Townsharp.Infrastructure.CommonModels;
+﻿using System.Text.Json.Serialization;
+
+namespace Townsharp.Infrastructure.CommonModels;
 
 public record UserInfo
 {
+    [JsonConstructor]
     internal UserInfo(int id, string username)
     {
         this.id = id;

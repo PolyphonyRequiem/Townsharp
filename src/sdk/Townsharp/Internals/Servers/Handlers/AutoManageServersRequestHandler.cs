@@ -20,8 +20,8 @@ internal class AutoManageServersRequestHandler : IRequestHandler<AutoManageServe
     {
         await foreach (var server in webApiClient.GetJoinedServersAsync())
         {
-            int serverId = server["id"]?.GetValue<int>() ?? throw new InvalidOperationException("Unable to parse server id from joined servers response.");
-            int groupId = server["group_id"]?.GetValue<int>() ?? throw new InvalidOperationException("Unable to parse group id from joined servers response.");
+            int serverId = server.id;
+            int groupId = server.group_id;
 
             await this.gameServerManager.ManageGameServerAsync(serverId, groupId);
         }

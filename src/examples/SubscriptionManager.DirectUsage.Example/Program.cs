@@ -124,7 +124,7 @@ internal class SubscriptionManagerTest : IHostedService
     private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
     {
         return await webApiClient.GetJoinedGroupsAsync()
-            .Select(g => g!["group"]!["id"]!.GetValue<int>())
+            .Select(g => g.group.id)
             .ToArrayAsync(cancellationToken);
     }
 

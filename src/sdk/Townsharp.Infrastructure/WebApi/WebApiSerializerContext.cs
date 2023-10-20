@@ -10,6 +10,13 @@ namespace Townsharp.Infrastructure.WebApi;
 // Root Success Responses
 [JsonSerializable(typeof(ConsoleAccess))]
 [JsonSerializable(typeof(ConsoleConnectionInfo))]
+[JsonSerializable(typeof(ServerInfo))]
+[JsonSerializable(typeof(JoinedGroupInfo))]
+[JsonSerializable(typeof(GroupInfoDetailed))]
+[JsonSerializable(typeof(GroupServerInfo))]
+[JsonSerializable(typeof(GroupRoleInfo))]
+[JsonSerializable(typeof(GroupMemberInfo))]
+[JsonSerializable(typeof(InvitedGroupInfo))]
 
 internal partial class WebApiSerializerContext : JsonSerializerContext
 {

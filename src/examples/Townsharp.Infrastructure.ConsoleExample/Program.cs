@@ -15,6 +15,14 @@ var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP
 var webApiClient = new WebApiBotClient(botCreds);
 var consoleClientFactory = new ConsoleClientFactory();
 
+await foreach (var server in webApiClient.GetJoinedServersAsync())
+{
+    if (server.is_online)
+    {
+        Console.WriteLine($"{server.id} - {server.name}");
+    }    
+}
+
 Console.WriteLine("Enter the server id to connect to:");
 string serverIdInput = Console.ReadLine() ?? "";
 int serverId = int.Parse(serverIdInput);
