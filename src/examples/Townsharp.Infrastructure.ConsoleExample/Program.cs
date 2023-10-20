@@ -61,18 +61,12 @@ await consoleClient.ConnectAsync(cancellationTokenSource.Token); // Connect the 
 Console.WriteLine("Connected!");
 
 Console.WriteLine("Running command 'player list'");
+
 var result = await consoleClient.RunCommandAsync("player list");
 
-if (result.IsCompleted)
-{
-    Console.WriteLine("The command completed.");
-    Console.WriteLine(result.Result!);
-}
-else
-{
-    Console.Error.WriteLine("Something went wrong.");
-    Console.Error.WriteLine(result.ErrorMessage);
-}
+result.HandleResult(
+    result => Console.WriteLine($"RESULT:{Environment.NewLine}{result}"),
+    error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
 
 cancellationTokenSource.Cancel();
 await messageListenerTask;
