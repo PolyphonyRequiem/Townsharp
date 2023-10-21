@@ -18,7 +18,7 @@ internal class SubscriptionMap
 
     internal IReadOnlyDictionary<ConnectionId, HashSet<SubscriptionDefinition>> ConnectionMappings => this.connectionMappings.AsReadOnly();
 
-    
+
     // Make this a custom type.  Doesn't really need to be a dictionary and in fact that obscures the intent
     internal Dictionary<ConnectionId, SubscriptionDefinition[]> CreateSubscriptionMappingFor(SubscriptionDefinition[] definitions)
     {
@@ -63,7 +63,7 @@ internal class SubscriptionMap
                 }
             }
 
-            return newMappings.ToDictionary(kvp=>kvp.Key, kvp=>kvp.Value.ToArray());
+            return newMappings.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToArray());
         }
     }
 
@@ -99,6 +99,6 @@ internal class SubscriptionMap
         }
     }
 
-    private bool IsMapped(SubscriptionDefinition subscriptionDefinition) => 
+    private bool IsMapped(SubscriptionDefinition subscriptionDefinition) =>
         this.connectionMappings.Any(connectionMappings => connectionMappings.Value.Contains(subscriptionDefinition));
 }

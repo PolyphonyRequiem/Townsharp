@@ -43,7 +43,7 @@ public class WebApiBotClient
         this.logger = logger;
     }
 
-    private async Task<string> GetTokenAsync([CallerMemberName] string? callerMemberName = default) 
+    private async Task<string> GetTokenAsync([CallerMemberName] string? callerMemberName = default)
         => this.botTokenProvider.IsEnabled ?
             await this.botTokenProvider.GetTokenAsync() :
             throw new InvalidOperationException($"Caller {callerMemberName ?? ""} requires a configured BotTokenProvider.  Please verify that you have configured your bot token credentials correctly.");
@@ -59,7 +59,7 @@ public class WebApiBotClient
     public async Task<WebApiResult<GroupInfoDetailed>> GetGroupAsync(int groupId)
     {
         var client = await GetClientAsync();
-        
+
         var response = await client.GetAsync($"api/groups/{groupId}");
 
         var rawContent = await response.Content.ReadAsStringAsync();
@@ -217,9 +217,9 @@ public class WebApiBotClient
     public async Task<WebApiResult<ConsoleAccess>> RequestConsoleAccessAsync(int serverId)
     {
         var client = await GetClientAsync();
-        
+
         client.DefaultRequestHeaders.Host = "webapi.townshiptale.com";
-        var response = await client.PostAsync($"api/servers/{serverId}/console", JsonContent.Create(new { should_launch=true, ignore_offline=true}));
+        var response = await client.PostAsync($"api/servers/{serverId}/console", JsonContent.Create(new { should_launch = true, ignore_offline = true }));
 
         var rawContent = await response.Content.ReadAsStringAsync();
 

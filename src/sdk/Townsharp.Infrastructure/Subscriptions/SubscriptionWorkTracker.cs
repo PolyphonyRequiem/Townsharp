@@ -138,7 +138,7 @@ internal class SubscriptionWorkTracker
         else // subscribed
         {
             this.subscriptionDispositions.TryUpdate(lease.SubscriptionDefinition, SubscriptionDisposition.InvalidSubscription, SubscriptionDisposition.Working);
-        }        
+        }
     }
 
     internal void ResetDispositionsForRecovery()

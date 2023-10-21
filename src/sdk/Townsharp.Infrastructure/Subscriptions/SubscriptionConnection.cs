@@ -194,7 +194,7 @@ internal class SubscriptionConnection
                 do
                 {
                     var leases = this.workTracker.TakeWorkLeases(MAX_SUBSCRIPTIONS_AT_ONCE);
-                    
+
                     if (leases.Length == 0)
                     {
                         this.logger.LogInformation($"{ConnectionId} has no lease work. Sleeping.");

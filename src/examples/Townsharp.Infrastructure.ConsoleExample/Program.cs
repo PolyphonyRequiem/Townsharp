@@ -27,7 +27,7 @@ await foreach (var server in webApiClient.GetJoinedServersAsync())
     if (server.is_online)
     {
         Console.WriteLine($"{server.id} - {server.name}");
-    }    
+    }
 }
 
 Console.WriteLine("Enter the server id to connect to:");

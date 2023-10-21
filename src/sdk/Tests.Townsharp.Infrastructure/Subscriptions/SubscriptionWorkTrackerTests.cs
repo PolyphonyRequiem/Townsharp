@@ -26,7 +26,7 @@ public class SubscriptionWorkTrackerTests
         var leases = tracker.TakeWorkLeases(3);
         Assert.Equal(3, leases.Count());
 
-        foreach(var lease in leases)
+        foreach (var lease in leases)
         {
             tracker.ReportLeaseResolved(lease);
         }

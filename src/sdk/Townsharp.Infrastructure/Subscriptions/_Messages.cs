@@ -21,7 +21,7 @@ internal record MigrationToken(string Token)
 {
     internal static MigrationToken None { get; set; } = new(string.Empty);
 
-    internal static MigrationToken FromContent(string content) 
+    internal static MigrationToken FromContent(string content)
     {
         using var document = JsonDocument.Parse(content);
         return new MigrationToken(document.RootElement.GetProperty("token").GetString() ?? string.Empty);

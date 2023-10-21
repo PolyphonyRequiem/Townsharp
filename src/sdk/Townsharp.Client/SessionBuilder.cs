@@ -53,7 +53,7 @@ public class SessionBuilder
         var provider = this.services.BuildServiceProvider();
         var factory = provider.GetRequiredService<SessionFactory>();
 
-        return factory.CreateBotSession(credential, configuration);        
+        return factory.CreateBotSession(credential, configuration);
     }
 
     private static BotClientSessionConfiguration CreateDefaultConfiguration() => new BotClientSessionConfiguration();

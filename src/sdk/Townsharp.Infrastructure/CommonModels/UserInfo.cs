@@ -19,5 +19,5 @@ public record UserInfo
 
     public string username { get; set; } = string.Empty;
 
-    public static readonly UserInfo None = new ();
+    public static readonly UserInfo None = new();
 }

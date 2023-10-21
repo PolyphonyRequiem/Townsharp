@@ -1,13 +1,11 @@
-﻿using System.Reflection;
-
-using Townsharp.Infrastructure.CommonModels;
+﻿using Townsharp.Infrastructure.CommonModels;
 
 namespace Townsharp.Infrastructure.WebApi;
 
 public record ConsoleAccess(
-    int server_id, 
-    bool allowed, 
-    string? token, 
+    int server_id,
+    bool allowed,
+    string? token,
     ConsoleConnectionInfo? connection)
 {
     public Uri BuildConsoleUri()
@@ -21,7 +19,7 @@ public record ConsoleAccess(
     }
 }
 
-public record ConsoleConnectionInfo (
+public record ConsoleConnectionInfo(
     string address,
     int websocket_port);
 
@@ -52,7 +50,7 @@ public record ServerInfo(
     int transport_system);
 
 public record JoinedGroupInfo(
-    GroupInfoDetailed group, 
+    GroupInfoDetailed group,
     GroupMemberInfo member);
 
 public record GroupInfoDetailed(

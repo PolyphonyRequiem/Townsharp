@@ -20,9 +20,9 @@ internal class GameServerConsoleManager : IReadOnlyDictionary<ServerId, GameServ
     private readonly ILoggerFactory loggerFactory;
 
     public GameServerConsoleManager(
-        IMediator mediator, 
-        ConsoleClientFactory consoleClientFactory, 
-        ConsoleAccessProvider consoleAccessProvider, 
+        IMediator mediator,
+        ConsoleClientFactory consoleClientFactory,
+        ConsoleAccessProvider consoleAccessProvider,
         ILoggerFactory loggerFactory)
     {
         gameServerConsoles = new Dictionary<ServerId, GameServerConsole>();
@@ -51,7 +51,7 @@ internal class GameServerConsoleManager : IReadOnlyDictionary<ServerId, GameServ
         var console = new GameServerConsole(serverId, this.consoleClientFactory, this.consoleAccessProvider, this.loggerFactory.CreateLogger<GameServerConsole>());
         this.gameServerConsoles.Add(serverId, console);
         //console.TryToConnect();
-        
+
         return Task.CompletedTask;
     }
 

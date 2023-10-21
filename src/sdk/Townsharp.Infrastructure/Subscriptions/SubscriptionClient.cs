@@ -89,7 +89,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
             {
                 return new ErrorInfo(ErrorType.UserError, $"Received {response.responseCode} response code for pending request {response.id} with key {response.key}. Content is '{response.content}'");
             }
-            
+
             return new ErrorInfo(ErrorType.ServiceError, $"Received {response.responseCode} response code for pending request {response.id} with key {response.key}. Content is '{response.content}'");
         }
 
@@ -143,7 +143,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
 
     protected override void HandleEvent(SubscriptionEventMessage eventMessage)
     {
-        var subscriptionEvent =  SubscriptionEvent.FromEventMessage(eventMessage);
+        var subscriptionEvent = SubscriptionEvent.FromEventMessage(eventMessage);
         this.eventChannelWriter.TryWrite(subscriptionEvent);
     }
 

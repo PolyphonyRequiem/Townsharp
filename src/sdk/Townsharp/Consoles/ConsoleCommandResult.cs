@@ -7,7 +7,7 @@ public class ConsoleCommandResult<TResult>
     private readonly bool succeeded;
     private readonly bool consoleNotAvailable;
 
-    public TResult Value => 
+    public TResult Value =>
         succeeded ?
             this.result ?? throw new InvalidOperationException("Result was not set.") :
             throw new InvalidOperationException($"Unable to get a result from a failed command. {this.errorMessage}");

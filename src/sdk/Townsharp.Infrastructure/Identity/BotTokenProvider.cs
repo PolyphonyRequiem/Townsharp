@@ -44,7 +44,8 @@ internal class BotTokenProvider
             {
                 var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 return await retryPolicy.ExecuteAsync<CacheState<string>>(
-                    async (CancellationToken cancellationToken) => {
+                    async (CancellationToken cancellationToken) =>
+                    {
                         using var httpClient = httpClientFactory.CreateClient();
                         var result = await httpClient.PostAsync(BaseUri, content);
 

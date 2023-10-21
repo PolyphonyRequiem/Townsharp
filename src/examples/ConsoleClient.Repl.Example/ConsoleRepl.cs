@@ -29,7 +29,7 @@ public class ConsoleRepl : IHostedService
         Console.WriteLine("Enter the server id to connect to:");
         var serverId = Console.ReadLine();
 
-        while (!cancellationToken.IsCancellationRequested) 
+        while (!cancellationToken.IsCancellationRequested)
         {
             bool retryNeeded = false;
             Uri? endpointUri = default;
@@ -48,20 +48,20 @@ public class ConsoleRepl : IHostedService
                 accessToken = response.Content.token!;
                 endpointUri = response.Content.BuildConsoleUri();
             }
-            catch (Exception) 
+            catch (Exception)
             {
                 this.logger.LogError($"Unable to get console access for {serverId} at this time.  Will try again in 15s");
                 retryNeeded = true;
             }
 
-            if (retryNeeded) 
+            if (retryNeeded)
             {
                 await Task.Delay(TimeSpan.FromSeconds(15));
                 continue;
             }
 
             CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        
+
             try
             {
                 ConsoleClient consoleClient = this.consoleClientFactory.CreateClient(endpointUri!, accessToken, eventChannel.Writer);
@@ -85,7 +85,7 @@ public class ConsoleRepl : IHostedService
             {
                 this.logger.LogError(ex, $"Something went wrong while trying to run the main console REPL.");
             }
-        }        
+        }
     }
 
     private async Task GetCommandsAsync(ConsoleClient consoleClient, CancellationToken token)

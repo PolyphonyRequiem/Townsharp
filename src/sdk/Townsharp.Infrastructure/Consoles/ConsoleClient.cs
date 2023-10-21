@@ -128,7 +128,7 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         return ErrorInfo.None; // data.Result == Success
     }
 
-    protected override int GetResponseId(CommandResponseMessage responseMessage) =>  responseMessage.commandId;
+    protected override int GetResponseId(CommandResponseMessage responseMessage) => responseMessage.commandId;
 
     protected override CommandResponseMessage ToResponseMessage(JsonDocument document)
     {

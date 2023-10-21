@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Nodes;
-
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.WebApi;
 using Townsharp.Servers;
@@ -13,7 +11,7 @@ internal class ConsoleAccessProvider
     private readonly ILogger<ConsoleAccessProvider> logger;
 
     public ConsoleAccessProvider(
-        WebApiBotClient webApiClient, 
+        WebApiBotClient webApiClient,
         ILogger<ConsoleAccessProvider> logger)
     {
         this.webApiClient = webApiClient;
@@ -51,7 +49,7 @@ internal class ConsoleAccessProvider
         }
 
         int groupId = serverResponse.Content.group_id;
-        bool isOnline = serverResponse.Content.is_online;      
+        bool isOnline = serverResponse.Content.is_online;
 
         if (!isOnline)
         {
@@ -79,7 +77,7 @@ internal class ConsoleAccessProvider
         var response = await webApiClient.RequestConsoleAccessAsync(serverId);
 
         if (!response.IsSuccess)
-        { 
+        {
             logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
             return ConsoleAccess.None;
         }

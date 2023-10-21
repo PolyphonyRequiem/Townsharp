@@ -19,7 +19,7 @@ botSession.HandleServerAdded(
             if (e.newChunk.StartsWith("Cave Layer"))
             {
                 // handle asynchronously without awaiting result.  I will likely support both synchronous and asynchronous versions of this method.
-                _ = server.TryRunCommandAsync($"player message {e.player.id} - {e.newChunk} 3"); 
+                _ = server.TryRunCommandAsync($"player message {e.player.id} - {e.newChunk} 3");
             }
         });
 

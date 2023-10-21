@@ -28,7 +28,7 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 builder.Logging.AddConsole();
 builder.Logging.AddOpenTelemetry(loggerOptions =>
     {
-        loggerOptions.AddOtlpExporter(); 
+        loggerOptions.AddOtlpExporter();
         // loggerOptions.AddConsoleExporter(); // if you need to debug the OtlpExporter
 
         loggerOptions.IncludeFormattedMessage = true;
@@ -108,12 +108,12 @@ internal class SubscriptionManagerTest : IHostedService
 
         var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
 
-        var subscriptions = new[] 
-        { 
+        var subscriptions = new[]
+        {
             "group-server-heartbeat",
             "group-server-status",
             "group-update",
-            "group-member-update" 
+            "group-member-update"
         }
             .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
             .ToArray();

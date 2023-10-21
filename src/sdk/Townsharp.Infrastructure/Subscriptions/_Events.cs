@@ -12,7 +12,7 @@ public enum SubscriptionEventType
     GroupMemberUpdate
 }
 
-public abstract record SubscriptionEvent (SubscriptionEventType SubscriptionEventType)
+public abstract record SubscriptionEvent(SubscriptionEventType SubscriptionEventType)
 {
     internal static SubscriptionEvent FromEventMessage(SubscriptionEventMessage message)
     {
@@ -63,14 +63,14 @@ public record GroupMemberUpdateContent(
 
 public record GroupServerStatusChangedEvent(ServerStatusContent Content) : SubscriptionEvent(SubscriptionEventType.GroupServerStatus);
 
-public record GroupServerHeartbeatEvent (ServerStatusContent Content) : SubscriptionEvent(SubscriptionEventType.GroupServerHeartbeat);
+public record GroupServerHeartbeatEvent(ServerStatusContent Content) : SubscriptionEvent(SubscriptionEventType.GroupServerHeartbeat);
 
 public record ServerStatusContent(
     int id,
     string name,
     UserInfo[] online_players,
     string server_status,
-    string final_status, 
+    string final_status,
     int scene_index,
     int target,
     string region,

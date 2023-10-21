@@ -4,9 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Configuration;
-using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Hosting;
-using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Internals.Consoles;
 using Townsharp.Internals.Groups;
 using Townsharp.Internals.Servers;

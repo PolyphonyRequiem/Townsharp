@@ -22,7 +22,7 @@ public class BotSession
     private Action<ManagedServer> handleServerAdded = _ => { };
 
     public void HandleServerAdded(Action<ManagedServer> action) => this.handleServerAdded = action;
-    
+
     private Action<ManagedServer> handleServerRemoved = _ => { };
 
     public void HandleServerRemoved(Action<ManagedServer> action) => this.handleServerRemoved = action;
@@ -30,16 +30,16 @@ public class BotSession
     private Action<ManagedGroup> handleGroupAdded = _ => { };
 
     public void HandleGroupAdded(Action<ManagedGroup> action) => this.handleGroupAdded = action;
-    
+
     private Action<ManagedGroup> handleGroupRemoved = _ => { };
 
     public void HandleGroupRemoved(Action<ManagedGroup> action) => this.handleGroupRemoved = action;
 
     // should probably move half of these out into the factory.
     internal BotSession(
-        BotCredential credential, 
-        BotClientSessionConfiguration configuration, 
-        IHttpClientFactory httpClientFactory, 
+        BotCredential credential,
+        BotClientSessionConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory)
     {
         this.credential = credential;
@@ -49,7 +49,7 @@ public class BotSession
 
         var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(credential); // nope, we should use builder extensions here, and this is why we kept those!
 
-        this.webApiClient = new WebApiBotClient(credential);      
+        this.webApiClient = new WebApiBotClient(credential);
         this.subscriptionMultiplexer = subscriptionMultiplexerFactory.Create(this.configuration.MaxSubscriptionWebsockets);
         this.consoleClientFactory = new ConsoleClientFactory(loggerFactory);
     }

@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 
 using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Websockets;
@@ -21,7 +20,7 @@ public class PlayerListCommandHandler : ICommandHandler<Unit, UserInfo[]>
         }
         else
         {
-            return CommandResult < UserInfo[]>.FailureResult(response.ErrorMessage);
+            return CommandResult<UserInfo[]>.FailureResult(response.ErrorMessage);
         }
     }
 }

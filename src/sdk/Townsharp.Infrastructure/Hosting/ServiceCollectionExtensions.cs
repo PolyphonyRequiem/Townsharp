@@ -18,7 +18,7 @@ public static class ServiceCollectionExtensions
             services => new BotTokenProvider(
                 BotCredential.FromEnvironmentVariables(),
                 services.GetRequiredService<IHttpClientFactory>()));
-              
+
         services.AddSingleton<WebApiBotClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionMultiplexerFactory>();

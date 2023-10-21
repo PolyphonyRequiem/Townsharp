@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Townsharp.Infrastructure.Websockets;
 
+// NOTE: Could/probably should hide this behind an interface.
 public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessage, TEventMessage> : WebsocketMessageClient
     where TMessage : class
     where TEventMessage : class
@@ -20,12 +21,12 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
     private Task messageHandlerTask = Task.CompletedTask;
 
     internal RequestsAndEventsWebsocketClient(
-        ILogger logger, 
-        int maxRequests) 
+        ILogger logger,
+        int maxRequests)
         : base(logger)
     {
         this.messageIdFactory = new MessageIdFactory();
-        
+
         if (maxRequests < 1 || maxRequests > 80)
         {
             throw new ArgumentOutOfRangeException(nameof(maxRequests), "maxRequests must be between 1 and 100");
@@ -92,7 +93,7 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
                                 base.logger.LogError($"A recoverable error has occurred while processing the response. {errorInfo.ErrorMessage}");
                             }
                         }
-                        
+
                         var id = this.GetResponseId(responseMessage);
 
                         if (this.pendingRequests.TryRemove(id, out var tcs))
@@ -102,7 +103,7 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
                         else
                         {
                             base.logger.LogWarning($"Received response with id {id} but no pending request was found.");
-                        }                        
+                        }
                     }
 
                     if (this.IsEvent(m))
@@ -244,7 +245,7 @@ public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessag
     protected abstract TResponseMessage ToResponseMessage(JsonDocument document);
 
     protected abstract TEventMessage ToEventMessage(JsonDocument message);
-        
+
     protected abstract int GetResponseId(TResponseMessage responseMessage);
 
     protected enum ErrorType

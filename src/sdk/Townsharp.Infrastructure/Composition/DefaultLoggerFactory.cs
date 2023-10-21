@@ -13,7 +13,7 @@ internal static class InternalLoggerFactory
             {
                 config.AddConsole();
             });
-        
+
         defaultInstance = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>();
     }
 

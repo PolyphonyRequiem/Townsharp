@@ -9,10 +9,10 @@ public class SubscriptionMultiplexer
     private readonly SubscriptionMap subscriptionMap;
     private readonly Dictionary<ConnectionId, SubscriptionConnection> connections;
     private readonly ILogger<SubscriptionMultiplexer> logger;
-    
+
     // Events
     public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
-    
+
     private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
     {
         this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);

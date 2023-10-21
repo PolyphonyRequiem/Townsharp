@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+
 using Townsharp.Consoles;
 
 namespace Tests.Townsharp.Core.Consoles;
