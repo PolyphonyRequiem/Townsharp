@@ -12,8 +12,11 @@ Console.WriteLine("Connecting to the bot server.");
 
 var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_CLIENTID and TOWNSHARP_CLIENTSECRET
 //var botCreds = new BotCredential("client_idstringfromalta", "ClientSecret-aka the token");
-
 var webApiClient = new WebApiBotClient(botCreds);
+
+//var userCreds = UserCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_USERNAME and TOWNSHARP_PASSWORDHASH
+//var webApiClient = new WebApiUserClient(userCreds);
+
 var consoleClientFactory = new ConsoleClientFactory();
 
 //var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(botCreds);
