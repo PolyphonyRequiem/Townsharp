@@ -1,15 +1,22 @@
 ﻿using System.Text.Json;
 
-using Townsharp.Infrastructure.CommonModels;
+using Townsharp.Infrastructure.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions.Models;
 
 public enum SubscriptionEventType
 {
-    GroupServerHeartbeat,
-    GroupServerStatus,
-    GroupUpdate,
-    GroupMemberUpdate
+    GroupMemberUpdate, // group-member-update
+    // GroupServerCreate, // group-server-create
+    // GroupServerDelete, // group-server-delete
+    GroupServerHeartbeat, // group-server-heartbeat
+    GroupServerStatus, // group-server-status
+    // GroupServerUpdate, // group-server-update
+    GroupUpdate, // group-update
+    JoinedGroup, // me-group-create
+    LeftGroup, // me-group-delete
+    InvitedToGroup, // me-group-invite-create
+    UninvitedFromGroup, // me-group-invite-delete
 }
 
 public abstract record SubscriptionEvent(SubscriptionEventType SubscriptionEventType)
@@ -18,10 +25,14 @@ public abstract record SubscriptionEvent(SubscriptionEventType SubscriptionEvent
     {
         return message.@event switch
         {
-            "group-server-heartbeat" => DeserializeUsingContext<GroupServerHeartbeatEvent, ServerStatusContent>(message.content, content => new GroupServerHeartbeatEvent(content)),
-            "group-server-status" => DeserializeUsingContext<GroupServerStatusChangedEvent, ServerStatusContent>(message.content, content => new GroupServerStatusChangedEvent(content)),
+            "group-server-heartbeat" => DeserializeUsingContext<GroupServerHeartbeatEvent, ServerInfo>(message.content, content => new GroupServerHeartbeatEvent(content)),
+            "group-server-status" => DeserializeUsingContext<GroupServerStatusChangedEvent, ServerInfo>(message.content, content => new GroupServerStatusChangedEvent(content)),
             "group-member-update" => DeserializeUsingContext<GroupMemberUpdateEvent, GroupMemberUpdateContent>(message.content, content => new GroupMemberUpdateEvent(content)),
             "group-update" => DeserializeUsingContext<GroupUpdateEvent, GroupUpdateContent>(message.content, content => new GroupUpdateEvent(content)),
+            "me-group-create" => DeserializeUsingContext<JoinedGroupEvent, JoinedGroupInfo>(message.content, content => new JoinedGroupEvent(content)),
+            "me-group-delete" => DeserializeUsingContext<LeftGroupEvent, JoinedGroupInfo>(message.content, content => new LeftGroupEvent(content)),
+            "me-group-invite-create" => DeserializeUsingContext<InvitedToGroupEvent, GroupInfoDetailed>(message.content, content => new InvitedToGroupEvent(content)),
+            "me-group-invite-delete" => DeserializeUsingContext<UninvitedFromGroupEvent, GroupInfoDetailed>(message.content, content => new UninvitedFromGroupEvent(content)),
             _ => throw new NotImplementedException(),
         };
     }
@@ -37,17 +48,6 @@ public abstract record SubscriptionEvent(SubscriptionEventType SubscriptionEvent
     }
 }
 
-public record GroupUpdateEvent(GroupUpdateContent Content) : SubscriptionEvent(SubscriptionEventType.GroupUpdate);
-
-public record GroupUpdateContent(
-    int id,
-    string name,
-    string description,
-    int member_count,
-    DateTimeOffset created_at,
-    string type,
-    string[] tags);
-
 public record GroupMemberUpdateEvent(GroupMemberUpdateContent Content) : SubscriptionEvent(SubscriptionEventType.GroupMemberUpdate);
 
 public record GroupMemberUpdateContent(
@@ -61,32 +61,25 @@ public record GroupMemberUpdateContent(
     DateTimeOffset created_at,
     string type);
 
-public record GroupServerStatusChangedEvent(ServerStatusContent Content) : SubscriptionEvent(SubscriptionEventType.GroupServerStatus);
+public record GroupServerHeartbeatEvent(ServerInfo Content) : SubscriptionEvent(SubscriptionEventType.GroupServerHeartbeat);
 
-public record GroupServerHeartbeatEvent(ServerStatusContent Content) : SubscriptionEvent(SubscriptionEventType.GroupServerHeartbeat);
+public record GroupServerStatusChangedEvent(ServerInfo Content) : SubscriptionEvent(SubscriptionEventType.GroupServerStatus);
 
-public record ServerStatusContent(
+public record GroupUpdateEvent(GroupUpdateContent Content) : SubscriptionEvent(SubscriptionEventType.GroupUpdate);
+
+public record GroupUpdateContent(
     int id,
     string name,
-    UserInfo[] online_players,
-    string server_status,
-    string final_status,
-    int scene_index,
-    int target,
-    string region,
-    DateTimeOffset online_ping,
-    DateTimeOffset last_online,
     string description,
-    float playability,
-    string version,
-    int group_id,
-    string owner_type,
-    int owner_id,
-    string type,
-    string fleet,
-    TimeSpan up_time,
-    string join_type,
-    int player_count,
+    int member_count,
     DateTimeOffset created_at,
-    bool is_online,
-    int transport_system);
+    string type,
+    string[] tags);
+
+public record JoinedGroupEvent(JoinedGroupInfo Content) : SubscriptionEvent(SubscriptionEventType.JoinedGroup);
+
+public record LeftGroupEvent(JoinedGroupInfo Content) : SubscriptionEvent(SubscriptionEventType.LeftGroup);
+
+public record InvitedToGroupEvent(GroupInfoDetailed Content) : SubscriptionEvent(SubscriptionEventType.InvitedToGroup);
+
+public record UninvitedFromGroupEvent(GroupInfoDetailed Content) : SubscriptionEvent(SubscriptionEventType.UninvitedFromGroup);

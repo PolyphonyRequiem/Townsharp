@@ -1,7 +1,6 @@
 ﻿using System.Numerics;
-using System.Security.Cryptography.X509Certificates;
 
-using Townsharp.Infrastructure.CommonModels;
+using Townsharp.Infrastructure.Models;
 
 namespace Townsharp.Infrastructure.Consoles;
 

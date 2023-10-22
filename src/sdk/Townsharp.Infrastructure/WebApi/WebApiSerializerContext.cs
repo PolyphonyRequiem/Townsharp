@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-using Townsharp.Infrastructure.CommonModels;
+using Townsharp.Infrastructure.Models;
 
 namespace Townsharp.Infrastructure.WebApi;
 

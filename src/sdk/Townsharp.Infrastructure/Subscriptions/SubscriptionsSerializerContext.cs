@@ -1,11 +1,12 @@
 ﻿using System.Text.Json.Serialization;
 
+using Townsharp.Infrastructure.Models;
 using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
 // Subscription Event Content
-[JsonSerializable(typeof(ServerStatusContent))]
+[JsonSerializable(typeof(ServerInfo))]
 [JsonSerializable(typeof(GroupMemberUpdateContent))]
 [JsonSerializable(typeof(GroupUpdateContent))]
 

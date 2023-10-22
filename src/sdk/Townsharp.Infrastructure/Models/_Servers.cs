@@ -1,0 +1,27 @@
+﻿namespace Townsharp.Infrastructure.Models;
+
+public record ServerInfo(
+    int id,
+    string name,
+    UserInfo[] online_players,
+    string server_status,
+    string final_status,
+    int scene_index,
+    int target,
+    string region,
+    DateTime last_online,
+    string description,
+    float playability,
+    string version,
+    int group_id,
+    string owner_type,
+    int owner_id,
+    string type,
+    string fleet,
+    TimeSpan up_time,
+    string join_type,
+    int player_count,
+    int player_limit,
+    DateTime created_at,
+    bool is_online,
+    int transport_system);

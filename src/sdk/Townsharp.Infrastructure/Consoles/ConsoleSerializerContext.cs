@@ -2,7 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Townsharp.Infrastructure.CommonModels;
+using Townsharp.Infrastructure.Models;
 using Townsharp.Infrastructure.Consoles;
 
 namespace Townsharp.Infrastructure.Subscriptions;

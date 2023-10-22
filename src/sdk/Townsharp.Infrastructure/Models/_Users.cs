@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Townsharp.Infrastructure.CommonModels;
+namespace Townsharp.Infrastructure.Models;
 
 public record UserInfo
 {

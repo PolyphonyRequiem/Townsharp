@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.CommonModels;
+using Townsharp.Infrastructure.Models;
 using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity;

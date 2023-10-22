@@ -3,9 +3,9 @@
 using Polly;
 using Polly.Retry;
 
-using Townsharp.Infrastructure.CommonModels;
 using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
+using Townsharp.Infrastructure.Models;
 using Townsharp.Infrastructure.Utilities;
 
 namespace Townsharp.Infrastructure.Identity;
