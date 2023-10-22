@@ -14,7 +14,7 @@ public class GameServerConsole
     private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ConsoleAccessProvider consoleAccessProvider;
     private readonly ILogger<GameServerConsole> logger;
-    private Task<ConsoleClient?> consoleClientFactoryTask = Task.FromResult<ConsoleClient?>(null);
+    private Task<IConsoleClient?> consoleClientFactoryTask = Task.FromResult<IConsoleClient?>(null);
 
     private readonly SemaphoreSlim semaphore = new(1, 1);
 
@@ -71,7 +71,7 @@ public class GameServerConsole
         //    });
     }
 
-    private async Task<TResult> TryWithConsole<TResult>(Func<ConsoleClient, Task<TResult>> clientAction, Func<Task<TResult>> consoleNotAvailable)
+    private async Task<TResult> TryWithConsole<TResult>(Func<IConsoleClient, Task<TResult>> clientAction, Func<Task<TResult>> consoleNotAvailable)
     {
         var clientTask = consoleClientFactoryTask;
 
@@ -98,7 +98,7 @@ public class GameServerConsole
         }
     }
 
-    private async Task<ConsoleClient?> TryGetConsoleClientAsync()
+    private async Task<IConsoleClient?> TryGetConsoleClientAsync()
     {
         await semaphore.WaitAsync();
 
@@ -130,7 +130,7 @@ public class GameServerConsole
         return default;
     }
 
-    private async Task<ConsoleClient?> CreateConsoleClientAsync()
+    private async Task<IConsoleClient?> CreateConsoleClientAsync()
     {
         var access = await consoleAccessProvider.GetConsoleAccessAsync(id);
         if (access == ConsoleAccess.None)

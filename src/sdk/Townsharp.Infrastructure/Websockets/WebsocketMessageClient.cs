@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Townsharp.Infrastructure.Websockets;
 
-public abstract class WebsocketMessageClient
+internal abstract class WebsocketMessageClient
 {
     // Constants
     private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);

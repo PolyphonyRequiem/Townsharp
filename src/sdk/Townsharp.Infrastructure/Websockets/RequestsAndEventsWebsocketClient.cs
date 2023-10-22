@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Townsharp.Infrastructure.Websockets;
 
 // NOTE: Could/probably should hide this behind an interface.
-public abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessage, TEventMessage> : WebsocketMessageClient
+internal abstract class RequestsAndEventsWebsocketClient<TMessage, TResponseMessage, TEventMessage> : WebsocketMessageClient
     where TMessage : class
     where TEventMessage : class
     where TResponseMessage : class

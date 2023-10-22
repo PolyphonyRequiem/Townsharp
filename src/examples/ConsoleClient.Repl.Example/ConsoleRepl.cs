@@ -64,7 +64,7 @@ public class ConsoleRepl : IHostedService
 
             try
             {
-                ConsoleClient consoleClient = this.consoleClientFactory.CreateClient(endpointUri!, accessToken, eventChannel.Writer);
+                IConsoleClient consoleClient = this.consoleClientFactory.CreateClient(endpointUri!, accessToken, eventChannel.Writer);
                 await consoleClient.ConnectAsync(cancellationTokenSource.Token);
                 Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
 
@@ -88,7 +88,7 @@ public class ConsoleRepl : IHostedService
         }
     }
 
-    private async Task GetCommandsAsync(ConsoleClient consoleClient, CancellationToken token)
+    private async Task GetCommandsAsync(IConsoleClient consoleClient, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {

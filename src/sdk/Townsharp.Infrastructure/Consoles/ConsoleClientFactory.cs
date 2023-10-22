@@ -23,12 +23,12 @@ public class ConsoleClientFactory
         this.logger = loggerFactory.CreateLogger<ConsoleClientFactory>();
     }
 
-    public ConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, ChannelWriter<ConsoleEvent> eventChannel)
+    public IConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, ChannelWriter<ConsoleEvent> eventChannel)
     {
         return new ConsoleClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleClient>());
     }
 
-    public ConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, Func<ConsoleEvent, Task> handleEventAsync)
+    public IConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, Func<ConsoleEvent, Task> handleEventAsync)
     {
         var eventChannel = Channel.CreateUnbounded<ConsoleEvent>(
             new UnboundedChannelOptions
@@ -43,7 +43,7 @@ public class ConsoleClientFactory
         return new ConsoleClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleClient>());
     }
 
-    public ConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, Action<ConsoleEvent> handleEvent)
+    public IConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, Action<ConsoleEvent> handleEvent)
     {
         var eventChannel = Channel.CreateUnbounded<ConsoleEvent>(
             new UnboundedChannelOptions

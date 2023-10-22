@@ -10,7 +10,7 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Consoles;
 
-public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, CommandResponseMessage, ConsoleSubscriptionEventMessage>
+internal class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, CommandResponseMessage, ConsoleSubscriptionEventMessage>, IConsoleClient
 {
     // Constants
     private static readonly TimeSpan AuthTimeout = TimeSpan.FromSeconds(30);
@@ -70,6 +70,11 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         }
 
         this.authSemaphore.Release();
+    }
+
+    Task IConsoleClient.ConnectAsync(CancellationToken cancellationToken)
+    {
+        return base.ConnectAsync(cancellationToken);
     }
 
     public Task<CommandResult<string>> RunCommandAsync(string commandString)

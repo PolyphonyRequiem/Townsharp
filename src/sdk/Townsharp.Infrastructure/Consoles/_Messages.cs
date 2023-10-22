@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace Townsharp.Infrastructure.Consoles;
 
-public record ConsoleMessage(string type)
+internal record ConsoleMessage(string type)
 {
     internal static ConsoleMessage None = new(string.Empty);
 }
@@ -23,7 +23,7 @@ public record CommandResponseMessage(int commandId, JsonNode? data)
     }
 }
 
-public record ConsoleSubscriptionEventMessage(string eventType, JsonNode? data)
+internal record ConsoleSubscriptionEventMessage(string eventType, JsonNode? data)
 {
     internal static ConsoleSubscriptionEventMessage None = new(string.Empty, default);
 }
