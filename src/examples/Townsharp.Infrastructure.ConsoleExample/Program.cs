@@ -10,12 +10,12 @@ Console.WriteLine("Connecting to the bot server.");
 
 // Set up our Townsharp Infrastructure dependencies.
 
-var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_CLIENTID and TOWNSHARP_CLIENTSECRET
+//var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_CLIENTID and TOWNSHARP_CLIENTSECRET
 //var botCreds = new BotCredential("client_idstringfromalta", "ClientSecret-aka the token");
-var webApiClient = new WebApiBotClient(botCreds);
+//var webApiClient = new WebApiBotClient(botCreds);
 
-//var userCreds = UserCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_USERNAME and TOWNSHARP_PASSWORDHASH
-//var webApiClient = new WebApiUserClient(userCreds);
+var userCreds = UserCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_USERNAME and TOWNSHARP_PASSWORDHASH
+var webApiClient = new WebApiUserClient(userCreds);
 
 var consoleClientFactory = new ConsoleClientFactory();
 
