@@ -44,14 +44,93 @@ if (!accessRequestResult.IsSuccess)
 var accessToken = accessRequestResult.Content.token!;
 var endpointUri = accessRequestResult.Content.BuildConsoleUri();
 
+// EVENT HANDLING MODES
 
-Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>(); // not used in this example, but used for handling console events.
+// CHANNEL BASED
 
-var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, eventChannel.Writer);
+//Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>();
+//var messageListenerTask = Task.Run(HandleConsoleEvents);
+//var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, eventChannel.Writer);
+//async Task HandleConsoleEvents()
+//{
+//    try
+//    {
+//        await foreach (var consoleEvent in eventChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
+//        {
+//            if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+//            {
+//                Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+//            }
+//            else
+//            {
+//                Console.WriteLine(consoleEvent.ToString());
+//            }
+//        }
+//    }
+//    catch (Exception)
+//    {
+//        // no op for now
+//    }
+//}
+// // Connect Client as normal, and await messageListenerTask when the session is ending.
+
+// USER HANDLER ASYNC
+// 1). Method group handler
+//var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, HandleConsoleEventAsync);
+// 2). Lambda handler
+//var consoleClient = consoleClientFactory.CreateClient(
+//    endpointUri,
+//    accessToken,
+//    async consoleEvent =>
+//    {
+//        await Task.Delay(1000); // Let's delay for some reason, just for the async sample.
+//        if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+//        {
+//            Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+//        }
+//        else
+//        {
+//            Console.WriteLine(consoleEvent.ToString());
+//        }
+//    });
+
+// USER HANDLER SYNC
+// 1). Method group handler
+//var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, HandleConsoleEvent);
+// 2). Lambda handler
+//var consoleClient = consoleClientFactory.CreateClient(
+//    endpointUri,
+//    accessToken,
+//    consoleEvent =>
+//    {
+//        if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+//        {
+//            Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+//        }
+//        else
+//        {
+//            Console.WriteLine(consoleEvent.ToString());
+//        }
+//    });
+
+var consoleClient = consoleClientFactory.CreateClient(
+    endpointUri,
+    accessToken,
+    consoleEvent =>
+    {
+        if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+        {
+            Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+        }
+        else
+        {
+            Console.WriteLine(consoleEvent.ToString());
+        }
+    });
+
+// var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, HandleConsoleEvent);
 
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); // used to end the session.
-
-var messageListenerTask = Task.Run(HandleConsoleEvents);
 
 Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
 {
@@ -72,26 +151,31 @@ result.HandleResult(
     error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
 
 cancellationTokenSource.Cancel();
-await messageListenerTask;
 
-async Task HandleConsoleEvents()
-{
-    try
-    {
-        await foreach (var consoleEvent in eventChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
-        {
-            if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
-            {
-                Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
-            }
-            else
-            {
-                Console.WriteLine(consoleEvent.ToString());
-            }
-        }
-    }
-    catch (Exception)
-    {
-        // no op for now
-    }
-}
+// Asynchronous Handler
+//Task HandleConsoleEventAsync(ConsoleEvent consoleEvent)
+//{
+//    if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+//    {
+//        Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+//    }
+//    else
+//    {
+//        Console.WriteLine(consoleEvent.ToString());
+//    }
+
+//    return Task.CompletedTask;
+//}
+
+// Synchronous Handler
+//void HandleConsoleEvent(ConsoleEvent consoleEvent)
+//{
+//    if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+//    {
+//        Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+//    }
+//    else
+//    {
+//        Console.WriteLine(consoleEvent.ToString());
+//    }
+//}

@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Townsharp.Infrastructure.Models;
 using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Tests.Townsharp.Infrastructure.Subscriptions;
@@ -115,7 +116,7 @@ public class SerializationTests
         }
         """;
 
-        var message = JsonSerializer.Deserialize<ServerStatusContent>(messageJson, AltaSerializerContext.Default.ServerStatusContent);
+        var message = JsonSerializer.Deserialize<ServerInfo>(messageJson, AltaSerializerContext.Default.ServerInfo);
 
         Assert.NotNull(message);
         Assert.Equal(1053784199, message!.id);
@@ -150,17 +151,16 @@ public class SerializationTests
 
         var element = JsonDocument.Parse(insanity).RootElement;
 
-        var message = JsonSerializer.Deserialize<ServerStatusContent>(element, AltaSerializerContext.Default.ServerStatusContent);
+        var message = JsonSerializer.Deserialize<ServerInfo>(element, AltaSerializerContext.Default.ServerInfo);
 
         Assert.NotNull(message);
     }
 }
 
 
-[JsonSerializable(typeof(ServerStatusContent))]
+[JsonSerializable(typeof(ServerInfo))]
 [JsonSerializable(typeof(SubscriptionEventMessage))]
 [JsonSerializable(typeof(SubscriptionMessage))]
-[JsonSerializable(typeof(ServerStatusContent))]
 internal partial class AltaSerializerContext : JsonSerializerContext
 {
 
