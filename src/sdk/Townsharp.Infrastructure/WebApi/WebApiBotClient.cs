@@ -27,7 +27,7 @@ public class WebApiBotClient
     private readonly ILogger<WebApiBotClient> logger;
 
     public WebApiBotClient(BotCredential credential)
-        : this(new BotTokenProvider(credential, InternalHttpClientFactory.Default), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiBotClient>())
+        : this(new BotTokenProvider(credential), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiBotClient>())
     {
     }
 

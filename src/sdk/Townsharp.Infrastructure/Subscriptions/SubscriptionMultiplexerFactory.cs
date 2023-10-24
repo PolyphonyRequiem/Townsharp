@@ -19,7 +19,7 @@ public class SubscriptionMultiplexerFactory
     }
 
     public SubscriptionMultiplexerFactory(BotCredential botCredential)
-        : this(new SubscriptionClientFactory(new BotTokenProvider(botCredential, InternalHttpClientFactory.Default), InternalLoggerFactory.Default), InternalLoggerFactory.Default)
+        : this(new SubscriptionClientFactory(new BotTokenProvider(botCredential), InternalLoggerFactory.Default), InternalLoggerFactory.Default)
     {
     }
 

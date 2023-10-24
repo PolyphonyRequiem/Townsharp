@@ -1,5 +1,7 @@
 ﻿using System.Net.Http.Json;
 
+using Microsoft.Extensions.Logging;
+
 using Polly;
 using Polly.Retry;
 
@@ -17,17 +19,20 @@ internal class BotTokenProvider
     private const string DefaultScopes = "ws.group ws.group_members ws.group_servers ws.group_bans ws.group_invites group.info group.join group.leave group.view group.members group.invite server.view server.console";
     private readonly AsyncCache<string> tokenCache;
     private readonly AsyncRetryPolicy retryPolicy = Policy.Handle<Exception>().WaitAndRetryForeverAsync(x => TimeSpan.FromSeconds(5));
+    private readonly ILogger<BotTokenProvider> logger;
 
     internal bool IsEnabled => true;
 
     internal BotTokenProvider(BotCredential botCredential)
-        : this(botCredential, InternalHttpClientFactory.Default)
+        : this(botCredential, InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<BotTokenProvider>())
     {
 
     }
 
-    internal BotTokenProvider(BotCredential botCredential, IHttpClientFactory httpClientFactory)
+    internal BotTokenProvider(BotCredential botCredential, IHttpClientFactory httpClientFactory, ILogger<BotTokenProvider> logger)
     {
+        this.logger = logger;
+
         var request = new Dictionary<string, string>
         {
             {"grant_type", "client_credentials"},
@@ -51,6 +56,7 @@ internal class BotTokenProvider
 
                         if (!result.IsSuccessStatusCode)
                         {
+                            this.logger.LogWarning("An error occurred while fetching a bot token: {StatusCode} {ReasonPhrase}", result.StatusCode, result.ReasonPhrase);
                             throw new InvalidOperationException(await result.Content.ReadAsStringAsync());
                         }
 

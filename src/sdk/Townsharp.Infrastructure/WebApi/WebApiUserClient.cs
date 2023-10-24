@@ -27,7 +27,7 @@ public class WebApiUserClient
     private readonly ILogger<WebApiUserClient> logger;
 
     public WebApiUserClient(UserCredential credential)
-        : this(new UserTokenProvider(credential, InternalHttpClientFactory.Default), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiUserClient>())
+        : this(new UserTokenProvider(credential), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiUserClient>())
     {
     }
 

@@ -18,7 +18,7 @@ internal class AutoManageServersRequestHandler : IRequestHandler<AutoManageServe
 
     public async Task Handle(AutoManageServersRequest request, CancellationToken cancellationToken)
     {
-        await foreach (var server in webApiClient.GetJoinedServersAsync())
+        await foreach (var server in webApiClient.GetJoinedServersAsyncStream())
         {
             int serverId = server.id;
             int groupId = server.group_id;

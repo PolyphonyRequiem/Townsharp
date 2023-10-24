@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Consoles;
@@ -17,7 +18,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<BotTokenProvider>(
             services => new BotTokenProvider(
                 BotCredential.FromEnvironmentVariables(),
-                services.GetRequiredService<IHttpClientFactory>()));
+                services.GetRequiredService<IHttpClientFactory>(),
+                services.GetRequiredService<ILogger<BotTokenProvider>>()));
 
         services.AddSingleton<WebApiBotClient>();
         services.AddSingleton<SubscriptionClientFactory>();

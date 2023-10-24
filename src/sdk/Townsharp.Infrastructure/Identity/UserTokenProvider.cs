@@ -2,6 +2,8 @@
 using System.Security.Cryptography;
 using System.Text;
 
+using Microsoft.Extensions.Logging;
+
 using Polly;
 using Polly.Retry;
 
@@ -17,18 +19,21 @@ internal class UserTokenProvider
     private const string BaseUri = "https://webapi.townshiptale.com/api/sessions";
     private readonly AsyncCache<string> tokenCache;
     private readonly AsyncRetryPolicy retryPolicy = Policy.Handle<Exception>().WaitAndRetryForeverAsync(x => TimeSpan.FromSeconds(5));
+    private readonly ILogger<UserTokenProvider> logger;
 
     internal bool IsEnabled => true;
 
     internal UserTokenProvider(UserCredential userCredential)
-    : this(userCredential, InternalHttpClientFactory.Default)
+    : this(userCredential, InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<UserTokenProvider>())
     {
 
     }
 
 
-    internal UserTokenProvider(UserCredential userCredential, IHttpClientFactory httpClientFactory)
+    internal UserTokenProvider(UserCredential userCredential, IHttpClientFactory httpClientFactory, ILogger<UserTokenProvider> logger)
     {
+        this.logger = logger;
+
         var request = new Dictionary<string, string>
         {
             {"username", userCredential.Username}
@@ -73,6 +78,7 @@ internal class UserTokenProvider
 
                         if (!result.IsSuccessStatusCode)
                         {
+                            this.logger.LogWarning("An error occurred while fetching a user token: {StatusCode} {ReasonPhrase}", result.StatusCode, result.ReasonPhrase);
                             throw new InvalidOperationException(await result.Content.ReadAsStringAsync());
                         }
 
