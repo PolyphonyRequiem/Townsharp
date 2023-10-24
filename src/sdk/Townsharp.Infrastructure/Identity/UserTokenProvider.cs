@@ -35,7 +35,7 @@ internal class UserTokenProvider
         };
 
         // Prefer PasswordHash over Password
-        if (userCredential.PasswordHash == String.Empty)
+        if (userCredential.PasswordHash != String.Empty)
         {
             request.Add("password_hash", userCredential.PasswordHash);
         }
@@ -57,8 +57,6 @@ internal class UserTokenProvider
 
         JsonContent content = JsonContent.Create(request);
 
-
-
         // This is not (yet) fault tolerant, but it needs to be, so we could use Polly for this, but if we are going to keep the code free of dependencies, we need to write our own retry logic.
         this.tokenCache = new AsyncCache<string>(
             TimeSpan.FromMinutes(15),
@@ -70,6 +68,7 @@ internal class UserTokenProvider
                     {
                         using var httpClient = httpClientFactory.CreateClient();
                         httpClient.DefaultRequestHeaders.Add("x-api-key", "2l6aQGoNes8EHb94qMhqQ5m2iaiOM9666oDTPORf");
+                        httpClient.DefaultRequestHeaders.Host = "webapi.townshiptale.com";
                         var result = await httpClient.PostAsync(BaseUri, content);
 
                         if (!result.IsSuccessStatusCode)

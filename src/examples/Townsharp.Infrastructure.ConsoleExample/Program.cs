@@ -19,10 +19,12 @@ var webApiClient = new WebApiUserClient(userCreds);
 
 var consoleClientFactory = new ConsoleClientFactory();
 
+var joinedServers = (await webApiClient.GetJoinedServersAsync()).ToArray();
+
 //var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(botCreds);
 //var subscriptionMultiplexer = subscriptionMultiplexerFactory.Create(10);
 
-await foreach (var server in webApiClient.GetJoinedServersAsync())
+await foreach (var server in webApiClient.GetJoinedServersAsyncStream())
 {
     if (server.is_online)
     {
