@@ -29,9 +29,18 @@ internal class UserTokenProvider
     {
         var request = new Dictionary<string, string>
         {
-            {"username", userCredential.Username},
-            {"password_hash", userCredential.PasswordHash}
+            {"username", userCredential.Username}
         };
+
+        // Prefer PasswordHash over Password
+        if (userCredential.PasswordHash == String.Empty)
+        {
+            request.Add("password_hash", userCredential.PasswordHash);
+        }
+        else
+        {
+            request.Add("password", userCredential.Password);
+        }
 
         JsonContent content = JsonContent.Create(request);
 
