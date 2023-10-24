@@ -1,4 +1,6 @@
 ﻿using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 
 using Polly;
 using Polly.Retry;
@@ -39,7 +41,18 @@ internal class UserTokenProvider
         }
         else
         {
-            request.Add("password", userCredential.Password);
+            using (SHA512 sha512Hash = SHA512.Create())
+            {
+                byte[] bytes = sha512Hash.ComputeHash(Encoding.UTF8.GetBytes(userCredential.Password));
+
+                StringBuilder passwordHashBuilder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    passwordHashBuilder.Append(bytes[i].ToString("x2"));
+                }
+
+                request.Add("password_hash", passwordHashBuilder.ToString()); 
+            }
         }
 
         JsonContent content = JsonContent.Create(request);
