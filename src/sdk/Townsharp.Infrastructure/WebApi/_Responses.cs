@@ -8,6 +8,12 @@ public record ConsoleAccess(
     string? token,
     ConsoleConnectionInfo? connection)
 {
+
+    /// <summary>
+    /// Builds the Uri needed for the <see cref="ConsoleClientFactory"/> to create a <see cref="IConsoleClient"/> instance.
+    /// </summary>
+    /// <returns>The Uri needed for the <see cref="ConsoleClientFactory"/> to create a <see cref="IConsoleClient"/> instance.</returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public Uri BuildConsoleUri()
     {
         if (!this.allowed || this.token is null || connection is null)

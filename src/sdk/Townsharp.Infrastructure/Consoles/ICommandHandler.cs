@@ -56,6 +56,8 @@ internal class UntypedLiteralConsoleCommandHandler : ICommandHandler<Unit, strin
     }
 }
 
+/// <summary>
+/// Represents a type with no value, similar to void.  This is used when a command handler does not require any arguments.
 public record Unit
 {
     /// <summary>

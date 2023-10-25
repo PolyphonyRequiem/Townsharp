@@ -25,6 +25,30 @@ public enum ConsoleEventType
 }
 
 
+/// <summary>
+/// Represents an event that was received from the Game Server's Console endpoint.
+/// </summary>
+/// <param name="ConsoleEventType">The type of the event, used to determine the concrete type.</param>
+/// <remarks>
+/// In order to effectively use the ConsoleEvent type, you should use a switch statement on the ConsoleEventType property to determine the concrete type, and then cast the ConsoleEvent to that type.
+/// 
+/// <code>
+/// switch (consoleEvent.ConsoleEventType)
+/// {
+///    case ConsoleEventType.PlayerStateChanged:
+///    var playerStateChangedEvent = (PlayerStateChangedEvent)consoleEvent;
+///    // Do something with the playerStateChangedEvent
+///    break;
+///    case ConsoleEventType.PlayerJoined:
+///    var playerJoinedEvent = (PlayerJoinedEvent)consoleEvent;
+///    // Do something with the playerJoinedEvent
+///    break;
+///    ... etc.
+///    default:
+///       throw new InvalidOperationException($"Unknown event type: {consoleEvent.ConsoleEventType}");
+/// }
+/// </code>
+/// </remarks>
 public abstract record ConsoleEvent(ConsoleEventType ConsoleEventType);
 
 public record PlayerStateChangedEvent(UserInfo player, PlayerStateType state, bool isEnter) : ConsoleEvent(ConsoleEventType.PlayerStateChanged)

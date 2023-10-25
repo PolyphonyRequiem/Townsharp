@@ -1,5 +1,11 @@
 ﻿namespace Townsharp.Infrastructure.Configuration;
 
+/// <summary>
+/// The credentials for a user used to authenticate with Alta.
+/// </summary>
+/// <param name="Username">The username of the user.</param>
+/// <param name="PasswordHash">The password hash of the user.  This is the SHA512 hash of the password and is the preferred method of calling the service.  This value will be used if present over the <paramref name="Password"/> value</param>
+/// <param name="Password">The password of the user.  This value will be used if <paramref name="PasswordHash"/> is not present. If neither are present, login will fail.</param>
 public record UserCredential(string Username, string PasswordHash, string Password)
 {
     public static UserCredential FromEnvironmentVariables()
