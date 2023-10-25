@@ -94,7 +94,7 @@ internal class SubscriptionManagerTest : IHostedService
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         this.subscriptionManager = this.subscriptionManagerFactory.Create();
-        this.subscriptionManager.OnSubscriptionEvent += (sender, subscriptionEvent) =>
+        this.subscriptionManager.SubscriptionEventReceived += (sender, subscriptionEvent) =>
         {
             this.eventCounter.Add(1);
             this.totalCount++;

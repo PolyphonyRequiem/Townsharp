@@ -4,6 +4,10 @@ using Townsharp.Infrastructure.Subscriptions.Models;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
+/// <summary>
+/// Provides multiplexing of subscriptions against the main Alta Websocket Subscription endpoint across multiple connections.
+/// This is done to ensure that connections are robust as the scale increases beyond ~500 subscriptions, so that migrations happen with a very high rate of success.
+/// </summary>
 public class SubscriptionMultiplexer
 {
     private readonly SubscriptionMap subscriptionMap;
@@ -11,11 +15,18 @@ public class SubscriptionMultiplexer
     private readonly ILogger<SubscriptionMultiplexer> logger;
 
     // Events
-    public event EventHandler<SubscriptionEvent>? OnSubscriptionEvent;
+    /// <summary>
+    /// Raised when a <see cref="SubscriptionEvent"/> is received.
+    /// </summary>
+    /// <remarks>
+    /// Consider handling the subscription event using match syntax to handle the different event types.
+    /// Evaluate <see cref="SubscriptionEvent.SubscriptionEventType"/> to determine the type of event, and then cast the <see cref="SubscriptionEvent"/> to the appropriate type using the 'as' keyword.
+    /// </remarks>
+    public event EventHandler<SubscriptionEvent>? SubscriptionEventReceived;
 
     private void RaiseOnSubscriptionEvent(SubscriptionEvent subscriptionEvent)
     {
-        this.OnSubscriptionEvent?.Invoke(this, subscriptionEvent);
+        this.SubscriptionEventReceived?.Invoke(this, subscriptionEvent);
     }
 
     internal SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
@@ -44,6 +55,10 @@ public class SubscriptionMultiplexer
         return new SubscriptionMultiplexer(subscriptionConnectionsMap, loggerFactory.CreateLogger<SubscriptionMultiplexer>());
     }
 
+    /// <summary>
+    /// Starts running the <see cref="SubscriptionMultiplexer"/> asynchronously using the provided <paramref name="cancellationToken"/> to signal cancellation.
+    /// </summary>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use to cancel the operation.</param>
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         foreach (var connection in this.connections.Values)
@@ -55,6 +70,10 @@ public class SubscriptionMultiplexer
         await Task.WhenAll(tasks);
     }
 
+    /// <summary>
+    /// Registers a set of <see cref="SubscriptionDefinition"/>s to the <see cref="SubscriptionMultiplexer"/>, which will be multiplexed across the available connections.
+    /// </summary>
+    /// <param name="subscriptionDefinitions">The <see cref="SubscriptionDefinition"/>s to register.</param>
     public void RegisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
     {
         var newMappings = subscriptionMap.CreateSubscriptionMappingFor(subscriptionDefinitions);
@@ -67,6 +86,10 @@ public class SubscriptionMultiplexer
         }
     }
 
+    /// <summary>
+    /// Unregisters a set of <see cref="SubscriptionDefinition"/>s from the <see cref="SubscriptionMultiplexer"/>.
+    /// </summary>
+    /// <param name="subscriptionDefinitions">The <see cref="SubscriptionDefinition"/>s to unregister.</param>
     public void UnregisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
     {
         var newMappings = subscriptionMap.CreateUnsubscriptionMappingFor(subscriptionDefinitions);

@@ -3,6 +3,10 @@ using System.Text.Json.Nodes;
 
 namespace Townsharp.Infrastructure.WebApi;
 
+/// <summary>
+/// Represents the result of a WebApi request.
+/// </summary>
+/// <typeparam name="TResult">The type of the result.</typeparam>
 public class WebApiResult<TResult>
 {
     private static JsonSerializerOptions serializerOptions = new JsonSerializerOptions
@@ -12,16 +16,28 @@ public class WebApiResult<TResult>
 
     private string rawResponse;
 
+    /// <summary>
+    /// Gets a value indicating whether the request was successful.
+    /// </summary>
     public bool IsSuccess { get; init; }
 
+    /// <summary>
+    /// Gets the error message, if any.
+    /// </summary>
     public string ErrorMessage { get; init; }
 
     private readonly Lazy<TResult> lazyContent;
 
+    /// <summary>
+    /// Gets the content of the response.
+    /// </summary>
     public TResult Content => this.lazyContent.Value;
 
     private readonly Lazy<JsonNode> lazyRawJson;
 
+    /// <summary>
+    /// Gets the raw JSON response.
+    /// </summary>
     public JsonNode RawJson => this.lazyRawJson.Value;
 
     private WebApiResult(string rawResponse, string? errorMessage = default)
@@ -41,8 +57,6 @@ public class WebApiResult<TResult>
 
         this.lazyRawJson = new Lazy<JsonNode>(() => JsonNode.Parse(rawResponse) ?? JsonNode.Parse("{}")!);
     }
-
-    public JsonNode GetRawJson() => JsonNode.Parse(rawResponse)!;
 
     internal static WebApiResult<TResult> Success(string rawResponse) => new WebApiResult<TResult>(rawResponse);
 
