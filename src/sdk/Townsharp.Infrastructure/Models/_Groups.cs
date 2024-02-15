@@ -35,7 +35,7 @@ public record GroupMemberInfo(
     string username,
     bool bot,
     int icon,
-    string permissions,
+    string? permissions,
     int role_id,
     DateTime created_at,
     string type);
