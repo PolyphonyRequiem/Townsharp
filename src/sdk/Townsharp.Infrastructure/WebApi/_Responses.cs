@@ -9,6 +9,8 @@ public record ConsoleAccess(
     ConsoleConnectionInfo? connection)
 {
 
+    public bool IndicatesAccessGranted => this.allowed && !(this.token is null) && !(this.connection is null);
+
     /// <summary>
     /// Builds the Uri needed for the <see cref="ConsoleClientFactory"/> to create a <see cref="IConsoleClient"/> instance.
     /// </summary>
@@ -16,7 +18,7 @@ public record ConsoleAccess(
     /// <exception cref="InvalidOperationException"></exception>
     public Uri BuildConsoleUri()
     {
-        if (!this.allowed || this.token is null || connection is null)
+        if (!this.IndicatesAccessGranted)
         {
             throw new InvalidOperationException("Unable to build a console uri from this ConsoleAccess instance. Either the console is offline, or access was denied.");
         }

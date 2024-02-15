@@ -4,9 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<PackageVersion>1.0.0-preview.9</PackageVersion>
+	<PackageVersion>1.0.0-preview.10</PackageVersion>
     <Version>1.0.0</Version>
-	<VersionSuffix>preview.9</VersionSuffix>
+	<VersionSuffix>preview.10</VersionSuffix>
 	<PackageProjectUrl>https://github.com/PolyphonyRequiem/Townsharp</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<RepositoryUrl>https://github.com/PolyphonyRequiem/Townsharp</RepositoryUrl>

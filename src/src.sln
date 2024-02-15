@@ -31,7 +31,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TownsharpClient.CaveLayers.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Client", "sdk\Townsharp.Client\Townsharp.Client.csproj", "{3474EB23-4011-4207-9D49-6EA8203AFFE0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Townsharp.Infrastructure.ConsoleExample", "examples\Townsharp.Infrastructure.ConsoleExample\Townsharp.Infrastructure.ConsoleExample.csproj", "{E07914B1-DFBA-4195-8A29-245C110212C9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Infrastructure.ConsoleExample", "examples\Townsharp.Infrastructure.ConsoleExample\Townsharp.Infrastructure.ConsoleExample.csproj", "{E07914B1-DFBA-4195-8A29-245C110212C9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NewFolder1", "NewFolder1", "{B3D027DC-0097-451F-80C1-AB90ED77CD9F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScratchDebugging", "scratch\ScratchDebugging\ScratchDebugging.csproj", "{7E295948-4331-432B-911F-4501A9DBF9B8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -87,6 +91,10 @@ Global
 		{E07914B1-DFBA-4195-8A29-245C110212C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E07914B1-DFBA-4195-8A29-245C110212C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E07914B1-DFBA-4195-8A29-245C110212C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E295948-4331-432B-911F-4501A9DBF9B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E295948-4331-432B-911F-4501A9DBF9B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E295948-4331-432B-911F-4501A9DBF9B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E295948-4331-432B-911F-4501A9DBF9B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -104,6 +112,7 @@ Global
 		{536C993A-35C8-40D8-A9D6-8A9E895B8FFC} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
 		{3474EB23-4011-4207-9D49-6EA8203AFFE0} = {78F94883-E1F7-4242-A213-A0A2C81EC766}
 		{E07914B1-DFBA-4195-8A29-245C110212C9} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
+		{7E295948-4331-432B-911F-4501A9DBF9B8} = {B3D027DC-0097-451F-80C1-AB90ED77CD9F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D03B5680-CE9E-4B64-8447-FC4B5B354A0D}

@@ -8,6 +8,11 @@
 /// <param name="Password">The password of the user.  This value will be used if <paramref name="PasswordHash"/> is not present. If neither are present, login will fail.</param>
 public record UserCredential(string Username, string PasswordHash, string Password)
 {
+    /// <summary>
+    /// Generates the <see cref="UserCredential"/> from the environment variables TOWNSHARP_USERNAME, TOWNSHARP_PASSWORDHASH and TOWNSHARP_PASSWORD."/>
+    /// </summary>
+    /// <returns>The <see cref="UserCredential"/> generated from the environment variables TOWNSHARP_USERNAME, TOWNSHARP_PASSWORDHASH and TOWNSHARP_PASSWORD.</returns>
+    /// <exception cref="ArgumentException"></exception>
     public static UserCredential FromEnvironmentVariables()
     {
         var username = Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? throw new ArgumentException("Environment Variable TOWNSHARP_USERNAME must be set. Please review 'Getting Started' documentation section for 'Identity, Authentication and Authorization'");

@@ -5,14 +5,24 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Consoles;
 
+/// <summary>
+/// Provides methods for creating <see cref="ICommandHandler{TArguments, TResult}"/>s.
+/// </summary>
 public static class CommandHandler
 {
+    /// <summary>
+    /// Provides an argumentless, string typed command handler for the given command string.
     public static ICommandHandler<Unit, string> ForCommand(string command)
     {
         return new UntypedLiteralConsoleCommandHandler(command);
     }
 }
 
+/// <summary>
+/// Represents a handler for a command on the Game Server's Console endpoint.
+/// </summary>
+/// <typeparam name="TArguments">The type of the arguments used the command.</typeparam>
+/// <typeparam name="TResult">The type of the result returned by the command.</typeparam>
 public interface ICommandHandler<TArguments, TResult>
     where TResult : class
 {

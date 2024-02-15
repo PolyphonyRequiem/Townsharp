@@ -138,6 +138,24 @@ public class WebApiBotClient
     }
 
     /// <summary>
+    /// Gets a list members of the group.
+    /// </summary>
+    /// <returns>A list of <see cref="ServerInfo"/> instances.</returns>
+    public async Task<IEnumerable<GroupMemberInfo>> GetGroupMembersAsync(int groupId)
+    {
+        return await GetPaginatedResultsAsync<GroupMemberInfo>($"api/groups/{groupId}/members");
+    }
+
+    /// <summary>
+    /// Gets a list of all group members for the given server as an asynchronous sequence via <see cref="IAsyncEnumerable{T}"/>.
+    /// </summary>
+    /// <returns>An asynchronous sequence of <see cref="GroupMemberInfo"/> instances.</returns>
+    public IAsyncEnumerable<GroupMemberInfo> GetGroupMembersAsyncStream(int groupId)
+    {
+        return GetResultsAsyncStream<GroupMemberInfo>($"api/groups/{groupId}/members");
+    }
+
+    /// <summary>
     /// Gets a list of all servers the user is a member of.
     /// </summary>
     /// <returns>A list of <see cref="ServerInfo"/> instances.</returns>
@@ -231,9 +249,16 @@ public class WebApiBotClient
                 response.Headers.GetValues("paginationToken").First() :
                 string.Empty;
 
-            foreach (var joinedGroup in await response.Content.ReadFromJsonAsync<JsonArray>() ?? new JsonArray())
+            foreach (var resultObject in await response.Content.ReadFromJsonAsync<JsonArray>() ?? new JsonArray())
             {
-                allResults.Add(JsonSerializer.Deserialize<TResult>(joinedGroup, serializerOptions) ?? throw new InvalidOperationException("Could not deserialize response"));
+                try
+                {
+                    allResults.Add(JsonSerializer.Deserialize<TResult>(resultObject, serializerOptions) ?? throw new InvalidOperationException("Could not deserialize response"));
+                }
+                catch (Exception ex)
+                {
+                    this.logger.LogError(ex, $"Something went wrong while trying to deserialize the response from the service, we managed to handle {allResults.Count} before failing.");
+                }
             }
         }
         while (response.Headers.Contains("paginationToken"));

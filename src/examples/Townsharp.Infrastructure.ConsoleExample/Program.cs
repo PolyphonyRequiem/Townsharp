@@ -1,4 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 
 using Townsharp.Infrastructure.Configuration;
@@ -10,12 +14,12 @@ Console.WriteLine("Connecting to the bot server.");
 
 // Set up our Townsharp Infrastructure dependencies.
 
-//var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_CLIENTID and TOWNSHARP_CLIENTSECRET
+var botCreds = BotCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_CLIENTID and TOWNSHARP_CLIENTSECRET
 //var botCreds = new BotCredential("client_idstringfromalta", "ClientSecret-aka the token");
-//var webApiClient = new WebApiBotClient(botCreds);
+var webApiClient = new WebApiBotClient(botCreds);
 
-var userCreds = UserCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_USERNAME and TOWNSHARP_PASSWORDHASH
-var webApiClient = new WebApiUserClient(userCreds);
+//var userCreds = UserCredential.FromEnvironmentVariables(); // reads from TOWNSHARP_USERNAME and TOWNSHARP_PASSWORDHASH
+//var webApiClient = new WebApiUserClient(userCreds);
 
 var consoleClientFactory = new ConsoleClientFactory();
 
@@ -24,27 +28,78 @@ var joinedServers = (await webApiClient.GetJoinedServersAsync()).ToArray();
 //var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(botCreds);
 //var subscriptionMultiplexer = subscriptionMultiplexerFactory.Create(10);
 
+CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); // used to end the session.
+List<Task> connectAndDumpPlayerListTasks = new List<Task>();
+
+async Task ConnectAndDumpPlayerList(Uri endpointUri, string accessToken)
+{
+    var consoleClient = consoleClientFactory.CreateClient(
+        endpointUri,
+        accessToken,
+        consoleEvent =>
+        {
+            if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+            {
+                Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+            }
+            else
+            {
+                Console.WriteLine(consoleEvent.ToString());
+            }
+        });
+
+    await consoleClient.ConnectAsync(cancellationTokenSource.Token); // Connect the client to the console endpoint.
+
+    var result = await consoleClient.RunCommandAsync("player list");
+
+    result.HandleResult(
+        result => Console.WriteLine($"RESULT:{Environment.NewLine}{result}"),
+        error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
+
+}
+
+ConcurrentBag<ConsoleAccess> consoleAccesses = new ConcurrentBag<ConsoleAccess>();
+List<Task> consoleAccessRequests = new();
+
 await foreach (var server in webApiClient.GetJoinedServersAsyncStream())
 {
     if (server.is_online)
     {
-        Console.WriteLine($"{server.id} - {server.name}");
+        _ = Task.Run(async () =>
+        {
+            Console.WriteLine($"{server.id} - {server.name}");
+
+            var accessRequestResult = await webApiClient.RequestConsoleAccessAsync(server.id);
+
+            if (!accessRequestResult.IsSuccess)
+            {
+                throw new InvalidOperationException("Unable to connect to the server.  It is either offline or access was denied.");
+            }
+
+            if (!accessRequestResult.Content.IndicatesAccessGranted)
+            {
+                return;
+            }
+
+            consoleAccesses.Add(accessRequestResult.Content);
+        });
     }
 }
 
-Console.WriteLine("Enter the server id to connect to:");
-string serverIdInput = Console.ReadLine() ?? "";
-int serverId = int.Parse(serverIdInput);
+await Task.WhenAll(connectAndDumpPlayerListTasks);
 
-var accessRequestResult = await webApiClient.RequestConsoleAccessAsync(serverId);
+Stopwatch sw = new Stopwatch();
+sw.Start();
 
-if (!accessRequestResult.IsSuccess)
+foreach (var consoleAccess in consoleAccesses)
 {
-    throw new InvalidOperationException("Unable to connect to the server.  It is either offline or access was denied.");
+    connectAndDumpPlayerListTasks.Add(Task.Run(()=>ConnectAndDumpPlayerList(consoleAccess.BuildConsoleUri(), consoleAccess.token!)));
 }
 
-var accessToken = accessRequestResult.Content.token!;
-var endpointUri = accessRequestResult.Content.BuildConsoleUri();
+await Task.WhenAll(connectAndDumpPlayerListTasks);
+sw.Stop();
+
+Console.WriteLine(sw.ElapsedMilliseconds);
 
 // EVENT HANDLING MODES
 
@@ -115,44 +170,16 @@ var endpointUri = accessRequestResult.Content.BuildConsoleUri();
 //        }
 //    });
 
-var consoleClient = consoleClientFactory.CreateClient(
-    endpointUri,
-    accessToken,
-    consoleEvent =>
-    {
-        if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
-        {
-            Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
-        }
-        else
-        {
-            Console.WriteLine(consoleEvent.ToString());
-        }
-    });
 
 // var consoleClient = consoleClientFactory.CreateClient(endpointUri, accessToken, HandleConsoleEvent);
 
-CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); // used to end the session.
+//CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(); // used to end the session.
 
 Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
 {
     e.Cancel = true;
     cancellationTokenSource.Cancel();
 };
-
-Console.WriteLine("Connecting to the console.");
-await consoleClient.ConnectAsync(cancellationTokenSource.Token); // Connect the client to the console endpoint.
-Console.WriteLine("Connected!");
-
-Console.WriteLine("Running command 'player list'");
-
-var result = await consoleClient.RunCommandAsync("player list");
-
-result.HandleResult(
-    result => Console.WriteLine($"RESULT:{Environment.NewLine}{result}"),
-    error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
-
-cancellationTokenSource.Cancel();
 
 // Asynchronous Handler
 //Task HandleConsoleEventAsync(ConsoleEvent consoleEvent)
@@ -181,3 +208,4 @@ cancellationTokenSource.Cancel();
 //        Console.WriteLine(consoleEvent.ToString());
 //    }
 //}
+
