@@ -1,7 +1,7 @@
 ﻿namespace Townsharp.Consoles;
 
-public interface IConsoleEventFactory<TConsoleEvent, TEventData> 
-    where TEventData : notnull 
+public interface IConsoleEventFactory<TConsoleEvent, TEventData>
+    where TEventData : notnull
     where TConsoleEvent : ConsoleEvent
 {
 

@@ -1,16 +1,16 @@
 ﻿using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Consoles.Models;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Consoles;
 
-public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, CommandResponseMessage, ConsoleSubscriptionEventMessage>
+internal class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, CommandResponseMessage, ConsoleSubscriptionEventMessage>, IConsoleClient
 {
     // Constants
     private static readonly TimeSpan AuthTimeout = TimeSpan.FromSeconds(30);
@@ -19,6 +19,11 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
     private readonly ChannelWriter<ConsoleEvent> eventChannelWriter;
 
     private bool isAuthenticated = false;
+
+    private static readonly JsonSerializerOptions jsonSerializerOptions = new()
+    {
+        TypeInfoResolver = ConsoleSerializerContext.Default
+    };
 
     protected override bool IsAuthenticated => this.isAuthenticated;
     private readonly SemaphoreSlim authSemaphore = new SemaphoreSlim(0);
@@ -35,7 +40,7 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
 
     private async Task<Response<CommandResponseMessage>> RequestAsync(Func<int, CommandRequestMessage> requestMessageFactory, TimeSpan timeout)
     {
-        return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id), ConsoleSerializerContext.Default.CommandRequestMessage), timeout).ConfigureAwait(false);
+        return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id), jsonSerializerOptions), timeout).ConfigureAwait(false);
     }
 
     protected async override Task ConfigureClientWebsocket(ClientWebSocket websocket)
@@ -67,9 +72,48 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         this.authSemaphore.Release();
     }
 
-    public async Task<Response<CommandResponseMessage>> RunCommand(string commandString, TimeSpan timeout, CancellationToken cancellationToken = default)
+    Task IConsoleClient.ConnectAsync(CancellationToken cancellationToken)
     {
-        return await this.RequestAsync(id => new CommandRequestMessage(id, commandString), TimeSpan.FromSeconds(15));
+        return base.ConnectAsync(cancellationToken);
+    }
+
+    public Task<CommandResult<string>> RunCommandAsync(string commandString)
+    {
+        return this.RunCommandAsync(commandString, TimeSpan.FromSeconds(15));
+    }
+
+    public async Task<CommandResult<string>> RunCommandAsync(string commandString, TimeSpan timeout)
+    {
+        var handler = CommandHandler.ForCommand(commandString);
+
+        return await RunCommandWithHandlerAsync(handler, Unit.Value, timeout);
+    }
+
+    public Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TResult>(ICommandHandler<Unit, TResult> commandHandler)
+        where TResult : class
+    {
+        return this.RunCommandWithHandlerAsync(commandHandler, Unit.Value, TimeSpan.FromSeconds(15));
+    }
+
+    public Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TResult>(ICommandHandler<Unit, TResult> commandHandler, TimeSpan timeout)
+        where TResult : class
+    {
+        return this.RunCommandWithHandlerAsync(commandHandler, Unit.Value, timeout);
+    }
+
+    public Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TArguments, TResult>(ICommandHandler<TArguments, TResult> commandHandler, TArguments arguments)
+        where TResult : class
+    {
+        return this.RunCommandWithHandlerAsync(commandHandler, arguments, TimeSpan.FromSeconds(15));
+    }
+
+    public async Task<CommandResult<TResult>> RunCommandWithHandlerAsync<TArguments, TResult>(ICommandHandler<TArguments, TResult> commandHandler, TArguments arguments, TimeSpan timeout)
+        where TResult : class
+    {
+        var commandString = commandHandler.BuildCommandString(arguments);
+        var commandResult = await this.RequestAsync(id => new CommandRequestMessage(id, commandString), timeout);
+
+        return commandHandler.GetResultFromCommandResponse(commandResult);
     }
 
     protected override ErrorInfo CheckForError(string message) => new ErrorInfo(ErrorType.FatalError, message);
@@ -94,11 +138,11 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
         return ErrorInfo.None; // data.Result == Success
     }
 
-    protected override int GetResponseId(CommandResponseMessage responseMessage) =>  responseMessage.commandId;
+    protected override int GetResponseId(CommandResponseMessage responseMessage) => responseMessage.commandId;
 
     protected override CommandResponseMessage ToResponseMessage(JsonDocument document)
     {
-        var message = JsonSerializer.Deserialize(document, ConsoleSerializerContext.Default.CommandResponseMessage) ?? throw new InvalidOperationException("Unable to process the document to message");
+        var message = JsonSerializer.Deserialize<CommandResponseMessage>(document, jsonSerializerOptions) ?? throw new InvalidOperationException("Unable to process the document to message");
 
         if (message == null)
         {
@@ -116,7 +160,7 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
 
     protected override ConsoleSubscriptionEventMessage ToEventMessage(JsonDocument document)
     {
-        var message = JsonSerializer.Deserialize(document, ConsoleSerializerContext.Default.ConsoleSubscriptionEventMessage) ?? throw new InvalidOperationException("Unable to process the document to message");
+        var message = JsonSerializer.Deserialize<ConsoleSubscriptionEventMessage>(document, jsonSerializerOptions) ?? throw new InvalidOperationException("Unable to process the document to message");
 
         if (message == null)
         {
@@ -129,12 +173,25 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
 
     protected override void HandleEvent(ConsoleSubscriptionEventMessage eventMessage)
     {
-        JsonElement data = eventMessage.data.GetValueOrDefault();
+        JsonNode data = eventMessage.data ?? new JsonObject();
         ConsoleEvent @event = eventMessage.eventType switch
         {
-            "PlayerMovedChunk" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerMovedChunkEvent)!,
-            "PlayerJoined" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerJoinedEvent)!,
-            "PlayerLeft" => JsonSerializer.Deserialize(data, ConsoleSerializerContext.Default.PlayerLeftEvent)!,
+            "PlayerStateChanged" => JsonSerializer.Deserialize<PlayerStateChangedEvent>(data, jsonSerializerOptions)!,
+            "PlayerJoined" => JsonSerializer.Deserialize<PlayerJoinedEvent>(data, jsonSerializerOptions)!,
+            "PlayerLeft" => JsonSerializer.Deserialize<PlayerLeftEvent>(data, jsonSerializerOptions)!,
+            "PlayerKilled" => JsonSerializer.Deserialize<PlayerKilledEvent>(data, jsonSerializerOptions)!,
+            "PopulationModified" => JsonSerializer.Deserialize<PopulationModifiedEvent>(data, jsonSerializerOptions)!,
+            "TradeDeckUsed" => JsonSerializer.Deserialize<TradeDeckUsedEvent>(data, jsonSerializerOptions)!,
+            "PlayerMovedChunk" => JsonSerializer.Deserialize<PlayerMovedChunkEvent>(data, jsonSerializerOptions)!,
+            "ObjectKilled" => JsonSerializer.Deserialize<ObjectKilledEvent>(data, jsonSerializerOptions)!,
+            "TrialStarted" => JsonSerializer.Deserialize<TrialStartedEvent>(data, jsonSerializerOptions)!,
+            "TrialFinished" => JsonSerializer.Deserialize<TrialFinishedEvent>(data, jsonSerializerOptions)!,
+            "InventoryChanged" => JsonSerializer.Deserialize<InventoryChangedEvent>(data, jsonSerializerOptions)!,
+            "AtmBalanceChanged" => JsonSerializer.Deserialize<AtmBalanceChangedEvent>(data, jsonSerializerOptions)!,
+            "ServerSettingsChanged" => JsonSerializer.Deserialize<ServerSettingsChangedEvent>(data, jsonSerializerOptions)!,
+            "CommandExecuted" => JsonSerializer.Deserialize<CommandExecutedEvent>(data, jsonSerializerOptions)!,
+            "SocialTabletPlayerBanned" => JsonSerializer.Deserialize<SocialTabletPlayerBannedEvent>(data, jsonSerializerOptions)!,
+            "SocialTabletPlayerReported" => JsonSerializer.Deserialize<SocialTabletPlayerReportedEvent>(data, jsonSerializerOptions)!,
             _ => throw new InvalidOperationException($"Unknown event type {eventMessage.eventType}")
         };
 
@@ -143,7 +200,7 @@ public class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, Co
 
     protected override ConsoleMessage ToMessage(JsonDocument document)
     {
-        var message = JsonSerializer.Deserialize(document, ConsoleSerializerContext.Default.ConsoleMessage) ?? throw new InvalidOperationException("Unable to process the document to message");
+        var message = JsonSerializer.Deserialize<ConsoleMessage>(document, jsonSerializerOptions) ?? throw new InvalidOperationException("Unable to process the document to message");
 
         if (message == null)
         {

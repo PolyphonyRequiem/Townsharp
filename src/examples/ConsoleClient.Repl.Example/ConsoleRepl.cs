@@ -4,17 +4,15 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Consoles;
-using Townsharp.Infrastructure.Consoles.Models;
-using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Infrastructure.WebApi;
 
 public class ConsoleRepl : IHostedService
 {
-    private readonly WebApiClient webApiClient;
+    private readonly WebApiBotClient webApiClient;
     private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ILogger<ConsoleRepl> logger;
 
-    public ConsoleRepl(WebApiClient webApiClient, ConsoleClientFactory consoleClientFactory, ILogger<ConsoleRepl> logger)
+    public ConsoleRepl(WebApiBotClient webApiClient, ConsoleClientFactory consoleClientFactory, ILogger<ConsoleRepl> logger)
     {
         this.webApiClient = webApiClient;
         this.consoleClientFactory = consoleClientFactory;
@@ -31,44 +29,42 @@ public class ConsoleRepl : IHostedService
         Console.WriteLine("Enter the server id to connect to:");
         var serverId = Console.ReadLine();
 
-        while (!cancellationToken.IsCancellationRequested) 
+        while (!cancellationToken.IsCancellationRequested)
         {
             bool retryNeeded = false;
-            UriBuilder uriBuilder = new UriBuilder();
+            Uri? endpointUri = default;
             string accessToken = "";
             Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>();
             try
             {
                 var response = await this.webApiClient.RequestConsoleAccessAsync(int.Parse(serverId!));
 
-                if (!response["allowed"]?.GetValue<bool>() ?? false)
+                if (!response.IsSuccess)
                 {
-                    throw new InvalidOperationException("Server is not online.");
+                    logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
+                    throw new InvalidOperationException(); // not good flow control, I'll fix this.  It happened because of changes.
                 }
 
-                uriBuilder.Scheme = "ws";
-                uriBuilder.Host = response["connection"]?["address"]?.GetValue<string>() ?? throw new Exception("Failed to get connection.address from response.");
-                uriBuilder.Port = response["connection"]?["websocket_port"]?.GetValue<int>() ?? throw new Exception("Failed to get connection.host from response."); ;
-
-                accessToken = response["token"]?.GetValue<string>() ?? throw new Exception("Failed to get token from response.");
+                accessToken = response.Content.token!;
+                endpointUri = response.Content.BuildConsoleUri();
             }
-            catch (Exception) 
+            catch (Exception)
             {
                 this.logger.LogError($"Unable to get console access for {serverId} at this time.  Will try again in 15s");
                 retryNeeded = true;
             }
 
-            if (retryNeeded) 
+            if (retryNeeded)
             {
                 await Task.Delay(TimeSpan.FromSeconds(15));
                 continue;
             }
 
             CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        
+
             try
             {
-                ConsoleClient consoleClient = this.consoleClientFactory.CreateClient(uriBuilder.Uri, accessToken, eventChannel.Writer);
+                IConsoleClient consoleClient = this.consoleClientFactory.CreateClient(endpointUri!, accessToken, eventChannel.Writer);
                 await consoleClient.ConnectAsync(cancellationTokenSource.Token);
                 Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
 
@@ -89,10 +85,10 @@ public class ConsoleRepl : IHostedService
             {
                 this.logger.LogError(ex, $"Something went wrong while trying to run the main console REPL.");
             }
-        }        
+        }
     }
 
-    private async Task GetCommandsAsync(ConsoleClient consoleClient, CancellationToken token)
+    private async Task GetCommandsAsync(IConsoleClient consoleClient, CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
@@ -104,15 +100,15 @@ public class ConsoleRepl : IHostedService
                 break;
             }
 
-            var result = await consoleClient.RunCommand(command!, TimeSpan.FromSeconds(30), token);
+            var response = await consoleClient.RunCommandAsync(command!);
 
-            if (result.IsCompleted)
+            if (response.IsCompleted)
             {
-                Console.WriteLine(result?.Message?.data?.ToString());
+                Console.WriteLine(response?.Result);
             }
             else
             {
-                Console.WriteLine(result.ToString());
+                Console.WriteLine(response.ToString());
             }
         }
     }

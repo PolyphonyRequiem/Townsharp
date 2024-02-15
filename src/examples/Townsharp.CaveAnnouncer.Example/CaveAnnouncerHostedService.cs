@@ -11,7 +11,7 @@ internal class CaveAnnouncerHostedService : IHostedService
     private readonly ILogger<CaveAnnouncerHostedService> logger;
 
     public CaveAnnouncerHostedService(
-        Session session, 
+        Session session,
         ILogger<CaveAnnouncerHostedService> logger)
     {
         this.session = session;

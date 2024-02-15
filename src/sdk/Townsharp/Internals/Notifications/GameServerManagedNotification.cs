@@ -1,4 +1,5 @@
 ﻿using MediatR;
+
 using Townsharp.Servers;
 
 namespace Townsharp.Internals.Notifications;

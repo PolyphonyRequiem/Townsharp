@@ -28,7 +28,7 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 builder.Logging.AddConsole();
 builder.Logging.AddOpenTelemetry(loggerOptions =>
     {
-        loggerOptions.AddOtlpExporter(); 
+        loggerOptions.AddOtlpExporter();
         // loggerOptions.AddConsoleExporter(); // if you need to debug the OtlpExporter
 
         loggerOptions.IncludeFormattedMessage = true;
@@ -71,7 +71,7 @@ internal class SubscriptionManagerTest : IHostedService
 {
     public static Meter meter = new Meter(nameof(SubscriptionManagerTest));
 
-    private readonly WebApiClient webApiClient;
+    private readonly WebApiBotClient webApiClient;
     private readonly SubscriptionMultiplexerFactory subscriptionManagerFactory;
     private readonly ILogger<SubscriptionManagerTest> logger;
 
@@ -81,7 +81,7 @@ internal class SubscriptionManagerTest : IHostedService
     private SubscriptionMultiplexer? subscriptionManager;
 
     public SubscriptionManagerTest(
-        WebApiClient webApiClient,
+        WebApiBotClient webApiClient,
         SubscriptionMultiplexerFactory subscriptionManagerFactory,
         ILogger<SubscriptionManagerTest> logger)
     {
@@ -93,8 +93,8 @@ internal class SubscriptionManagerTest : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        this.subscriptionManager = await this.subscriptionManagerFactory.CreateAsync();
-        this.subscriptionManager.OnSubscriptionEvent += (sender, subscriptionEvent) =>
+        this.subscriptionManager = this.subscriptionManagerFactory.Create();
+        this.subscriptionManager.SubscriptionEventReceived += (sender, subscriptionEvent) =>
         {
             this.eventCounter.Add(1);
             this.totalCount++;
@@ -108,12 +108,12 @@ internal class SubscriptionManagerTest : IHostedService
 
         var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
 
-        var subscriptions = new[] 
-        { 
+        var subscriptions = new[]
+        {
             "group-server-heartbeat",
             "group-server-status",
             "group-update",
-            "group-member-update" 
+            "group-member-update"
         }
             .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
             .ToArray();
@@ -123,8 +123,8 @@ internal class SubscriptionManagerTest : IHostedService
 
     private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
     {
-        return await webApiClient.GetJoinedGroupsAsync()
-            .Select(g => g!["group"]!["id"]!.GetValue<int>())
+        return await webApiClient.GetJoinedGroupsAsyncStream()
+            .Select(g => g.group.id)
             .ToArrayAsync(cancellationToken);
     }
 

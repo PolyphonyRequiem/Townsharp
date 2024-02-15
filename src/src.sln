@@ -27,6 +27,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SubscriptionManager.DirectU
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.CaveAnnouncer.Example", "examples\Townsharp.CaveAnnouncer.Example\Townsharp.CaveAnnouncer.Example.csproj", "{BED0A67B-9A51-444D-84A8-15A09A2C7E5D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TownsharpClient.CaveLayers.Example", "examples\TownsharpClient.CaveLayers.Example\TownsharpClient.CaveLayers.Example.csproj", "{536C993A-35C8-40D8-A9D6-8A9E895B8FFC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Client", "sdk\Townsharp.Client\Townsharp.Client.csproj", "{3474EB23-4011-4207-9D49-6EA8203AFFE0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Townsharp.Infrastructure.ConsoleExample", "examples\Townsharp.Infrastructure.ConsoleExample\Townsharp.Infrastructure.ConsoleExample.csproj", "{E07914B1-DFBA-4195-8A29-245C110212C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +75,18 @@ Global
 		{BED0A67B-9A51-444D-84A8-15A09A2C7E5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BED0A67B-9A51-444D-84A8-15A09A2C7E5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BED0A67B-9A51-444D-84A8-15A09A2C7E5D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{536C993A-35C8-40D8-A9D6-8A9E895B8FFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{536C993A-35C8-40D8-A9D6-8A9E895B8FFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{536C993A-35C8-40D8-A9D6-8A9E895B8FFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{536C993A-35C8-40D8-A9D6-8A9E895B8FFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3474EB23-4011-4207-9D49-6EA8203AFFE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3474EB23-4011-4207-9D49-6EA8203AFFE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3474EB23-4011-4207-9D49-6EA8203AFFE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3474EB23-4011-4207-9D49-6EA8203AFFE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E07914B1-DFBA-4195-8A29-245C110212C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E07914B1-DFBA-4195-8A29-245C110212C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E07914B1-DFBA-4195-8A29-245C110212C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E07914B1-DFBA-4195-8A29-245C110212C9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -83,6 +101,9 @@ Global
 		{EB7F56AB-FC46-4D94-8C90-CE7AA4D76488} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
 		{B223EBFA-663C-4D4F-B9B2-3FBA8A9D93FE} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
 		{BED0A67B-9A51-444D-84A8-15A09A2C7E5D} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
+		{536C993A-35C8-40D8-A9D6-8A9E895B8FFC} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
+		{3474EB23-4011-4207-9D49-6EA8203AFFE0} = {78F94883-E1F7-4242-A213-A0A2C81EC766}
+		{E07914B1-DFBA-4195-8A29-245C110212C9} = {C81834E1-44B7-49AD-9477-A2E5F0CB21DB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D03B5680-CE9E-4B64-8447-FC4B5B354A0D}

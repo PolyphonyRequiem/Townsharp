@@ -5,7 +5,7 @@ namespace Townsharp.Infrastructure.Utilities;
 
 internal static class JwtDecoder
 {
-    public static JsonNode DecodeJwtClaims(string token)
+    internal static JsonNode DecodeJwtClaims(string token)
     {
         var parts = token.Split('.');
         if (parts.Length != 3)

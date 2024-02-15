@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Townsharp.Infrastructure.Websockets;
 
-public abstract class WebsocketMessageClient
+internal abstract class WebsocketMessageClient
 {
     // Constants
     private static readonly TimeSpan IdleConnectionTimeout = TimeSpan.FromMinutes(4);
@@ -36,15 +36,15 @@ public abstract class WebsocketMessageClient
     private CancellationTokenSource? cancellationTokenSource;
     private Task messageHandlerTask = Task.CompletedTask;
 
-    public WebsocketMessageClientState State => this.state;
+    internal WebsocketMessageClientState State => this.state;
 
     // Disposables
     private readonly ClientWebSocket websocket;
 
     // Error
-    public bool ErrorOccurred { get; private set; } = false;
+    internal bool ErrorOccurred { get; private set; } = false;
 
-    public string? ErrorMessage { get; private set; }
+    internal string? ErrorMessage { get; private set; }
 
     protected WebsocketMessageClient(ILogger logger)
     {
@@ -181,7 +181,7 @@ public abstract class WebsocketMessageClient
 
     protected abstract Task OnDisconnectedAsync();
 
-    public async Task SendMessageAsync(string message)
+    internal async Task SendMessageAsync(string message)
     {
         if (!this.Ready)
         {
@@ -244,7 +244,7 @@ public abstract class WebsocketMessageClient
         this.lastMessage = DateTimeOffset.UtcNow;
     }
 
-    public bool Ready =>
+    internal bool Ready =>
         this.state == WebsocketMessageClientState.Connected &&
         this.websocket?.State == WebSocketState.Open &&
         !(this.cancellationTokenSource?.IsCancellationRequested ?? false);

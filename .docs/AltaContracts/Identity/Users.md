@@ -1,4 +1,4 @@
-#User Identity & Authentication
+# User Identity & Authentication
 
 ## Generating a SHA512 hash of your password.
 

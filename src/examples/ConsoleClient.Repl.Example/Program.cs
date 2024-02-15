@@ -11,7 +11,9 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-using Townsharp.Infrastructure.Hosting;
+using Townsharp.Infrastructure.Consoles;
+using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.WebApi;
 
 string ServiceName = Assembly.GetExecutingAssembly().GetName().Name ?? "Unknown Assembly";
 ActivitySource ActivitySource = new ActivitySource(ServiceName);
@@ -55,7 +57,12 @@ builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation()
             .AddOtlpExporter());
 
-builder.Services.AddTownsharpInfra();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<WebApiBotClient>();
+builder.Services.AddSingleton<SubscriptionMultiplexerFactory>();
+builder.Services.AddSingleton<ConsoleClientFactory>();
+
+//builder.Services.AddTownsharpInfra();
 builder.Services.AddHostedService<ConsoleRepl>();
 
 IHost host = builder.Build();

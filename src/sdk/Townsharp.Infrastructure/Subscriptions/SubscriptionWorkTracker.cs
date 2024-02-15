@@ -4,29 +4,29 @@ using Microsoft.Extensions.Logging;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
-public class SubscriptionWorkTracker
+internal class SubscriptionWorkTracker
 {
     private readonly ConcurrentDictionary<SubscriptionDefinition, SubscriptionIntent> trackedSubscriptions = new();
     private readonly ConcurrentDictionary<SubscriptionDefinition, SubscriptionDisposition> subscriptionDispositions = new();
 
     private readonly ILogger logger;
 
-    public SubscriptionWorkTracker(ILogger logger)
+    internal SubscriptionWorkTracker(ILogger logger)
     {
         this.logger = logger;
     }
 
-    public void AddSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
+    internal void AddSubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
     {
         this.ReconcileTrackedSubscriptions(subscriptionDefinitions, SubscriptionIntent.Subscribed);
     }
 
-    public void AddUnsubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
+    internal void AddUnsubscriptions(SubscriptionDefinition[] subscriptionDefinitions)
     {
         this.ReconcileTrackedSubscriptions(subscriptionDefinitions, SubscriptionIntent.Unsubscribed);
     }
 
-    public SubscriptionWorkLease[] TakeWorkLeases(int maxLeases)
+    internal SubscriptionWorkLease[] TakeWorkLeases(int maxLeases)
     {
         var leaseCandidates = new List<SubscriptionWorkLease>();
 
@@ -90,7 +90,7 @@ public class SubscriptionWorkTracker
         return leasesToReturn.ToArray();
     }
 
-    public void ReportLeaseResolved(SubscriptionWorkLease lease)
+    internal void ReportLeaseResolved(SubscriptionWorkLease lease)
     {
         if (lease.Intent == SubscriptionIntent.Unsubscribed)
         {
@@ -107,7 +107,7 @@ public class SubscriptionWorkTracker
         }
     }
 
-    public void ReportLeaseRetryNeeded(SubscriptionWorkLease lease)
+    internal void ReportLeaseRetryNeeded(SubscriptionWorkLease lease)
     {
         if (lease.Intent == SubscriptionIntent.Unsubscribed)
         {
@@ -124,7 +124,7 @@ public class SubscriptionWorkTracker
         }
     }
 
-    public void ReportLeaseInvalidSubscription(SubscriptionWorkLease lease)
+    internal void ReportLeaseInvalidSubscription(SubscriptionWorkLease lease)
     {
         if (lease.Intent == SubscriptionIntent.Unsubscribed)
         {
@@ -138,10 +138,10 @@ public class SubscriptionWorkTracker
         else // subscribed
         {
             this.subscriptionDispositions.TryUpdate(lease.SubscriptionDefinition, SubscriptionDisposition.InvalidSubscription, SubscriptionDisposition.Working);
-        }        
+        }
     }
 
-    public void ResetDispositionsForRecovery()
+    internal void ResetDispositionsForRecovery()
     {
         // We likely don't need to worry -as- about concurrency here as nothing should be processing work while we are in a recovery state.
         // We should reconcile all intents and dispositions.
@@ -318,7 +318,7 @@ public class SubscriptionWorkTracker
     }
 }
 
-public enum SubscriptionDisposition
+internal enum SubscriptionDisposition
 {
     New,
     Working,
@@ -328,10 +328,10 @@ public enum SubscriptionDisposition
     InvalidSubscription
 }
 
-public enum SubscriptionIntent
+internal enum SubscriptionIntent
 {
     Subscribed,
     Unsubscribed
 }
 
-public record SubscriptionWorkLease(SubscriptionDefinition SubscriptionDefinition, SubscriptionIntent Intent, SubscriptionDisposition PriorDisposition);
+internal record SubscriptionWorkLease(SubscriptionDefinition SubscriptionDefinition, SubscriptionIntent Intent, SubscriptionDisposition PriorDisposition);

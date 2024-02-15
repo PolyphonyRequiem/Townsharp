@@ -3,6 +3,7 @@
 using FluentResults;
 
 using NSubstitute;
+
 using Townsharp.Consoles;
 
 namespace Tests.Townsharp.Core.Consoles;
@@ -32,7 +33,7 @@ public class ServerConsoleTests
         var commandString = "test";
 
         var executor = Substitute.For<ICommandExecutor>();
-            executor.RunConsoleCommandStringAsync(commandString).Returns(Result.Ok(resultJson));
+        executor.RunConsoleCommandStringAsync(commandString).Returns(Result.Ok(resultJson));
         var console = new ServerConsole(executor);
         console.SetConnected();
 
@@ -51,7 +52,7 @@ public class ServerConsoleTests
     {
         var executor = Substitute.For<ICommandExecutor>();
         var console = new ServerConsole(executor);
-        
+
         //console.SetConnected();
 
         var commandString = "test";

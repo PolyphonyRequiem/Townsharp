@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.GameConsoles;
+using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Identity;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.WebApi;
@@ -14,30 +15,13 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTownsharpInfra(this IServiceCollection services)
     {
         services.AddHttpClient();
-        services.AddSingleton<IBotTokenProvider>(
+        services.AddSingleton<BotTokenProvider>(
             services => new BotTokenProvider(
-                   new BotCredential(
-                       Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTID")!,
-                       Environment.GetEnvironmentVariable("TOWNSHARP_TEST_CLIENTSECRET")!),
-                   services.GetRequiredService<HttpClient>()));
+                BotCredential.FromEnvironmentVariables(),
+                services.GetRequiredService<IHttpClientFactory>(),
+                services.GetRequiredService<ILogger<BotTokenProvider>>()));
 
-        var userCredential = new UserCredential(
-            Environment.GetEnvironmentVariable("TOWNSHARP_USERNAME") ?? "",
-            Environment.GetEnvironmentVariable("TOWNSHARP_PASSWORDHASH") ?? "");
-
-        if (userCredential.IsConfigured)
-        {
-            services.AddSingleton<IUserTokenProvider>(
-            services => new UserTokenProvider(
-                userCredential,
-                services.GetRequiredService<HttpClient>()));
-        }
-        else
-        {
-            services.AddSingleton<IUserTokenProvider>(new DisabledUserTokenProvider());
-        }
-
-        services.AddSingleton<WebApiClient>();
+        services.AddSingleton<WebApiBotClient>();
         services.AddSingleton<SubscriptionClientFactory>();
         services.AddSingleton<SubscriptionMultiplexerFactory>();
         services.AddSingleton<ConsoleClientFactory>();

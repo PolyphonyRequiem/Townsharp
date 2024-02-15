@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 
@@ -32,7 +26,7 @@ public class SubscriptionWorkTrackerTests
         var leases = tracker.TakeWorkLeases(3);
         Assert.Equal(3, leases.Count());
 
-        foreach(var lease in leases)
+        foreach (var lease in leases)
         {
             tracker.ReportLeaseResolved(lease);
         }

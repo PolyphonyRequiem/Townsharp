@@ -1,15 +1,8 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Threading.Channels;
-
-using FluentResults;
+﻿using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Consoles.Commands;
 using Townsharp.Infrastructure.Consoles;
-using Townsharp.Infrastructure.Consoles.Models;
-using Townsharp.Infrastructure.GameConsoles;
 using Townsharp.Internals.Consoles;
 using Townsharp.Servers;
 
@@ -21,7 +14,7 @@ public class GameServerConsole
     private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ConsoleAccessProvider consoleAccessProvider;
     private readonly ILogger<GameServerConsole> logger;
-    private Task<ConsoleClient?> consoleClientFactoryTask = Task.FromResult<ConsoleClient?>(null);
+    private Task<IConsoleClient?> consoleClientFactoryTask = Task.FromResult<IConsoleClient?>(null);
 
     private readonly SemaphoreSlim semaphore = new(1, 1);
 
@@ -56,29 +49,29 @@ public class GameServerConsole
         }
     }
 
-    public async Task<ConsoleCommandResult<TResult>> RunConsoleCommandAsync<TResult>(ICommand<TResult> command)
+    public async Task<CommandResult<TResult>> RunConsoleCommandAsync<TArguments, TResult>(ICommandHandler<TArguments, TResult> commandHandler, TArguments arguments)
+        where TResult : class
     {
-        return await this.TryWithConsole(
-            clientAction: async (consoleClient) =>
-            {
-                var commandResult = await consoleClient.RunCommand(command.BuildCommandString(), TimeSpan.FromSeconds(30));
+        throw new NotImplementedException();
+        //return await this.TryWithConsole<TResult>(
+        //    clientAction: async (consoleClient) =>
+        //    {
+        //        var response = await consoleClient.RunCommandWithHandlerAsync<TArguments, TResult>(commandHandler, arguments);
 
-                if (commandResult.IsCompleted)
-                {
-                    var data = commandResult?.Message?.data ?? new JsonElement();
-                    return new ConsoleCommandResult<TResult>(command.FromResponseJson(data));
-                }
+        //        if (response.IsCompleted)
+        //        {
+        //            return response.Result!;
+        //        }
 
-                throw new NotImplementedException("Poly needs to fix me.");
-            },
-            consoleNotAvailable: () =>
-            {
-                return Task.FromResult(ConsoleCommandResult<TResult>.AsConsoleNotAvailable());
-                
-            });
+        //        throw new NotImplementedException("Poly needs to fix me.");
+        //    },
+        //    consoleNotAvailable: () =>
+        //    {
+        //        throw new NotImplementedException("Poly needs to fix me.");
+        //    });
     }
 
-    private async Task<TResult> TryWithConsole<TResult>(Func<ConsoleClient, Task<TResult>> clientAction, Func<Task<TResult>> consoleNotAvailable)
+    private async Task<TResult> TryWithConsole<TResult>(Func<IConsoleClient, Task<TResult>> clientAction, Func<Task<TResult>> consoleNotAvailable)
     {
         var clientTask = consoleClientFactoryTask;
 
@@ -105,7 +98,7 @@ public class GameServerConsole
         }
     }
 
-    private async Task<ConsoleClient?> TryGetConsoleClientAsync()
+    private async Task<IConsoleClient?> TryGetConsoleClientAsync()
     {
         await semaphore.WaitAsync();
 
@@ -137,7 +130,7 @@ public class GameServerConsole
         return default;
     }
 
-    private async Task<ConsoleClient?> CreateConsoleClientAsync()
+    private async Task<IConsoleClient?> CreateConsoleClientAsync()
     {
         var access = await consoleAccessProvider.GetConsoleAccessAsync(id);
         if (access == ConsoleAccess.None)
@@ -148,7 +141,7 @@ public class GameServerConsole
         {
             try
             {
-                var eventChannel = Channel.CreateUnbounded<Townsharp.Infrastructure.Consoles.Models.ConsoleEvent>();
+                var eventChannel = Channel.CreateUnbounded<Townsharp.Infrastructure.Consoles.ConsoleEvent>();
                 var client = consoleClientFactory.CreateClient(access.Uri, access.AccessToken, eventChannel.Writer);
 
                 await client.ConnectAsync(default).ConfigureAwait(false);
@@ -168,24 +161,4 @@ public enum ConsoleState
     Disconnected,
     Connecting,
     Connected
-}
-
-internal class UntypedLiteralConsoleCommand : ICommand<string>
-{
-    private string commandString;
-
-    public UntypedLiteralConsoleCommand(string commandString)
-    {
-        this.commandString = commandString;
-    }
-
-    string ICommand<string>.BuildCommandString()
-    {
-        return commandString;
-    }
-
-    public string FromResponseJson(JsonElement responseJson)
-    {
-        return JsonObject.Create(responseJson)!.ToJsonString();
-    }
 }
