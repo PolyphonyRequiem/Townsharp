@@ -52,20 +52,23 @@ async Task ConnectAndDumpPlayerList(Uri endpointUri, string accessToken)
 
     var result = await consoleClient.RunCommandAsync("player list");
 
+    // Also subscribe to PlayerMovedChunk event
+    await consoleClient.RunCommandAsync("websocket subscribe PlayerMovedChunk"); 
+
     result.HandleResult(
         result => Console.WriteLine($"RESULT:{Environment.NewLine}{result}"),
         error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
 
 }
 
-ConcurrentBag<ConsoleAccess> consoleAccesses = new ConcurrentBag<ConsoleAccess>();
-List<Task> consoleAccessRequests = new();
+ConcurrentBag<ConsoleAccess> consoleAccesses = new();
+ConcurrentBag<Task> consoleAccessRequests = new();
 
 await foreach (var server in webApiClient.GetJoinedServersAsyncStream())
 {
     if (server.is_online)
     {
-        _ = Task.Run(async () =>
+        var request = Task.Run(async () =>
         {
             Console.WriteLine($"{server.id} - {server.name}");
 
@@ -83,13 +86,17 @@ await foreach (var server in webApiClient.GetJoinedServersAsyncStream())
 
             consoleAccesses.Add(accessRequestResult.Content);
         });
+
+        consoleAccessRequests.Add(request);
     }
 }
 
-await Task.WhenAll(connectAndDumpPlayerListTasks);
+await Task.WhenAll(consoleAccessRequests);
 
 Stopwatch sw = new Stopwatch();
 sw.Start();
+
+Console.WriteLine($"Total online servers: {consoleAccesses.Count}");
 
 foreach (var consoleAccess in consoleAccesses)
 {
@@ -180,6 +187,11 @@ Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
     e.Cancel = true;
     cancellationTokenSource.Cancel();
 };
+
+while (cancellationTokenSource.Token.IsCancellationRequested == false)
+{
+    await Task.Delay(1000);
+}
 
 // Asynchronous Handler
 //Task HandleConsoleEventAsync(ConsoleEvent consoleEvent)
