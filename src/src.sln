@@ -33,9 +33,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Client", "sdk\Tow
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Townsharp.Infrastructure.ConsoleExample", "examples\Townsharp.Infrastructure.ConsoleExample\Townsharp.Infrastructure.ConsoleExample.csproj", "{E07914B1-DFBA-4195-8A29-245C110212C9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NewFolder1", "NewFolder1", "{B3D027DC-0097-451F-80C1-AB90ED77CD9F}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scratch", "Scratch", "{B3D027DC-0097-451F-80C1-AB90ED77CD9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScratchDebugging", "scratch\ScratchDebugging\ScratchDebugging.csproj", "{7E295948-4331-432B-911F-4501A9DBF9B8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScratchDebugging", "scratch\ScratchDebugging\ScratchDebugging.csproj", "{7E295948-4331-432B-911F-4501A9DBF9B8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
