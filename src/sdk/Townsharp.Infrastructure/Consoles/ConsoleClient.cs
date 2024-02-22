@@ -22,7 +22,8 @@ internal class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, 
 
     private static readonly JsonSerializerOptions jsonSerializerOptions = new()
     {
-        TypeInfoResolver = ConsoleSerializerContext.Default
+        TypeInfoResolver = ConsoleSerializerContext.Default,
+        Converters = { new Vector3Converter() }
     };
 
     protected override bool IsAuthenticated => this.isAuthenticated;

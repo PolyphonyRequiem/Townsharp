@@ -33,31 +33,41 @@ List<Task> connectAndDumpPlayerListTasks = new List<Task>();
 
 async Task ConnectAndDumpPlayerList(Uri endpointUri, string accessToken)
 {
-    var consoleClient = consoleClientFactory.CreateClient(
-        endpointUri,
-        accessToken,
-        consoleEvent =>
-        {
-            if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
-            {
-                Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
-            }
-            else
-            {
-                Console.WriteLine(consoleEvent.ToString());
-            }
-        });
+   var consoleClient = consoleClientFactory.CreateClient(
+       endpointUri,
+       accessToken,
+       consoleEvent =>
+       {
+          if (consoleEvent is PlayerMovedChunkEvent playerMovedChunkEvent)
+          {
+             Console.WriteLine($"Player {playerMovedChunkEvent.player} moved from chunk {playerMovedChunkEvent.oldChunk} to chunk {playerMovedChunkEvent.newChunk}.");
+          }
+          else if (consoleEvent is PlayerJoinedEvent playerJoinedEvent)
+          {
+             Console.WriteLine($"Player {playerJoinedEvent.user} joined the server at position {playerJoinedEvent.position}");
+          }
+          else if (consoleEvent is PlayerLeftEvent playerLeftEvent)
+          {
+             Console.WriteLine($"Player {playerLeftEvent.user} left the server.");
+          }
+          else
+          {
+             Console.WriteLine(consoleEvent.ToString());
+          }
+       });
 
-    await consoleClient.ConnectAsync(cancellationTokenSource.Token); // Connect the client to the console endpoint.
+   await consoleClient.ConnectAsync(cancellationTokenSource.Token); // Connect the client to the console endpoint.
 
-    var result = await consoleClient.RunCommandAsync("player list");
+   var result = await consoleClient.RunCommandAsync("player list");
 
-    // Also subscribe to PlayerMovedChunk event
-    await consoleClient.RunCommandAsync("websocket subscribe PlayerMovedChunk"); 
+   // Also subscribe to PlayerMovedChunk event
+   await consoleClient.RunCommandAsync("websocket subscribe PlayerMovedChunk");
+   await consoleClient.RunCommandAsync("websocket subscribe PlayerJoined");
+   await consoleClient.RunCommandAsync("websocket subscribe PlayerLeft");
 
-    result.HandleResult(
-        result => Console.WriteLine($"RESULT:{Environment.NewLine}{result}"),
-        error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
+   result.HandleResult(
+       result => Console.WriteLine($"RESULT:{Environment.NewLine}{result}"),
+       error => Console.Error.WriteLine($"ERROR:{Environment.NewLine}{error}"));
 
 }
 
@@ -66,29 +76,29 @@ ConcurrentBag<Task> consoleAccessRequests = new();
 
 await foreach (var server in webApiClient.GetJoinedServersAsyncStream())
 {
-    if (server.is_online)
-    {
-        var request = Task.Run(async () =>
-        {
-            Console.WriteLine($"{server.id} - {server.name}");
+   if (server.is_online)
+   {
+      var request = Task.Run(async () =>
+      {
+         Console.WriteLine($"{server.id} - {server.name}");
 
-            var accessRequestResult = await webApiClient.RequestConsoleAccessAsync(server.id);
+         var accessRequestResult = await webApiClient.RequestConsoleAccessAsync(server.id);
 
-            if (!accessRequestResult.IsSuccess)
-            {
-                throw new InvalidOperationException("Unable to connect to the server.  It is either offline or access was denied.");
-            }
+         if (!accessRequestResult.IsSuccess)
+         {
+            throw new InvalidOperationException("Unable to connect to the server.  It is either offline or access was denied.");
+         }
 
-            if (!accessRequestResult.Content.IndicatesAccessGranted)
-            {
-                return;
-            }
+         if (!accessRequestResult.Content.IndicatesAccessGranted)
+         {
+            return;
+         }
 
-            consoleAccesses.Add(accessRequestResult.Content);
-        });
+         consoleAccesses.Add(accessRequestResult.Content);
+      });
 
-        consoleAccessRequests.Add(request);
-    }
+      consoleAccessRequests.Add(request);
+   }
 }
 
 await Task.WhenAll(consoleAccessRequests);
@@ -100,7 +110,7 @@ Console.WriteLine($"Total online servers: {consoleAccesses.Count}");
 
 foreach (var consoleAccess in consoleAccesses)
 {
-    connectAndDumpPlayerListTasks.Add(Task.Run(()=>ConnectAndDumpPlayerList(consoleAccess.BuildConsoleUri(), consoleAccess.token!)));
+   connectAndDumpPlayerListTasks.Add(Task.Run(() => ConnectAndDumpPlayerList(consoleAccess.BuildConsoleUri(), consoleAccess.token!)));
 }
 
 await Task.WhenAll(connectAndDumpPlayerListTasks);
@@ -184,13 +194,13 @@ Console.WriteLine(sw.ElapsedMilliseconds);
 
 Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
 {
-    e.Cancel = true;
-    cancellationTokenSource.Cancel();
+   e.Cancel = true;
+   cancellationTokenSource.Cancel();
 };
 
 while (cancellationTokenSource.Token.IsCancellationRequested == false)
 {
-    await Task.Delay(1000);
+   await Task.Delay(1000);
 }
 
 // Asynchronous Handler

@@ -32,18 +32,18 @@ internal class Vector3Converter : JsonConverter<Vector3>
 {
     public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        var x = 0;
-        var y = 0;
-        var z = 0;
+        float x = 0;
+        float y = 0;
+        float z = 0;
 
         if (reader.TokenType == JsonTokenType.StartArray)
         {
             reader.Read();
-            x = reader.GetInt32();
+            x = reader.GetSingle();
             reader.Read();
-            y = reader.GetInt32();
+            y = reader.GetSingle();
             reader.Read();
-            z = reader.GetInt32();
+            z = reader.GetSingle();
             reader.Read();
         }
 
