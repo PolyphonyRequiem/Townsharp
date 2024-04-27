@@ -1,7 +1,13 @@
-﻿using Townsharp.Client;
+﻿using Microsoft.Extensions.Logging;
+
+using Townsharp.Client;
 
 var botSession = SessionBuilder.Create()
-    .AddLogging()
+    .AddLogging(c =>
+    {
+       c.AddConsole();
+       c.AddFilter("Townsharp.Client.BotSession", LogLevel.Trace);
+    })
     .CreateBotSession();
 
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();

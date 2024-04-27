@@ -155,12 +155,26 @@ public class SerializationTests
 
         Assert.NotNull(message);
     }
+
+   [Fact]
+   public void RequestsAreSerializableRight()
+   {
+      var request = RequestMessage.CreateSubscriptionRequestMessage(1, "asdf", "me-want-cookie", 2);
+
+      var message = JsonSerializer.Serialize(request, AltaSerializerContext.Default.RequestMessage);
+
+      Assert.True(message.Length > 2);
+   }
+
 }
 
 
 [JsonSerializable(typeof(ServerInfo))]
 [JsonSerializable(typeof(SubscriptionEventMessage))]
 [JsonSerializable(typeof(SubscriptionMessage))]
+[JsonSerializable(typeof(RequestMessage))]
+[JsonSerializable(typeof(MigrationTokenRequestContent))]
+[JsonSerializable(typeof(BatchSubscriptionRequestContent))]
 internal partial class AltaSerializerContext : JsonSerializerContext
 {
 

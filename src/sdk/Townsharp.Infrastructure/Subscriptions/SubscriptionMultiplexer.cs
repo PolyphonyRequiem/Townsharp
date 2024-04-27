@@ -61,11 +61,6 @@ public class SubscriptionMultiplexer
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use to cancel the operation.</param>
     public async Task RunAsync(CancellationToken cancellationToken)
     {
-        foreach (var connection in this.connections.Values)
-        {
-            _ = connection.RunAsync(cancellationToken);
-        }
-
         var tasks = this.connections.Values.Select(connection => connection.RunAsync(cancellationToken));
         await Task.WhenAll(tasks);
     }

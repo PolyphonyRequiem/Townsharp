@@ -28,21 +28,21 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 builder.Logging.AddConsole();
 builder.Logging.AddOpenTelemetry(loggerOptions =>
     {
-        loggerOptions.AddOtlpExporter();
-        // loggerOptions.AddConsoleExporter(); // if you need to debug the OtlpExporter
+       loggerOptions.AddOtlpExporter();
+       // loggerOptions.AddConsoleExporter(); // if you need to debug the OtlpExporter
 
-        loggerOptions.IncludeFormattedMessage = true;
-        loggerOptions.IncludeScopes = true;
-        loggerOptions.ParseStateValues = true;
-        loggerOptions.SetResourceBuilder(ResourceBuilder.CreateDefault()
-            .AddService(ServiceName)
-            .AddTelemetrySdk()
-            .AddAttributes(new Dictionary<string, object>
-            {
-                ["host.name"] = Environment.MachineName,
-                ["os.description"] = RuntimeInformation.OSDescription,
-                ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant()
-            }));
+       loggerOptions.IncludeFormattedMessage = true;
+       loggerOptions.IncludeScopes = true;
+       loggerOptions.ParseStateValues = true;
+       loggerOptions.SetResourceBuilder(ResourceBuilder.CreateDefault()
+           .AddService(ServiceName)
+           .AddTelemetrySdk()
+           .AddAttributes(new Dictionary<string, object>
+           {
+              ["host.name"] = Environment.MachineName,
+              ["os.description"] = RuntimeInformation.OSDescription,
+              ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant()
+           }));
     });
 
 builder.Services.AddOpenTelemetry()
@@ -69,72 +69,77 @@ host.Run();
 
 internal class SubscriptionManagerTest : IHostedService
 {
-    public static Meter meter = new Meter(nameof(SubscriptionManagerTest));
+   public static Meter meter = new Meter(nameof(SubscriptionManagerTest));
 
-    private readonly WebApiBotClient webApiClient;
-    private readonly SubscriptionMultiplexerFactory subscriptionManagerFactory;
-    private readonly ILogger<SubscriptionManagerTest> logger;
+   private readonly WebApiBotClient webApiClient;
+   private readonly SubscriptionMultiplexerFactory subscriptionManagerFactory;
+   private readonly ILogger<SubscriptionManagerTest> logger;
 
-    private readonly Counter<long> eventCounter;
-    private long totalCount;
+   private readonly Counter<long> eventCounter;
+   private long totalCount;
 
-    private SubscriptionMultiplexer? subscriptionManager;
+   private SubscriptionMultiplexer? subscriptionManager;
 
-    public SubscriptionManagerTest(
-        WebApiBotClient webApiClient,
-        SubscriptionMultiplexerFactory subscriptionManagerFactory,
-        ILogger<SubscriptionManagerTest> logger)
-    {
-        this.webApiClient = webApiClient;
-        this.subscriptionManagerFactory = subscriptionManagerFactory;
-        this.logger = logger;
-        this.eventCounter = meter.CreateCounter<long>("tsharp_ex_sm_dm_subscription_events_received");
-    }
+   public SubscriptionManagerTest(
+       WebApiBotClient webApiClient,
+       SubscriptionMultiplexerFactory subscriptionManagerFactory,
+       ILogger<SubscriptionManagerTest> logger)
+   {
+      this.webApiClient = webApiClient;
+      this.subscriptionManagerFactory = subscriptionManagerFactory;
+      this.logger = logger;
+      this.eventCounter = meter.CreateCounter<long>("tsharp_ex_sm_dm_subscription_events_received");
+   }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        this.subscriptionManager = this.subscriptionManagerFactory.Create();
-        this.subscriptionManager.SubscriptionEventReceived += (sender, subscriptionEvent) =>
-        {
-            this.eventCounter.Add(1);
-            this.totalCount++;
-            if (this.totalCount % 100 == 0)
-            {
-                logger.LogInformation($"Received {this.totalCount} events.");
-            }
+   public async Task StartAsync(CancellationToken cancellationToken)
+   {
+      this.subscriptionManager = this.subscriptionManagerFactory.Create();
+      this.subscriptionManager.SubscriptionEventReceived += (sender, subscriptionEvent) =>
+      {
+         this.eventCounter.Add(1);
+         this.totalCount++;
+         if (this.totalCount % 100 == 0)
+         {
+            logger.LogInformation($"Received {this.totalCount} events.");
+         }
 
-            logger.LogInformation($"Received Event - {subscriptionEvent}");
-        };
+         logger.LogInformation($"Received Event - {subscriptionEvent}");
+      };
 
-        var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
+      var groupIds = await this.GetJoinedGroupIdsAsync(cancellationToken);
 
-        var subscriptions = new[]
-        {
-            "group-server-heartbeat",
-            "group-server-status",
-            "group-update",
-            "group-member-update"
-        }
-            .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
-            .ToArray();
+      var subscriptions = new string[]
+      {
+//            "group-server-heartbeat",
+//            "group-server-status",
+//            "group-update",
+//            "group-member-update"
+      }
+      .SelectMany(eventId => groupIds.Select(groupId => new SubscriptionDefinition(eventId, groupId)))
+      .Concat([
+         new SubscriptionDefinition("me-group-invite-create", 80634787),
+         new SubscriptionDefinition("me-group-delete", 80634787)])
+      .ToArray();
 
-        this.subscriptionManager.RegisterSubscriptions(subscriptions);
-    }
+      this.subscriptionManager.RegisterSubscriptions(subscriptions);
 
-    private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
-    {
-        return await webApiClient.GetJoinedGroupsAsyncStream()
-            .Select(g => g.group.id)
-            .ToArrayAsync(cancellationToken);
-    }
+      await this.subscriptionManager.RunAsync(cancellationToken);
+   }
 
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            Environment.Exit(0);
-        }
+   private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)
+   {
+      return await webApiClient.GetJoinedGroupsAsyncStream()
+          .Select(g => g.group.id)
+          .ToArrayAsync(cancellationToken);
+   }
 
-        return Task.CompletedTask;
-    }
+   public Task StopAsync(CancellationToken cancellationToken)
+   {
+      if (cancellationToken.IsCancellationRequested)
+      {
+         Environment.Exit(0);
+      }
+
+      return Task.CompletedTask;
+   }
 }
