@@ -6,6 +6,7 @@ var botSession = SessionBuilder.Create()
     .AddLogging(c =>
     {
        c.AddConsole();
+       c.AddFilter("Townsharp", LogLevel.Trace);
        c.AddFilter("Townsharp.Client.BotSession", LogLevel.Trace);
     })
     .CreateBotSession();

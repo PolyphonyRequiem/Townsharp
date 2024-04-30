@@ -41,6 +41,7 @@ public class SubscriptionMultiplexerFactory
         {
             throw new ArgumentOutOfRangeException(nameof(concurrentConnections), "The number of concurrent connections must be between 1 and 50.");
         }
+
         return SubscriptionMultiplexer.Create(this.subscriptionClientFactory, this.loggerFactory, concurrentConnections);
     }
 }

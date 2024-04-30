@@ -10,7 +10,7 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
-internal class SubscriptionClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
+internal partial class SubscriptionClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
 {
    // Constants
    internal static int MAX_CONCURRENT_REQUESTS = 20;
@@ -59,11 +59,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
    private async Task<Response<SubscriptionResponseMessage>> RequestAsync(Func<int, string, RequestMessage> requestMessageFactory, TimeSpan timeout)
    {
       var token = await this.botTokenProvider.GetTokenAsync().ConfigureAwait(false);
-      return await base.SendRequestAsync(id =>
-      {
-         var message = JsonSerializer.Serialize(requestMessageFactory(id, token), SubscriptionsSerializerContext.Default.RequestMessage);
-         return message;
-      }, timeout).ConfigureAwait(false);
+      return await base.SendRequestAsync(id => JsonSerializer.Serialize(requestMessageFactory(id, token), SubscriptionsSerializerContext.Default.RequestMessage), timeout).ConfigureAwait(false);
    }
 
    protected override async Task ConfigureClientWebsocket(ClientWebSocket websocket)
@@ -83,7 +79,6 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
 
       return ErrorInfo.None;
    }
-
 
    protected override ErrorInfo CheckResponseForError(SubscriptionResponseMessage response)
    {
@@ -110,7 +105,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
 
       if (message == null)
       {
-         this.logger.LogError($"Unable to deserialize message from {document.RootElement.GetRawText()}");
+         this.LogUnableToDeserialize(document.RootElement.GetRawText());
          return SubscriptionMessage.None;
       }
 
@@ -123,7 +118,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
 
       if (responseMessage == null)
       {
-         this.logger.LogError($"Unable to deserialize message from {document.RootElement.GetRawText()}");
+         this.LogUnableToDeserialize(document.RootElement.GetRawText());
          return SubscriptionResponseMessage.None;
       }
 
@@ -136,7 +131,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
 
       if (eventMessage == null)
       {
-         this.logger.LogError($"Unable to deserialize message from {document.RootElement.GetRawText()}");
+         this.LogUnableToDeserialize(document.RootElement.GetRawText());
          return SubscriptionEventMessage.None;
       }
 
@@ -155,4 +150,7 @@ internal class SubscriptionClient : RequestsAndEventsWebsocketClient<Subscriptio
    {
       return base.OnDisconnectedAsync();
    }
+
+   [LoggerMessage(EventId = 5101, Message = "Unable to deserialize message from {Message}", Level = LogLevel.Error)]
+   internal partial void LogUnableToDeserialize(string message);
 }
