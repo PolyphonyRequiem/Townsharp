@@ -10,7 +10,7 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Consoles;
 
-internal class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, CommandResponseMessage, ConsoleSubscriptionEventMessage>, IConsoleClient
+internal class ConsoleWebsocketClient : RequestsAndEventsWebsocketClient<ConsoleMessage, CommandResponseMessage, ConsoleSubscriptionEventMessage>, IConsoleClient
 {
     // Constants
     private static readonly TimeSpan AuthTimeout = TimeSpan.FromSeconds(30);
@@ -28,11 +28,11 @@ internal class ConsoleClient : RequestsAndEventsWebsocketClient<ConsoleMessage, 
 
     protected override bool IsAuthenticated => this.isAuthenticated;
     private readonly SemaphoreSlim authSemaphore = new SemaphoreSlim(0);
-    public ConsoleClient(
+    public ConsoleWebsocketClient(
         Uri consoleEndpoint,
         string authToken,
         ChannelWriter<ConsoleEvent> eventChannel,
-        ILogger<ConsoleClient> logger) : base(logger, 1)
+        ILogger<ConsoleWebsocketClient> logger) : base(logger, 1)
     {
         this.consoleEndpoint = consoleEndpoint;
         this.authToken = authToken;

@@ -12,9 +12,9 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-using Townsharp.Infrastructure.Hosting;
+using Townsharp.Infrastructure;
+using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Subscriptions;
-using Townsharp.Infrastructure.WebApi;
 
 string ServiceName = Assembly.GetExecutingAssembly().GetName().Name ?? "Unknown Assembly";
 ActivitySource ActivitySource = new ActivitySource(ServiceName);
@@ -22,8 +22,6 @@ ActivitySource ActivitySource = new ActivitySource(ServiceName);
 Console.WriteLine("Starting a SubscriptionManager test.");
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder();
-
-
 
 builder.Logging.AddConsole();
 builder.Logging.AddOpenTelemetry(loggerOptions =>
@@ -61,7 +59,7 @@ builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation()
             .AddOtlpExporter());
 
-builder.Services.AddTownsharpInfra();
+//builder.Services.AddTownsharpInfra();
 builder.Services.AddHostedService<SubscriptionManagerTest>();
 
 IHost host = builder.Build();
@@ -70,31 +68,26 @@ host.Run();
 internal class SubscriptionManagerTest : IHostedService
 {
    public static Meter meter = new Meter(nameof(SubscriptionManagerTest));
-
-   private readonly WebApiBotClient webApiClient;
-   private readonly SubscriptionMultiplexerFactory subscriptionManagerFactory;
    private readonly ILogger<SubscriptionManagerTest> logger;
 
    private readonly Counter<long> eventCounter;
    private long totalCount;
 
-   private SubscriptionMultiplexer? subscriptionManager;
+   private ISubscriptionClient subscriptionClient;
 
-   public SubscriptionManagerTest(
-       WebApiBotClient webApiClient,
-       SubscriptionMultiplexerFactory subscriptionManagerFactory,
-       ILogger<SubscriptionManagerTest> logger)
+   public SubscriptionManagerTest(ILoggerFactory loggerFactory)
    {
-      this.webApiClient = webApiClient;
-      this.subscriptionManagerFactory = subscriptionManagerFactory;
-      this.logger = logger;
+      var clientBuilder = Builders.CreateBotClientBuilder(BotCredential.FromEnvironmentVariables(), loggerFactory);
+
+      this.subscriptionClient = clientBuilder.BuildSubscriptionClient(10);
+
+      this.logger = loggerFactory.CreateLogger<SubscriptionManagerTest>();
       this.eventCounter = meter.CreateCounter<long>("tsharp_ex_sm_dm_subscription_events_received");
    }
 
    public async Task StartAsync(CancellationToken cancellationToken)
    {
-      this.subscriptionManager = this.subscriptionManagerFactory.Create();
-      this.subscriptionManager.SubscriptionEventReceived += (sender, subscriptionEvent) =>
+      this.subscriptionClient.SubscriptionEventReceived += (sender, subscriptionEvent) =>
       {
          this.eventCounter.Add(1);
          this.totalCount++;
@@ -121,9 +114,9 @@ internal class SubscriptionManagerTest : IHostedService
          new SubscriptionDefinition("me-group-delete", 80634787)])
       .ToArray();
 
-      this.subscriptionManager.RegisterSubscriptions(subscriptions);
+      this.subscriptionClient.RegisterSubscriptions(subscriptions);
 
-      await this.subscriptionManager.RunAsync(cancellationToken);
+      await this.subscriptionClient.RunAsync(cancellationToken);
    }
 
    private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)

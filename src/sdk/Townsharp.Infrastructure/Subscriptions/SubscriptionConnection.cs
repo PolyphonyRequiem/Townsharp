@@ -14,7 +14,7 @@ namespace Townsharp.Infrastructure.Subscriptions;
 /// 
 /// </summary>
 /// <remarks>
-/// Used to manage lifecycle of <see cref="SubscriptionClient"/> objects, including migrations and fault recovery.
+/// Used to manage lifecycle of <see cref="SubscriptionWebsocketClient"/> objects, including migrations and fault recovery.
 /// Tracks subscriptions it is responsible for, used in recovery.
 /// </remarks>
 internal partial class SubscriptionConnection
@@ -33,7 +33,7 @@ internal partial class SubscriptionConnection
 
    // Policies
    private static int[] RETRY_DELAYS_IN_SECONDS = new int[] { 0, 1, 5, 15, 30, 60 };
-   private readonly ResiliencePipeline<SubscriptionClient> SubscriptionClientCreationRetryPolicy;
+   private readonly ResiliencePipeline<SubscriptionWebsocketClient> SubscriptionClientCreationRetryPolicy;
    private readonly SubscriptionWorkTracker workTracker;
 
    internal ConnectionId ConnectionId { get; init; }
@@ -62,10 +62,10 @@ internal partial class SubscriptionConnection
 
       this.LogCreatedSubscriptionConnection(this.ConnectionId);
 
-      this.SubscriptionClientCreationRetryPolicy = new ResiliencePipelineBuilder<SubscriptionClient>()
-          .AddRetry(new RetryStrategyOptions<SubscriptionClient>
+      this.SubscriptionClientCreationRetryPolicy = new ResiliencePipelineBuilder<SubscriptionWebsocketClient>()
+          .AddRetry(new RetryStrategyOptions<SubscriptionWebsocketClient>
           {
-             ShouldHandle = new PredicateBuilder<SubscriptionClient>().Handle<Exception>(),
+             ShouldHandle = new PredicateBuilder<SubscriptionWebsocketClient>().Handle<Exception>(),
              DelayGenerator = generatorArgs =>
                {
                  int delayInSeconds = generatorArgs.AttemptNumber < RETRY_DELAYS_IN_SECONDS.Length
@@ -105,14 +105,14 @@ internal partial class SubscriptionConnection
    internal async Task RunAsync(CancellationToken cancellationToken)
    {
       this.LogStartingSubscriptionConnection(this.ConnectionId);
-      SubscriptionClient? currentClient = default;
+      SubscriptionWebsocketClient? currentClient = default;
       CancellationTokenSource currentClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
       MigrationToken migrationToken = MigrationToken.None;
 
       do
       {
          CancellationTokenSource newClientCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-         SubscriptionClient? newClient = await this.CreateAndConnectNewClientAsync(newClientCancellationTokenSource.Token);
+         SubscriptionWebsocketClient? newClient = await this.CreateAndConnectNewClientAsync(newClientCancellationTokenSource.Token);
 
          if (newClient == null)
          {
@@ -227,13 +227,13 @@ internal partial class SubscriptionConnection
       while (!cancellationToken.IsCancellationRequested);
    }
 
-   private async Task ProcessLeasesAsync(SubscriptionClient client, SubscriptionWorkLease[] leases)
+   private async Task ProcessLeasesAsync(SubscriptionWebsocketClient client, SubscriptionWorkLease[] leases)
    {
       await ProcessLeasesForIntentAsync(client, leases, SubscriptionIntent.Subscribed);
       await ProcessLeasesForIntentAsync(client, leases, SubscriptionIntent.Unsubscribed);
    }
 
-   private async Task ProcessLeasesForIntentAsync(SubscriptionClient client, SubscriptionWorkLease[] leases, SubscriptionIntent intent)
+   private async Task ProcessLeasesForIntentAsync(SubscriptionWebsocketClient client, SubscriptionWorkLease[] leases, SubscriptionIntent intent)
    {
       var workTasks = new List<Task>();
 
@@ -276,7 +276,7 @@ internal partial class SubscriptionConnection
       }
    }
 
-   private async Task<SubscriptionClient?> CreateAndConnectNewClientAsync(CancellationToken cancellationToken)
+   private async Task<SubscriptionWebsocketClient?> CreateAndConnectNewClientAsync(CancellationToken cancellationToken)
    {
       var result = await SubscriptionClientCreationRetryPolicy.ExecuteAsync(
           async _ =>

@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
 
-using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Models;
 using Townsharp.Infrastructure.Utilities;
@@ -22,12 +21,6 @@ internal class BotTokenProvider
     private readonly ILogger<BotTokenProvider> logger;
 
     internal bool IsEnabled => true;
-
-    internal BotTokenProvider(BotCredential botCredential)
-        : this(botCredential, InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<BotTokenProvider>())
-    {
-
-    }
 
     internal BotTokenProvider(BotCredential botCredential, IHttpClientFactory httpClientFactory, ILogger<BotTokenProvider> logger)
     {

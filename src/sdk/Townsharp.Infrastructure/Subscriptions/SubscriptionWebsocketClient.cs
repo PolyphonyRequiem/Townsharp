@@ -10,7 +10,7 @@ using Townsharp.Infrastructure.Websockets;
 
 namespace Townsharp.Infrastructure.Subscriptions;
 
-internal partial class SubscriptionClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
+internal partial class SubscriptionWebsocketClient : RequestsAndEventsWebsocketClient<SubscriptionMessage, SubscriptionResponseMessage, SubscriptionEventMessage>
 {
    // Constants
    internal static int MAX_CONCURRENT_REQUESTS = 20;
@@ -20,10 +20,10 @@ internal partial class SubscriptionClient : RequestsAndEventsWebsocketClient<Sub
    private readonly BotTokenProvider botTokenProvider;
    private readonly ChannelWriter<SubscriptionEvent> eventChannelWriter;
 
-   internal SubscriptionClient(
+   internal SubscriptionWebsocketClient(
        BotTokenProvider botTokenProvider,
        ChannelWriter<SubscriptionEvent> eventChannel,
-       ILogger<SubscriptionClient> logger)
+       ILogger<SubscriptionWebsocketClient> logger)
        : base(logger, MAX_CONCURRENT_REQUESTS)
    {
       this.botTokenProvider = botTokenProvider;

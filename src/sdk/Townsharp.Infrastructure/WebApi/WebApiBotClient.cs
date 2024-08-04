@@ -7,7 +7,6 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Models;
-using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity;
 
@@ -28,26 +27,6 @@ public class WebApiBotClient
     private readonly BotTokenProvider botTokenProvider;
     private readonly IHttpClientFactory httpClientFactory;
     private readonly ILogger<WebApiBotClient> logger;
-
-    /// <summary>
-    /// Creates a new instance of the WebApiBotClient using the default <see cref="ILoggerFactory"/> and <see cref="IHttpClientFactory"/>.
-    /// </summary>
-    /// <param name="credential">The <see cref="BotCredential"/> to use for authentication.</param>
-    public WebApiBotClient(BotCredential credential)
-        : this(new BotTokenProvider(credential), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiBotClient>())
-    {
-    }
-
-    /// <summary>
-    /// Creates a new instance of the WebApiBotClient.
-    /// </summary>
-    /// <param name="credential">The <see cref="BotCredential"/> to use for authentication.</param>
-    /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> to use for creating <see cref="HttpClient"/> instances.</param>
-    /// <param name="logger">The <see cref="ILogger{T}"/> to use for logging.</param>
-    public WebApiBotClient(BotCredential credential, IHttpClientFactory httpClientFactory, ILogger<WebApiBotClient> logger)
-        : this(new BotTokenProvider(credential), httpClientFactory, logger)
-    {
-    }
 
     internal WebApiBotClient(BotTokenProvider botTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiBotClient> logger)
     {

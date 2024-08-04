@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
    // This needs to die off, either we expose standalone clients via a dedicated library, via this library, or we just support it via townsharp.
    public static IServiceCollection AddTownsharpInfra(this IServiceCollection services)
    {
+      throw new InvalidOperationException("Remove Me");
       services.AddHttpClient();
       services.AddSingleton(
           services => new BotTokenProvider(
@@ -25,7 +26,6 @@ public static class ServiceCollectionExtensions
       services.AddSingleton(creds);
       services.AddSingleton<WebApiBotClient>();
       services.AddSingleton<SubscriptionClientFactory>();
-      services.AddSingleton<SubscriptionMultiplexerFactory>();
       services.AddSingleton<ConsoleClientFactory>();
 
       return services;

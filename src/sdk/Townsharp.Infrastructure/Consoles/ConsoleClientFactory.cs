@@ -2,8 +2,6 @@
 
 using Microsoft.Extensions.Logging;
 
-using Townsharp.Infrastructure.Composition;
-
 namespace Townsharp.Infrastructure.Consoles;
 
 /// <summary>
@@ -14,14 +12,6 @@ public class ConsoleClientFactory
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<ConsoleClientFactory> logger;
     private List<Task> userHandlerTasks = new List<Task>();
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ConsoleClientFactory"/> class, using the default <see cref="ILoggerFactory"/>.
-    /// </summary>
-    public ConsoleClientFactory()
-        : this(InternalLoggerFactory.Default)
-    {
-    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConsoleClientFactory"/> class.
@@ -42,7 +32,7 @@ public class ConsoleClientFactory
     /// <returns>A new <see cref="IConsoleClient"/> instance.</returns>
     public IConsoleClient CreateClient(Uri consoleWebsocketUri, string authToken, ChannelWriter<ConsoleEvent> eventChannel)
     {
-        return new ConsoleClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleClient>());
+        return new ConsoleWebsocketClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleWebsocketClient>());
     }
 
     /// <summary>
@@ -64,7 +54,7 @@ public class ConsoleClientFactory
 
         userHandlerTasks.Add(HandleChannelEventsWithUserProvidedHandler(eventChannel.Reader, handleEventAsync)); // not sure how we will utilize this just yet... Probably in Townsharp.Client?
 
-        return new ConsoleClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleClient>());
+        return new ConsoleWebsocketClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleWebsocketClient>());
     }
 
     /// <summary>
@@ -86,7 +76,7 @@ public class ConsoleClientFactory
 
         userHandlerTasks.Add(HandleChannelEventsWithUserProvidedHandler(eventChannel.Reader, handleEvent)); // not sure how we will utilize this just yet... Probably in Townsharp.Client?
 
-        return new ConsoleClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleClient>());
+        return new ConsoleWebsocketClient(consoleWebsocketUri, authToken, eventChannel, this.loggerFactory.CreateLogger<ConsoleWebsocketClient>());
     }
 
     private async Task HandleChannelEventsWithUserProvidedHandler(ChannelReader<ConsoleEvent> channelReader, Func<ConsoleEvent, Task> handleEventAsync)

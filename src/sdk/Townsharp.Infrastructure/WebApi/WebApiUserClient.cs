@@ -7,8 +7,6 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Models;
-using Townsharp.Infrastructure.Composition;
-using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Identity;
 
 namespace Townsharp.Infrastructure.WebApi;
@@ -25,26 +23,6 @@ public class WebApiUserClient
     private readonly UserTokenProvider userTokenProvider;
     private readonly IHttpClientFactory httpClientFactory;
     private readonly ILogger<WebApiUserClient> logger;
-
-    /// <summary>
-    /// Creates a new instance of the WebApiUserClient using the default <see cref="ILoggerFactory"/> and <see cref="IHttpClientFactory"/>.
-    /// </summary>
-    /// <param name="credential">The <see cref="UserCredential"/> to use for authentication.</param>
-    public WebApiUserClient(UserCredential credential)
-        : this(new UserTokenProvider(credential), InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<WebApiUserClient>())
-    {
-    }
-
-    /// <summary>
-    /// Creates a new instance of the WebApiUserClient.
-    /// </summary>
-    /// <param name="credential">The <see cref="UserCredential"/> to use for authentication.</param>
-    /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> to use for creating <see cref="HttpClient"/> instances.</param>
-    /// <param name="logger">The <see cref="ILogger{T}"/> to use for logging.</param>
-    public WebApiUserClient(UserCredential credential, IHttpClientFactory httpClientFactory, ILogger<WebApiUserClient> logger)
-        : this(new UserTokenProvider(credential), httpClientFactory, logger)
-    {
-    }
 
     internal WebApiUserClient(UserTokenProvider userTokenProvider, IHttpClientFactory httpClientFactory, ILogger<WebApiUserClient> logger)
     {

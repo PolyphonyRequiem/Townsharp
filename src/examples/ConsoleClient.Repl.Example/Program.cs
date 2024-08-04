@@ -59,7 +59,6 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<WebApiBotClient>();
-builder.Services.AddSingleton<SubscriptionMultiplexerFactory>();
 builder.Services.AddSingleton<ConsoleClientFactory>();
 
 //builder.Services.AddTownsharpInfra();

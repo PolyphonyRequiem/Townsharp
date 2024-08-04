@@ -8,7 +8,7 @@ namespace Townsharp.Infrastructure.Subscriptions;
 /// Provides multiplexing of subscriptions against the main Alta Websocket Subscription endpoint across multiple connections.
 /// This is done to ensure that connections are robust as the scale increases beyond ~500 subscriptions, so that migrations happen with a very high rate of success.
 /// </summary>
-public class SubscriptionMultiplexer
+public class SubscriptionMultiplexer : ISubscriptionClient
 {
    private readonly SubscriptionMap subscriptionMap;
    private readonly Dictionary<ConnectionId, SubscriptionConnection> connections;
@@ -29,7 +29,7 @@ public class SubscriptionMultiplexer
       this.SubscriptionEventReceived?.Invoke(this, subscriptionEvent);
    }
 
-   internal SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
+   private SubscriptionMultiplexer(Dictionary<ConnectionId, SubscriptionConnection> connections, ILogger<SubscriptionMultiplexer> logger)
    {
       this.connections = connections;
       this.logger = logger;

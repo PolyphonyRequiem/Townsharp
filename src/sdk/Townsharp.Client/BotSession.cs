@@ -53,7 +53,7 @@ public class BotSession
       var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(credential); // nope, we should use builder extensions here, and this is why we kept those!
 
       this.webApiClient = new WebApiBotClient(credential);
-      this.subscriptionMultiplexer = subscriptionMultiplexerFactory.Create(this.configuration.MaxSubscriptionWebsockets);
+      this.subscriptionMultiplexer = subscriptionMultiplexerFactory.CreateSubscriptionClient(this.configuration.MaxSubscriptionWebsockets);
       this.subscriptionMultiplexer.SubscriptionEventReceived += this.SubscriptionMultiplexer_SubscriptionEventReceived;
       this.consoleClientFactory = new ConsoleClientFactory(loggerFactory);
       this.logger = this.loggerFactory.CreateLogger<BotSession>();
