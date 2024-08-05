@@ -60,7 +60,7 @@ public class SubscriptionMultiplexer : ISubscriptionClient
    /// Starts running the <see cref="SubscriptionMultiplexer"/> asynchronously using the provided <paramref name="cancellationToken"/> to signal cancellation.
    /// </summary>
    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use to cancel the operation.</param>
-   public async Task RunAsync(CancellationToken cancellationToken)
+   public async Task ConnectAsync(CancellationToken cancellationToken)
    {
       var tasks = this.connections.Values.Select(connection => connection.RunAsync(cancellationToken));
       await Task.WhenAll(tasks);

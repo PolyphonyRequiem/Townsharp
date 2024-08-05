@@ -74,7 +74,7 @@ public class BotSession
    public async Task RunAsync(CancellationToken cancellationToken = default)
    {
       this.cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-      var subscriptionMultiplexerTask = this.subscriptionMultiplexer.RunAsync(this.cancellationTokenSource.Token);
+      var subscriptionMultiplexerTask = this.subscriptionMultiplexer.ConnectAsync(this.cancellationTokenSource.Token);
       if (this.configuration.AutoAcceptInvites)
       {
          // Set up Auto Accept Invites

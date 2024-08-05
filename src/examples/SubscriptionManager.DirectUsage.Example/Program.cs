@@ -116,7 +116,7 @@ internal class SubscriptionManagerTest : IHostedService
 
       this.subscriptionClient.RegisterSubscriptions(subscriptions);
 
-      await this.subscriptionClient.RunAsync(cancellationToken);
+      await this.subscriptionClient.ConnectAsync(cancellationToken);
    }
 
    private async Task<int[]> GetJoinedGroupIdsAsync(CancellationToken cancellationToken)

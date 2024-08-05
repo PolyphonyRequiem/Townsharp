@@ -8,7 +8,7 @@ public interface ISubscriptionClient
 
    void RegisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions);
 
-   Task RunAsync(CancellationToken cancellationToken);
+   Task ConnectAsync(CancellationToken cancellationToken);
 
    void UnregisterSubscriptions(SubscriptionDefinition[] subscriptionDefinitions);
 }

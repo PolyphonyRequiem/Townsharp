@@ -15,8 +15,7 @@ public class BotClientBuilder
    private readonly IHttpClientFactory httpClientFactory;
    private readonly BotTokenProvider botTokenProvider;
    private readonly SubscriptionClientFactory subscriptionClientFactory;
-   private readonly ConsoleClientFactory consoleClientFactory;
-
+   
    internal protected BotClientBuilder(BotCredential botCredential, ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
    {
       this.botCredential = botCredential;
@@ -25,7 +24,6 @@ public class BotClientBuilder
 
       this.botTokenProvider = new BotTokenProvider(this.botCredential, this.httpClientFactory, this.loggerFactory.CreateLogger<BotTokenProvider>());
       this.subscriptionClientFactory = new SubscriptionClientFactory(this.botTokenProvider, this.loggerFactory);
-      this.consoleClientFactory = new ConsoleClientFactory(loggerFactory);
    }
 
    public ISubscriptionClient BuildSubscriptionClient(int concurrentConnections = 1) 
@@ -34,11 +32,15 @@ public class BotClientBuilder
    public WebApiBotClient BuildWebApiClient() 
       => new WebApiBotClient(this.botTokenProvider, this.httpClientFactory, this.loggerFactory.CreateLogger<WebApiBotClient>());
 
-   public IConsoleClient BuildConsoleClient()
+   public IConsoleClient BuildConsoleClient(IWebApiClient webApiClient, int serverId)
    {
+      var result = webApiClient.RequestConsoleAccessAsync(serverId).Result;
 
-      this.consoleClientFactory.CreateClient();
+      if (!result.IsSuccess || !result.Content.IndicatesAccessGranted)
+      {
+         throw new UnauthorizedAccessException($"Failed to obtain console access. {result.ErrorMessage ?? "Access Denied"}");
+      }
+
+      return new ConsoleWebsocketClient(result.Content.BuildConsoleUri(), result.Content.token!, this.loggerFactory.CreateLogger<ConsoleWebsocketClient>());
    }
-
-   // We should actually build the builder based on our credentials model, which informs which webapi client we build and what clients we can produce
 }

@@ -5,12 +5,27 @@
 /// </summary>
 public interface IConsoleClient
 {
-    /// <summary>
-    /// Connects to the Game Server's Console endpoint.
-    /// </summary>
-    /// <param name="cancellationToken">A cancellation token that can be used to close the connection.</param>
-    /// <returns>A task that completes when the connection is fully negotiated and authorized.</returns>
-    Task ConnectAsync(CancellationToken cancellationToken);
+   event EventHandler<PlayerStateChangedEvent>? PlayerStateChanged;
+   event EventHandler<PlayerJoinedEvent>? PlayerJoined;
+   event EventHandler<PlayerLeftEvent>? PlayerLeft;
+   event EventHandler<PopulationModifiedEvent>? PopulationModified;
+   event EventHandler<TradeDeckUsedEvent>? TradeDeckUsed;
+   event EventHandler<PlayerMovedChunkEvent>? PlayerMovedChunk;
+   event EventHandler<TrialStartedEvent>? TrialStarted;
+   event EventHandler<TrialFinishedEvent>? TrialFinished;
+   event EventHandler<InventoryChangedEvent>? InventoryChanged;
+   event EventHandler<AtmBalanceChangedEvent>? AtmBalanceChanged;
+   event EventHandler<ServerSettingsChangedEvent>? ServerSettingsChanged;
+   event EventHandler<CommandExecutedEvent>? CommandExecuted;
+   event EventHandler<SocialTabletPlayerBannedEvent>? SocialTabletPlayerBanned;
+   event EventHandler<SocialTabletPlayerReportedEvent>? SocialTabletPlayerReported;
+
+   /// <summary>
+   /// Connects to the Game Server's Console endpoint.
+   /// </summary>
+   /// <param name="cancellationToken">A cancellation token that can be used to close the connection.</param>
+   /// <returns>A task that completes when the connection is fully negotiated and authorized.</returns>
+   Task ConnectAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Runs a command on the Game Server's Console endpoint.

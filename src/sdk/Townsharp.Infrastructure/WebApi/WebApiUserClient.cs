@@ -11,7 +11,7 @@ using Townsharp.Infrastructure.Identity;
 
 namespace Townsharp.Infrastructure.WebApi;
 
-public class WebApiUserClient
+public class WebApiUserClient : IWebApiClient
 {
     private static JsonSerializerOptions serializerOptions = new JsonSerializerOptions
     {
