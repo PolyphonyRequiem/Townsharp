@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.Hosting;
 
 namespace Townsharp.Client;
 
@@ -26,9 +25,6 @@ public class SessionBuilder
       }
 
       this.configuration = configurationBuilder.Build();
-
-      this.services.AddTownsharpInfra();
-      this.services.AddSingleton<SessionFactory>();
    }
 
    public static SessionBuilder Create()

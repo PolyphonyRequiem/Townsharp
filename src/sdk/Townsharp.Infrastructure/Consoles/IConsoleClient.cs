@@ -5,6 +5,7 @@
 /// </summary>
 public interface IConsoleClient
 {
+   event EventHandler<ConsoleEvent>? ConsoleEvent;
    event EventHandler<PlayerStateChangedEvent>? PlayerStateChanged;
    event EventHandler<PlayerJoinedEvent>? PlayerJoined;
    event EventHandler<PlayerLeftEvent>? PlayerLeft;

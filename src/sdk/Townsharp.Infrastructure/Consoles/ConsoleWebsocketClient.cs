@@ -1,7 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading.Channels;
 
 using Microsoft.Extensions.Logging;
 
@@ -283,6 +282,8 @@ internal class ConsoleWebsocketClient : RequestsAndEventsWebsocketClient<Console
       remove => this.socialTabletPlayerReportedReceivedEvent -= value;
    }
 
+   public event EventHandler<ConsoleEvent>? ConsoleEvent;
+
    private static readonly JsonSerializerOptions jsonSerializerOptions = new()
    {
       TypeInfoResolver = ConsoleSerializerContext.Default,
@@ -456,6 +457,8 @@ internal class ConsoleWebsocketClient : RequestsAndEventsWebsocketClient<Console
          "SocialTabletPlayerReported" => JsonSerializer.Deserialize<SocialTabletPlayerReportedEvent>(data, jsonSerializerOptions)!,
          _ => throw new InvalidOperationException($"Unknown event type {eventMessage.eventType}")
       };
+
+      this.ConsoleEvent?.Invoke(this, @event);
 
       switch (@event)
       {

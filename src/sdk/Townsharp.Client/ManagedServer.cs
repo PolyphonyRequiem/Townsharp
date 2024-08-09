@@ -12,8 +12,8 @@ public class ManagedServer
 
     public void HandlePlayerMovedChunk(Action<PlayerMovedChunkEvent> action) => this.handlePlayerMovedChunk = action;
 
-    public async Task<ConsoleCommandResult> TryRunCommandAsync(string v)
+    public Task<ConsoleCommandResult> TryRunCommandAsync(string v)
     {
-        return new ConsoleCommandResult();
+        return Task.FromResult(new ConsoleCommandResult());
     }
 }

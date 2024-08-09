@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Text.Json.Serialization;
 
 using Townsharp.Infrastructure.Models;
 
@@ -134,7 +135,7 @@ public record TrialFinishedEvent(UserInfo[] users, string trial) : ConsoleEvent(
     }
 }
 
-public record InventoryChangedEvent(UserInfo User, string ItemName, int Quantity, Unit? ItemHash, string? Material, string SaveString, InventoryChangeType ChangeType, InventoryType InventoryType, UserInfo? DestinationUser) : ConsoleEvent(ConsoleEventType.InventoryChanged)
+public record InventoryChangedEvent(UserInfo User, string ItemName, int Quantity, uint? ItemHash, string? Material, string SaveString, InventoryChangeType ChangeType, InventoryType InventoryType, UserInfo? DestinationUser) : ConsoleEvent(ConsoleEventType.InventoryChanged)
 {
     public override string ToString()
     {
@@ -273,6 +274,7 @@ public record SocialTabletPlayerReportedEvent(UserInfo ReportedBy, UserInfo Repo
     }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PlayerStateType>))]
 public enum PlayerStateType
 {
     None,
@@ -286,6 +288,7 @@ public enum PlayerStateType
     Downed
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<DamageSource>))]
 public enum DamageSource
 {
     FallDamage,
@@ -298,6 +301,7 @@ public enum DamageSource
     Fire
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PopulationAction>))]
 public enum PopulationAction
 {
     Initialize,
@@ -306,6 +310,7 @@ public enum PopulationAction
     Lost
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<InventoryChangeType>))]
 public enum InventoryChangeType
 {
     Pickup,
@@ -314,12 +319,14 @@ public enum InventoryChangeType
     Undock
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<InventoryType>))]
 public enum InventoryType
 {
     World,
     Player
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<ServerSettingsAge>))]
 public enum ServerSettingsAge
 {
     None,
@@ -327,6 +334,7 @@ public enum ServerSettingsAge
     Old
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PlayerLandmarkMode>))]
 public enum PlayerLandmarkMode
 {
     ShowAll,
@@ -334,12 +342,14 @@ public enum PlayerLandmarkMode
     Hidden
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PlayerSmoothingLevel>))]
 public enum PlayerSmoothingLevel
 {
     Default,
     Low
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<InitialInventory>))]
 public enum InitialInventory
 {
     None,

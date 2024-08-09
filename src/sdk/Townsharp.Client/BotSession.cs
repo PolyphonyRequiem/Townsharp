@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure;
 using Townsharp.Infrastructure.Configuration;
-using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.Subscriptions;
 using Townsharp.Infrastructure.Subscriptions.Models;
 using Townsharp.Infrastructure.WebApi;
@@ -17,8 +17,8 @@ public class BotSession
    private readonly ILoggerFactory loggerFactory;
 
    private readonly WebApiBotClient webApiClient;
-   private readonly SubscriptionMultiplexer subscriptionMultiplexer;
-   private readonly ConsoleClientFactory consoleClientFactory;
+   private readonly ISubscriptionClient subscriptionClient;
+   
    private readonly ILogger<BotSession> logger;
    private CancellationTokenSource? cancellationTokenSource;
 
@@ -50,12 +50,11 @@ public class BotSession
       this.httpClientFactory = httpClientFactory;
       this.loggerFactory = loggerFactory;
 
-      var subscriptionMultiplexerFactory = new SubscriptionMultiplexerFactory(credential); // nope, we should use builder extensions here, and this is why we kept those!
+      var builder = Builders.CreateBotClientBuilder(this.credential, this.loggerFactory, this.httpClientFactory);
+      this.subscriptionClient = builder.BuildSubscriptionClient(10);
 
-      this.webApiClient = new WebApiBotClient(credential);
-      this.subscriptionMultiplexer = subscriptionMultiplexerFactory.CreateSubscriptionClient(this.configuration.MaxSubscriptionWebsockets);
-      this.subscriptionMultiplexer.SubscriptionEventReceived += this.SubscriptionMultiplexer_SubscriptionEventReceived;
-      this.consoleClientFactory = new ConsoleClientFactory(loggerFactory);
+      this.webApiClient = builder.BuildWebApiClient();
+      this.subscriptionClient.SubscriptionEventReceived += this.SubscriptionMultiplexer_SubscriptionEventReceived;
       this.logger = this.loggerFactory.CreateLogger<BotSession>();
    }
 
@@ -74,11 +73,11 @@ public class BotSession
    public async Task RunAsync(CancellationToken cancellationToken = default)
    {
       this.cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-      var subscriptionMultiplexerTask = this.subscriptionMultiplexer.ConnectAsync(this.cancellationTokenSource.Token);
+      var subscriptionMultiplexerTask = this.subscriptionClient.ConnectAsync(this.cancellationTokenSource.Token);
       if (this.configuration.AutoAcceptInvites)
       {
          // Set up Auto Accept Invites
-         this.subscriptionMultiplexer.RegisterSubscriptions([new SubscriptionDefinition("me-group-invite-create", 80634787)]); // we have a gap here, need a better way to expose the bot identity
+         this.subscriptionClient.RegisterSubscriptions([new SubscriptionDefinition("me-group-invite-create", 80634787)]); // we have a gap here, need a better way to expose the bot identity
          await this.webApiClient.GetPendingGroupInvitesAsync().ContinueWith(
             async task =>
             {

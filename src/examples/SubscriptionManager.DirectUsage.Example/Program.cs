@@ -15,6 +15,7 @@ using OpenTelemetry.Trace;
 using Townsharp.Infrastructure;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Subscriptions;
+using Townsharp.Infrastructure.WebApi;
 
 string ServiceName = Assembly.GetExecutingAssembly().GetName().Name ?? "Unknown Assembly";
 ActivitySource ActivitySource = new ActivitySource(ServiceName);
@@ -73,14 +74,15 @@ internal class SubscriptionManagerTest : IHostedService
    private readonly Counter<long> eventCounter;
    private long totalCount;
 
-   private ISubscriptionClient subscriptionClient;
+   private readonly ISubscriptionClient subscriptionClient;
+   private readonly WebApiBotClient webApiClient;
 
    public SubscriptionManagerTest(ILoggerFactory loggerFactory)
    {
       var clientBuilder = Builders.CreateBotClientBuilder(BotCredential.FromEnvironmentVariables(), loggerFactory);
 
       this.subscriptionClient = clientBuilder.BuildSubscriptionClient(10);
-
+      this.webApiClient = clientBuilder.BuildWebApiClient();
       this.logger = loggerFactory.CreateLogger<SubscriptionManagerTest>();
       this.eventCounter = meter.CreateCounter<long>("tsharp_ex_sm_dm_subscription_events_received");
    }
