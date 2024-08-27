@@ -18,8 +18,8 @@ internal class SubscriptionClientFactory
         this.loggerFactory = loggerFactory;
     }
 
-    internal SubscriptionClient CreateClient(ChannelWriter<SubscriptionEvent> channelWriter)
+    internal SubscriptionWebsocketClient CreateClient(ChannelWriter<SubscriptionEvent> channelWriter)
     {
-        return new SubscriptionClient(this.botTokenProvider, channelWriter, loggerFactory.CreateLogger<SubscriptionClient>());
+        return new SubscriptionWebsocketClient(this.botTokenProvider, channelWriter, loggerFactory.CreateLogger<SubscriptionWebsocketClient>());
     }
 }

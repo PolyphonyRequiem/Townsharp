@@ -1,7 +1,14 @@
-﻿using Townsharp.Client;
+﻿using Microsoft.Extensions.Logging;
+
+using Townsharp.Client;
 
 var botSession = SessionBuilder.Create()
-    .AddLogging()
+    .AddLogging(c =>
+    {
+       c.AddConsole();
+       c.AddFilter("Townsharp", LogLevel.Trace);
+       c.AddFilter("Townsharp.Client.BotSession", LogLevel.Trace);
+    })
     .CreateBotSession();
 
 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -18,7 +25,6 @@ botSession.HandleServerAdded(
         {
             if (e.newChunk.StartsWith("Cave Layer"))
             {
-
                 // handle asynchronously without awaiting result.  I will likely support both synchronous and asynchronous versions of this method.
                 _ = server.TryRunCommandAsync($"player message {e.player.id} - {e.newChunk} 3");
             }

@@ -15,19 +15,16 @@ internal class GameServerConsoleManager : IReadOnlyDictionary<ServerId, GameServ
 {
     private readonly Dictionary<ServerId, GameServerConsole> gameServerConsoles;
     private readonly IMediator mediator;
-    private readonly ConsoleClientFactory consoleClientFactory;
     private readonly ConsoleAccessProvider consoleAccessProvider;
     private readonly ILoggerFactory loggerFactory;
 
     public GameServerConsoleManager(
         IMediator mediator,
-        ConsoleClientFactory consoleClientFactory,
         ConsoleAccessProvider consoleAccessProvider,
         ILoggerFactory loggerFactory)
     {
         gameServerConsoles = new Dictionary<ServerId, GameServerConsole>();
         this.mediator = mediator;
-        this.consoleClientFactory = consoleClientFactory;
         this.consoleAccessProvider = consoleAccessProvider;
         this.loggerFactory = loggerFactory;
     }

@@ -1,23 +1,33 @@
 Current Work
 ============
 
-6/18/2023
----------
+Major Projects
+==============
 
-### SubscriptionConnection
-- HandleOnWebsocketFaulted is synchronous but calls RecoverConnectionAsync
-  - So, wrong design then entirely?
-- No Unsubscription
-  - Right now work queue is just subscription tasks
-  - Do we handle unsubscription seperate from subscription?
-  - Do we handle them together?
-  - If so, how do we reconcile owning a sub and an unsub?
-    - I think when we add an unsub, we check if there's a sub in work and if so, we remove it from work (and ownership), then run unsubscribe in from its own work queue?
-- The lifecycle feels bad.  Diagram and simplify?
-  - Probably not as hard as I'm making it.
-- Handling responses feels messy.  This is an issue with the contract between client and connection.
+Identity Issues
+---------------
+- [ ] Redesign to not have to use 2 different web clients (ideally)
+- [X] Find another way to store credentials that can be shared by a mechanism for getting the bot's identity if using bot creds.
+- [ ] Perhaps a functional capabilities system should exist?
 
-**- What if the work queue were a channel?**
+Logging and Configuration in Infra Lib
+--------------------------------------
 
-### BotTokenProvider
-- This is functionally a singleton for all use cases here.  We can probably access it statically.
+- [ ] Standardize on Generators
+
+Serialization Tests
+-------------------
+
+- [ ] All Serializable types need tests
+
+Client Lib
+----------
+
+- [ ] Implement Management Tracking and Session Lifecycle for Groups, Servers, and Consoles.
+
+Composition Issues
+------------------
+
+- [ ] Not sure the composition system for Infra should be exposed the way it is.  Each root type should have its own builders.
+
+- [ ] Make the factories all private and use builders?

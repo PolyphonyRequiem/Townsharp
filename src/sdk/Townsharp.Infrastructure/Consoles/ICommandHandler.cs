@@ -12,6 +12,7 @@ public static class CommandHandler
 {
     /// <summary>
     /// Provides an argumentless, string typed command handler for the given command string.
+    /// </summary>
     public static ICommandHandler<Unit, string> ForCommand(string command)
     {
         return new UntypedLiteralConsoleCommandHandler(command);

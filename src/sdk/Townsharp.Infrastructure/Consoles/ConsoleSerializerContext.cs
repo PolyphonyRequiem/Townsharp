@@ -11,7 +11,19 @@ namespace Townsharp.Infrastructure.Subscriptions;
 [JsonSerializable(typeof(PlayerStateChangedEvent))]
 [JsonSerializable(typeof(PlayerJoinedEvent))]
 [JsonSerializable(typeof(PlayerLeftEvent))]
+[JsonSerializable(typeof(PlayerKilledEvent))]
+[JsonSerializable(typeof(PopulationModifiedEvent))]
+[JsonSerializable(typeof(TradeDeckUsedEvent))]
 [JsonSerializable(typeof(PlayerMovedChunkEvent))]
+[JsonSerializable(typeof(ObjectKilledEvent))]
+[JsonSerializable(typeof(TrialStartedEvent))]
+[JsonSerializable(typeof(TrialFinishedEvent))]
+[JsonSerializable(typeof(InventoryChangedEvent))]
+[JsonSerializable(typeof(AtmBalanceChangedEvent))]
+[JsonSerializable(typeof(ServerSettingsChangedEvent))]
+[JsonSerializable(typeof(CommandExecutedEvent))]
+[JsonSerializable(typeof(SocialTabletPlayerBannedEvent))]
+[JsonSerializable(typeof(SocialTabletPlayerReportedEvent))]
 
 // Wire Messages
 [JsonSerializable(typeof(ConsoleMessage))]
@@ -23,6 +35,16 @@ namespace Townsharp.Infrastructure.Subscriptions;
 
 // Content
 [JsonSerializable(typeof(UserInfo))]
+[JsonSerializable(typeof(PlayerStateType))]
+[JsonSerializable(typeof(DamageSource))]
+[JsonSerializable(typeof(PopulationAction))]
+[JsonSerializable(typeof(InventoryChangeType))]
+[JsonSerializable(typeof(InventoryType))]
+[JsonSerializable(typeof(ServerSettingsAge))]
+[JsonSerializable(typeof(PlayerLandmarkMode))]
+[JsonSerializable(typeof(PlayerSmoothingLevel))]
+[JsonSerializable(typeof(InitialInventory))]
+
 internal partial class ConsoleSerializerContext : JsonSerializerContext
 {
 

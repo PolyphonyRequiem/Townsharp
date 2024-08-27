@@ -1,125 +1,98 @@
-﻿using System.Threading.Channels;
-
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using Townsharp.Infrastructure;
 using Townsharp.Infrastructure.Consoles;
 using Townsharp.Infrastructure.WebApi;
 
 public class ConsoleRepl : IHostedService
 {
-    private readonly WebApiBotClient webApiClient;
-    private readonly ConsoleClientFactory consoleClientFactory;
-    private readonly ILogger<ConsoleRepl> logger;
+   private readonly BotClientBuilder botClientBuilder;
+   private readonly ILogger<ConsoleRepl> logger;
+   private readonly WebApiBotClient webApiClient;
 
-    public ConsoleRepl(WebApiBotClient webApiClient, ConsoleClientFactory consoleClientFactory, ILogger<ConsoleRepl> logger)
-    {
-        this.webApiClient = webApiClient;
-        this.consoleClientFactory = consoleClientFactory;
-        this.logger = logger;
-    }
+   public ConsoleRepl(BotClientBuilder botClientBuilder, ILogger<ConsoleRepl> logger)
+   {
+      this.botClientBuilder = botClientBuilder;
+      this.logger = logger;
 
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
-        return Task.Run(() => StartConsoleReplAsync(cancellationToken));
-    }
+      this.webApiClient = this.botClientBuilder.BuildWebApiClient();
+   }
 
-    private async Task StartConsoleReplAsync(CancellationToken cancellationToken = default)
-    {
-        Console.WriteLine("Enter the server id to connect to:");
-        var serverId = Console.ReadLine();
+   public Task StartAsync(CancellationToken cancellationToken)
+   {
+      return Task.Run(() => StartConsoleReplAsync(cancellationToken));
+   }
 
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            bool retryNeeded = false;
-            Uri? endpointUri = default;
-            string accessToken = "";
-            Channel<ConsoleEvent> eventChannel = Channel.CreateUnbounded<ConsoleEvent>();
-            try
+   private async Task StartConsoleReplAsync(CancellationToken cancellationToken = default)
+   {
+      Console.WriteLine("Enter the server id to connect to:");
+      var serverId = Console.ReadLine();
+
+      while (!cancellationToken.IsCancellationRequested)
+      {
+         CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+         IConsoleClient? consoleClient = null;
+
+         try
+         {
+            consoleClient = this.botClientBuilder.BuildConsoleClient(this.webApiClient, int.Parse(serverId!));
+            await consoleClient.ConnectAsync(cancellationTokenSource.Token);
+            consoleClient.ConsoleEvent += HandleConsoleEvent;
+            await this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
+         }
+         catch (Exception ex)
+         {
+            this.logger.LogError(ex, $"Something went wrong while trying to run the main console REPL.");
+         }
+         finally
+         {
+            if (consoleClient != null)
             {
-                var response = await this.webApiClient.RequestConsoleAccessAsync(int.Parse(serverId!));
-
-                if (!response.IsSuccess)
-                {
-                    logger.LogTrace($"Unable to get access for server {serverId}.  Access was not granted.");
-                    throw new InvalidOperationException(); // not good flow control, I'll fix this.  It happened because of changes.
-                }
-
-                accessToken = response.Content.token!;
-                endpointUri = response.Content.BuildConsoleUri();
+               consoleClient.ConsoleEvent -= HandleConsoleEvent;
             }
-            catch (Exception)
-            {
-                this.logger.LogError($"Unable to get console access for {serverId} at this time.  Will try again in 15s");
-                retryNeeded = true;
-            }
+         }
+      }
+   }
 
-            if (retryNeeded)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(15));
-                continue;
-            }
+   private void HandleConsoleEvent(object? sender, ConsoleEvent e)
+   {
+      this.logger.LogInformation("EVENT: {eventName} - {event}", Enum.GetName<ConsoleEventType>(e.ConsoleEventType), e);
+   }
 
-            CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+   private async Task GetCommandsAsync(IConsoleClient consoleClient, CancellationToken token)
+   {
+      while (!token.IsCancellationRequested)
+      {
+         Console.WriteLine("Enter a command to send to the server:");
+         var command = await GetInputAsync(token);
 
-            try
-            {
-                IConsoleClient consoleClient = this.consoleClientFactory.CreateClient(endpointUri!, accessToken, eventChannel.Writer);
-                await consoleClient.ConnectAsync(cancellationTokenSource.Token);
-                Task getCommandsTask = this.GetCommandsAsync(consoleClient, cancellationTokenSource.Token); // this doesn't work right, stupid sync console.
+         if (command == "exit" || String.IsNullOrEmpty(command))
+         {
+            break;
+         }
 
-                await foreach (var consoleEvent in eventChannel.Reader.ReadAllAsync(cancellationTokenSource.Token))
-                {
-                    var message = consoleEvent switch
-                    {
-                        ConsoleEvent e => e.ToString(),
-                        _ => "Not Implemented"
-                    };
+         var response = await consoleClient.RunCommandAsync(command!);
 
-                    Console.WriteLine(message);
-                }
+         if (response.IsCompleted)
+         {
+            Console.WriteLine(response?.Result);
+         }
+         else
+         {
+            Console.WriteLine(response.ToString());
+         }
+      }
+   }
 
-                await getCommandsTask;
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, $"Something went wrong while trying to run the main console REPL.");
-            }
-        }
-    }
+   private Task<string?> GetInputAsync(CancellationToken cancellationToken = default)
+   {
+      return Task.Run(Console.ReadLine, cancellationToken);
+   }
 
-    private async Task GetCommandsAsync(IConsoleClient consoleClient, CancellationToken token)
-    {
-        while (!token.IsCancellationRequested)
-        {
-            Console.WriteLine("Enter a command to send to the server:");
-            var command = await GetInputAsync(token);
-
-            if (command == "exit" || String.IsNullOrEmpty(command))
-            {
-                break;
-            }
-
-            var response = await consoleClient.RunCommandAsync(command!);
-
-            if (response.IsCompleted)
-            {
-                Console.WriteLine(response?.Result);
-            }
-            else
-            {
-                Console.WriteLine(response.ToString());
-            }
-        }
-    }
-
-    private Task<string?> GetInputAsync(CancellationToken cancellationToken = default)
-    {
-        return Task.Run(Console.ReadLine, cancellationToken);
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
+   public Task StopAsync(CancellationToken cancellationToken)
+   {
+      return Task.CompletedTask;
+   }
 }

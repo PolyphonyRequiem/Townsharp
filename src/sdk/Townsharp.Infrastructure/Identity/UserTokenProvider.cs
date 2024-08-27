@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
 
-using Townsharp.Infrastructure.Composition;
 using Townsharp.Infrastructure.Configuration;
 using Townsharp.Infrastructure.Utilities;
 
@@ -22,13 +21,6 @@ internal class UserTokenProvider
     private readonly ILogger<UserTokenProvider> logger;
 
     internal bool IsEnabled => true;
-
-    internal UserTokenProvider(UserCredential userCredential)
-    : this(userCredential, InternalHttpClientFactory.Default, InternalLoggerFactory.Default.CreateLogger<UserTokenProvider>())
-    {
-
-    }
-
 
     internal UserTokenProvider(UserCredential userCredential, IHttpClientFactory httpClientFactory, ILogger<UserTokenProvider> logger)
     {
